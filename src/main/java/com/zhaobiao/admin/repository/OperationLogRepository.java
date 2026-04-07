@@ -1,0 +1,11 @@
+package com.zhaobiao.admin.repository;
+
+import com.zhaobiao.admin.entity.OperationLog;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+
+public interface OperationLogRepository extends JpaRepository<OperationLog, Long> {
+
+    List<OperationLog> findAllByOrderByCreatedAtDesc();
+}
