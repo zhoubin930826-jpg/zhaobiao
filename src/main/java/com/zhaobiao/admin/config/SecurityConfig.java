@@ -36,6 +36,8 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf().disable()
+                .headers().frameOptions().sameOrigin()
+                .and()
                 .cors().and()
                 .formLogin().disable()
                 .httpBasic().disable()
@@ -55,7 +57,8 @@ public class SecurityConfig {
                         "/api/auth/**",
                         "/swagger-ui.html",
                         "/swagger-ui/**",
-                        "/v3/api-docs/**"
+                        "/v3/api-docs/**",
+                        "/h2-console/**"
                 ).permitAll()
                 .anyRequest().authenticated();
 

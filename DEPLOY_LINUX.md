@@ -1,42 +1,42 @@
-# Linux Server Deployment Guide
+# Linux 服务器部署教程
 
-This guide is for deploying the current backend of this project to a brand-new Linux cloud server.
+这份文档用于把当前项目的后端部署到一台全新的 Linux 云服务器上。
 
-It covers:
+内容包括：
 
-- Installing Docker
-- Starting MySQL with Docker
-- Installing Java 8
-- Uploading and starting the Spring Boot backend
-- Configuring the backend as a `systemd` service
+- 安装 Docker
+- 使用 Docker 启动 MySQL
+- 安装 Java 8
+- 上传并启动 Spring Boot 后端
+- 将后端配置为 `systemd` 服务
 
-## 1. Assumptions
+## 1. 前提说明
 
-This guide assumes:
+本文默认你使用的是：
 
-- The server OS is `Ubuntu 22.04 LTS` or `Ubuntu 24.04 LTS`
-- You can log in with a user that has `sudo` privileges
-- The server architecture is `x86_64`
-- The backend runtime is the current project in this repository
+- 服务器系统为 `Ubuntu 22.04 LTS` 或 `Ubuntu 24.04 LTS`
+- 你可以使用带 `sudo` 权限的账号登录服务器
+- 服务器架构为 `x86_64`
+- 要部署的后端就是当前仓库里的这个项目
 
-If your server is `CentOS`, `Rocky Linux`, `Alibaba Cloud Linux`, or another distribution, this guide should be adjusted accordingly.
+如果你的服务器是 `CentOS`、`Rocky Linux`、`Alibaba Cloud Linux` 或其他发行版，这份文档需要做相应调整。
 
-## 2. Project Runtime Information
+## 2. 当前项目运行信息
 
-Current backend characteristics:
+当前后端的运行特征如下：
 
-- Framework: `Spring Boot 2.7.x`
-- Java version: `Java 8`
-- Default HTTP port: `8080`
-- Database: `MySQL 8`
-- Default database name: `zhaobiao_admin`
-- Built JAR name:
+- 框架：`Spring Boot 2.7.x`
+- Java 版本：`Java 8`
+- 默认 HTTP 端口：`8080`
+- 数据库：`MySQL 8`
+- 默认数据库名：`zhaobiao_admin`
+- 打包后的 JAR 文件名：
 
 ```text
 target/zhaobiao-admin-0.0.1-SNAPSHOT.jar
 ```
 
-The backend reads these environment variables at runtime:
+后端运行时会读取这些环境变量：
 
 ```text
 MYSQL_HOST
@@ -47,34 +47,36 @@ MYSQL_PASSWORD
 APP_JWT_SECRET
 ```
 
-## 3. Connect to the Server
+## 3. 登录服务器
 
-From your local machine:
+在你本地电脑上执行：
 
 ```bash
 ssh your_user@your_server_ip
 ```
 
-Example:
+示例：
 
 ```bash
 ssh ubuntu@123.123.123.123
 ```
 
-## 4. Update the Server and Install Basic Tools
+## 4. 更新系统并安装基础工具
 
-Run on the server:
+在服务器上执行：
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y ca-certificates curl gnupg lsb-release unzip
 ```
 
-## 5. Install Docker
+## 5. 安装 Docker
 
-The following installation method follows Docker's official Ubuntu installation approach.
+下面的安装方式遵循 Docker 官方的 Ubuntu 安装方法。
 
-### 5.1 Remove old Docker packages if they exist
+### 5.1 卸载旧版 Docker 相关包
+
+如果服务器之前装过旧版 Docker，先执行：
 
 ```bash
 for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
@@ -82,7 +84,7 @@ for pkg in docker.io docker-doc docker-compose podman-docker containerd runc; do
 done
 ```
 
-### 5.2 Add Docker's official GPG key
+### 5.2 添加 Docker 官方 GPG 密钥
 
 ```bash
 sudo install -m 0755 -d /etc/apt/keyrings
@@ -90,7 +92,7 @@ curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o 
 sudo chmod a+r /etc/apt/keyrings/docker.gpg
 ```
 
-### 5.3 Add Docker repository
+### 5.3 添加 Docker 软件源
 
 ```bash
 echo \
@@ -99,14 +101,14 @@ echo \
   sudo tee /etc/apt/sources.list.d/docker.list > /dev/null
 ```
 
-### 5.4 Install Docker Engine
+### 5.4 安装 Docker Engine
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
 ```
 
-### 5.5 Enable and start Docker
+### 5.5 设置 Docker 开机自启并立即启动
 
 ```bash
 sudo systemctl enable docker
@@ -114,39 +116,39 @@ sudo systemctl start docker
 sudo systemctl status docker
 ```
 
-If you want to use Docker without typing `sudo` every time:
+如果你希望后续执行 Docker 命令时不用每次都加 `sudo`，可以执行：
 
 ```bash
 sudo usermod -aG docker $USER
 ```
 
-Then log out and log back in once:
+执行后退出一次登录，再重新登录：
 
 ```bash
 exit
 ssh your_user@your_server_ip
 ```
 
-### 5.6 Verify Docker
+### 5.6 验证 Docker 是否安装成功
 
 ```bash
 docker --version
 docker compose version
 ```
 
-## 6. Start MySQL 8 with Docker
+## 6. 使用 Docker 启动 MySQL 8
 
-Because the server is brand new and Docker is already installed, using Docker to run MySQL is the simplest and most maintainable approach for this project.
+因为这台服务器是全新的，同时我们已经安装了 Docker，所以数据库直接用 Docker 跑是当前项目最简单、也最方便维护的方案。
 
-### 6.1 Create a persistent volume
+### 6.1 创建持久化数据卷
 
 ```bash
 docker volume create zhaobiao-mysql-data
 ```
 
-### 6.2 Start the MySQL container
+### 6.2 启动 MySQL 容器
 
-Please replace `YourRootPassword123!` with your own strong password.
+请把下面的 `YourRootPassword123!` 替换成你自己的强密码。
 
 ```bash
 docker run -d \
@@ -161,36 +163,36 @@ docker run -d \
   --collation-server=utf8mb4_general_ci
 ```
 
-### 6.3 Check whether MySQL started successfully
+### 6.3 查看 MySQL 是否启动成功
 
 ```bash
 docker ps
 docker logs --tail 100 zhaobiao-mysql
 ```
 
-### 6.4 Connect to MySQL inside the container
+### 6.4 进入容器连接 MySQL
 
 ```bash
 docker exec -it zhaobiao-mysql mysql -uroot -p
 ```
 
-After entering the password, run:
+输入密码后执行：
 
 ```sql
 SHOW DATABASES;
 ```
 
-You should see:
+正常情况下你会看到：
 
 ```text
 zhaobiao_admin
 ```
 
-### 6.5 Create a dedicated application user
+### 6.5 创建应用专用数据库账号
 
-Using `root` directly is not recommended for application runtime. Create a dedicated user instead.
+不建议应用运行时直接使用 `root`，更推荐单独创建一个业务账号。
 
-Inside MySQL:
+在 MySQL 中执行：
 
 ```sql
 CREATE USER 'zb_app'@'%' IDENTIFIED BY 'YourAppPassword123!';
@@ -198,108 +200,108 @@ GRANT ALL PRIVILEGES ON zhaobiao_admin.* TO 'zb_app'@'%';
 FLUSH PRIVILEGES;
 ```
 
-Recommendation:
+建议：
 
-- Use `zb_app` as the application database user
-- Keep `root` only for database administration
+- 后端连接数据库时使用 `zb_app`
+- `root` 只保留给数据库管理使用
 
-### 6.6 Security advice
+### 6.6 安全建议
 
-If your backend and MySQL are on the same server, do not expose `3306` publicly in the cloud security group unless remote database access is truly needed.
+如果你的后端和 MySQL 都部署在同一台服务器上，一般不要把 `3306` 对公网开放，除非你确实需要远程直连数据库。
 
-Recommended cloud security group settings:
+推荐的云服务器安全组配置：
 
-- Allow `22` for SSH
-- Allow `8080` for the backend
-- Do not open `3306` to the public internet
+- 放行 `22`，用于 SSH 登录
+- 放行 `8080`，用于访问后端
+- 不要对公网开放 `3306`
 
-## 7. Install Java 8
+## 7. 安装 Java 8
 
-This project runs on Java 8. On newer Ubuntu versions, installing Temurin 8 is usually the most stable route.
+当前项目运行在 Java 8 上。对于较新的 Ubuntu 版本，安装 Temurin 8 通常是更稳妥的方案。
 
-### 7.1 Add the Adoptium repository
+### 7.1 添加 Adoptium 软件源
 
 ```bash
 wget -qO - https://packages.adoptium.net/artifactory/api/gpg/key/public | sudo gpg --dearmor -o /etc/apt/keyrings/adoptium.gpg
 echo "deb [signed-by=/etc/apt/keyrings/adoptium.gpg] https://packages.adoptium.net/artifactory/deb $(awk -F= '/^VERSION_CODENAME/{print $2}' /etc/os-release) main" | sudo tee /etc/apt/sources.list.d/adoptium.list
 ```
 
-### 7.2 Install Temurin 8
+### 7.2 安装 Temurin 8
 
 ```bash
 sudo apt-get update
 sudo apt-get install -y temurin-8-jdk
 ```
 
-### 7.3 Verify Java
+### 7.3 验证 Java 是否安装成功
 
 ```bash
 java -version
 javac -version
 ```
 
-Expected major version:
+预期主版本为：
 
 ```text
 1.8
 ```
 
-### 7.4 Confirm JAVA_HOME
+### 7.4 确认 JAVA_HOME
 
 ```bash
 readlink -f /usr/bin/java
 ```
 
-Typical output might be similar to:
+常见输出类似：
 
 ```text
 /usr/lib/jvm/temurin-8-jdk-amd64/bin/java
 ```
 
-Then `JAVA_HOME` is usually:
+那么 `JAVA_HOME` 一般就是：
 
 ```text
 /usr/lib/jvm/temurin-8-jdk-amd64
 ```
 
-## 8. Build the Backend on Your Local Machine
+## 8. 在本地打包后端
 
-Run this on your local development machine, not on the server:
+这一步在你的本地开发电脑上执行，不是在服务器上执行：
 
 ```bash
 mvn clean package -DskipTests
 ```
 
-After packaging, confirm this file exists locally:
+打包完成后，确认本地有这个文件：
 
 ```text
 target/zhaobiao-admin-0.0.1-SNAPSHOT.jar
 ```
 
-## 9. Upload the Backend JAR to the Server
+## 9. 上传后端 JAR 到服务器
 
-Create the deployment directory on the server:
+先在服务器上创建部署目录：
 
 ```bash
 sudo mkdir -p /opt/zhaobiao/app
 sudo chown -R $USER:$USER /opt/zhaobiao
 ```
 
-From your local machine, upload the JAR:
+然后在本地电脑上执行上传命令：
 
 ```bash
 scp target/zhaobiao-admin-0.0.1-SNAPSHOT.jar your_user@your_server_ip:/opt/zhaobiao/app/
 ```
 
-Example:
+示例：
 
 ```bash
 scp target/zhaobiao-admin-0.0.1-SNAPSHOT.jar ubuntu@123.123.123.123:/opt/zhaobiao/app/
 ```
 
-## 10. Create the Backend Environment File
+## 10. 创建后端环境变量文件
 
-On the server:
+在服务器上执行：
 
 ```bash
 cd /opt/zhaobiao/app
@@ -313,16 +315,16 @@ APP_JWT_SECRET=ChangeThisToAVeryLongRandomSecretValue123456789
 EOF
 ```
 
-Recommendation:
+建议：
 
-- `APP_JWT_SECRET` should be long, random, and not reused elsewhere
-- Do not commit `app.env` into Git
+- `APP_JWT_SECRET` 要尽量长、足够随机，不要和其他项目共用
+- 不要把 `app.env` 提交进 Git 仓库
 
-## 11. Start the Backend Manually Once
+## 11. 先手动启动一次后端
 
-This step is for validation before configuring `systemd`.
+这一步的作用是先验证环境是否正常，再去配置 `systemd`。
 
-On the server:
+在服务器上执行：
 
 ```bash
 cd /opt/zhaobiao/app
@@ -332,61 +334,61 @@ set +a
 nohup java -jar zhaobiao-admin-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
 ```
 
-Check logs:
+查看日志：
 
 ```bash
 tail -f /opt/zhaobiao/app/app.log
 ```
 
-If startup succeeds, look for logs indicating that Spring Boot has started and Tomcat is listening on port `8080`.
+如果启动成功，日志里通常会出现 Spring Boot 启动完成，以及 Tomcat 正在监听 `8080` 端口的提示。
 
-## 12. Verify the Backend
+## 12. 验证后端是否可用
 
-On the server:
+在服务器本机执行：
 
 ```bash
 curl http://127.0.0.1:8080/swagger-ui.html
 ```
 
-If your cloud security group allows `8080`, you can also access from your browser:
+如果你的云服务器安全组已经放行 `8080`，也可以直接在浏览器访问：
 
 ```text
 http://your_server_ip:8080/
 http://your_server_ip:8080/swagger-ui.html
 ```
 
-Default super admin account:
+默认超级管理员账号：
 
 ```text
 username: admin
 password: adminqwert
 ```
 
-## 13. Configure the Backend as a systemd Service
+## 13. 将后端配置为 systemd 服务
 
-Manual `nohup` startup is useful for testing, but production should use `systemd`.
+`nohup` 方式适合临时验证，但线上环境更推荐使用 `systemd` 托管。
 
-### 13.1 Stop the manual process first
+### 13.1 先停止刚才手动启动的进程
 
-Find the process:
+查找进程：
 
 ```bash
 ps -ef | grep zhaobiao-admin
 ```
 
-Or:
+或者：
 
 ```bash
 ps -ef | grep java
 ```
 
-Then stop the old process:
+然后停止旧进程：
 
 ```bash
 kill -9 your_java_pid
 ```
 
-### 13.2 Create the service file
+### 13.2 创建 service 文件
 
 ```bash
 sudo tee /etc/systemd/system/zhaobiao.service > /dev/null <<'EOF'
@@ -410,12 +412,12 @@ WantedBy=multi-user.target
 EOF
 ```
 
-Note:
+说明：
 
-- `User=root` is the simplest setup for now
-- A more secure production setup would create a dedicated Linux user such as `zhaobiao`
+- 当前先用 `User=root`，配置最简单
+- 更稳妥的生产环境做法是创建单独的 Linux 用户，例如 `zhaobiao`
 
-### 13.3 Reload and start the service
+### 13.3 重新加载配置并启动服务
 
 ```bash
 sudo systemctl daemon-reload
@@ -424,105 +426,105 @@ sudo systemctl start zhaobiao
 sudo systemctl status zhaobiao
 ```
 
-### 13.4 View service logs
+### 13.4 查看服务日志
 
 ```bash
 sudo journalctl -u zhaobiao -f
 ```
 
-## 14. Day-to-Day Backend Commands
+## 14. 后端常用运维命令
 
-### Start backend
+### 启动后端
 
 ```bash
 sudo systemctl start zhaobiao
 ```
 
-### Stop backend
+### 停止后端
 
 ```bash
 sudo systemctl stop zhaobiao
 ```
 
-### Restart backend
+### 重启后端
 
 ```bash
 sudo systemctl restart zhaobiao
 ```
 
-### Check backend status
+### 查看后端状态
 
 ```bash
 sudo systemctl status zhaobiao
 ```
 
-### View backend logs
+### 查看后端日志
 
 ```bash
 sudo journalctl -u zhaobiao -f
 ```
 
-## 15. Day-to-Day MySQL Docker Commands
+## 15. MySQL Docker 常用命令
 
-### Start MySQL container
+### 启动 MySQL 容器
 
 ```bash
 docker start zhaobiao-mysql
 ```
 
-### Stop MySQL container
+### 停止 MySQL 容器
 
 ```bash
 docker stop zhaobiao-mysql
 ```
 
-### Check MySQL container logs
+### 查看 MySQL 容器日志
 
 ```bash
 docker logs --tail 100 zhaobiao-mysql
 ```
 
-### Enter MySQL container
+### 进入 MySQL 容器
 
 ```bash
 docker exec -it zhaobiao-mysql bash
 ```
 
-### Log in to MySQL
+### 登录 MySQL
 
 ```bash
 docker exec -it zhaobiao-mysql mysql -uroot -p
 ```
 
-## 16. Cloud Security Group Recommendations
+## 16. 云服务器安全组建议
 
-Recommended external ports:
+建议对外开放的端口：
 
-- `22` for SSH
-- `8080` for backend testing
+- `22`，用于 SSH
+- `8080`，用于后端测试访问
 
-Not recommended to expose publicly:
+不建议直接对公网开放：
 
-- `3306` MySQL
+- `3306`，MySQL 数据库端口
 
-If you later add Nginx:
+如果后续你会再加 Nginx：
 
-- Open `80`
-- Open `443`
-- Consider closing public `8080`
+- 开放 `80`
+- 开放 `443`
+- 可以考虑关闭公网 `8080`
 
-## 17. Common Problems
+## 17. 常见问题排查
 
-### 17.1 Backend fails to start because it cannot connect to MySQL
+### 17.1 后端启动失败，提示无法连接 MySQL
 
-Check:
+重点检查：
 
-- Is `zhaobiao-mysql` running
-- Are `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DB`, `MYSQL_USER`, `MYSQL_PASSWORD` correct
-- Did you create `zb_app`
-- Is the password in `app.env` correct
+- `zhaobiao-mysql` 容器是否正在运行
+- `MYSQL_HOST`、`MYSQL_PORT`、`MYSQL_DB`、`MYSQL_USER`、`MYSQL_PASSWORD` 是否正确
+- 是否已经创建了 `zb_app`
+- `app.env` 中填写的密码是否正确
 
-Useful commands:
+常用排查命令：
 
 ```bash
 docker ps
@@ -530,70 +532,70 @@ docker logs --tail 100 zhaobiao-mysql
 sudo journalctl -u zhaobiao -f
 ```
 
-### 17.2 Port 8080 cannot be accessed from the browser
+### 17.2 浏览器无法访问 8080
 
-Check:
+重点检查：
 
-- Is the backend running
-- Does Ubuntu firewall block the port
-- Does the cloud provider security group allow `8080`
+- 后端是否已经启动
+- Ubuntu 防火墙是否拦截了端口
+- 云服务器安全组是否已经放行 `8080`
 
-Example firewall command:
+如果你启用了 `ufw`，可以执行：
 
 ```bash
 sudo ufw allow 8080/tcp
 ```
 
-### 17.3 `java: command not found`
+### 17.3 提示 `java: command not found`
 
-Check:
+检查：
 
 ```bash
 java -version
 which java
 ```
 
-If needed, reinstall:
+如果需要重新安装：
 
 ```bash
 sudo apt-get install -y temurin-8-jdk
 ```
 
-### 17.4 Docker command not available
+### 17.4 无法使用 Docker 命令
 
-Check:
+检查：
 
 ```bash
 docker --version
 sudo systemctl status docker
 ```
 
-If your current user cannot run Docker:
+如果当前用户没有 Docker 权限：
 
 ```bash
 sudo usermod -aG docker $USER
 ```
 
-Then log in again.
+然后重新登录一次。
 
-## 18. Suggested Next Step
+## 18. 下一步建议
 
-Once the backend is running normally, the next recommended deployment improvements are:
+当后端运行稳定之后，下一步更推荐补上这些部署能力：
 
-1. Add `Nginx` reverse proxy
-2. Bind a domain name
-3. Configure HTTPS with Let's Encrypt
-4. Move the backend behind `80/443`
-5. Replace database `root` usage everywhere with a least-privilege app account
-6. Set up log rotation and scheduled database backups
+1. 增加 `Nginx` 反向代理
+2. 绑定域名
+3. 使用 Let's Encrypt 配置 HTTPS
+4. 把外部访问统一收敛到 `80/443`
+5. 全面替换掉数据库 `root` 直连，改为最小权限业务账号
+6. 增加日志轮转和数据库定时备份
 
-## 19. Official References
+## 19. 官方参考资料
 
-The installation steps in this guide are based on the official documentation below:
+本文中的安装步骤主要参考了以下官方文档：
 
-- Docker Engine on Ubuntu:
+- Docker Engine for Ubuntu：
   - https://docs.docker.com/engine/install/ubuntu/
-- MySQL official Docker image:
+- MySQL 官方 Docker 镜像：
   - https://hub.docker.com/_/mysql
-- Adoptium Temurin packages:
+- Adoptium Temurin：
   - https://adoptium.net/

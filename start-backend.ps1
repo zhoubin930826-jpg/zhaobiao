@@ -1,3 +1,7 @@
+param(
+    [string]$Profile = ""
+)
+
 . "$PSScriptRoot\_script-common.ps1"
 
 $name = "backend"
@@ -17,10 +21,17 @@ if ($portOwner) {
     throw "Port $port is already in use by PID $portOwner. $commandLine"
 }
 
-Write-Info "Starting backend..."
+$profileLabel = if ([string]::IsNullOrWhiteSpace($Profile)) { "default" } else { $Profile }
+$startCommand = if ([string]::IsNullOrWhiteSpace($Profile)) {
+    "mvn spring-boot:run"
+} else {
+    "mvn spring-boot:run -Dspring-boot.run.profiles=$Profile"
+}
+
+Write-Info "Starting backend with profile '$profileLabel'..."
 $process = Start-BackgroundShellCommand `
     -WorkingDirectory $Script:ProjectRoot `
-    -Command "mvn spring-boot:run" `
+    -Command $startCommand `
     -LogFile $logFile `
     -PidFile $pidFile
 
@@ -31,7 +42,11 @@ if (-not (Wait-HttpReady -Url "http://localhost:$port/swagger-ui.html" -TimeoutS
 }
 
 Write-Ok "Backend is ready."
+Write-Host "Profile: $profileLabel"
 Write-Host "URL: http://localhost:$port/"
 Write-Host "Swagger: http://localhost:$port/swagger-ui.html"
+if ($profileLabel -eq "preview") {
+    Write-Host "H2 Console: http://localhost:$port/h2-console"
+}
 Write-Host "PID: $($process.Id)"
 Write-Host "Log: $logFile"
