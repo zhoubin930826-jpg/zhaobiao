@@ -2,7 +2,7 @@
     <div class="i-layout-menu-head" :class="{ 'i-layout-menu-head-mobile': isMobile }">
         <Menu mode="horizontal" :active-name="headerName" v-if="!isMobile && !isMenuLimit" ref="menu">
             <template v-for="(item, index) in filterHeader">
-                
+
                 <Submenu v-if="item.children && item.children.length" :name="item.name" :key="index">
                     <template slot="title">
                         <i-menu-head-title :item="item" />

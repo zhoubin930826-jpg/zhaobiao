@@ -1,7 +1,5 @@
 <template>
   <div>
-    <Button type="primary" ghost icon="md-add" @click="handleOpenCreate">添加用户</Button>
-
     <div class="ivu-inline-block ivu-fr">
       <Dropdown @on-click="handleChangeTableSize" trigger="click">
         <Tooltip class="ivu-ml" content="密度" placement="top">
@@ -62,6 +60,11 @@
         </DropdownMenu>
       </Dropdown>
     </div>
+    <div class="ivu-mt-16 ivu-mb-8">
+      <Button type="primary" ghost icon="md-add" @click="handleOpenCreate">
+        新增角色
+      </Button>
+    </div>
     <Table
       ref="table"
       :columns="tableColumns"
@@ -76,9 +79,16 @@
       </template>
       <template slot-scope="{ row }" slot="action">
         <div @click.stop.prevent>
-          <a type="text" @click="handleEdit(row.id)">编辑</a>
+          <a type="text" @click="handleEdit(row)">编辑</a>
           <Divider type="vertical" />
-          <a type="text" @click="handleDelete(row.id)">删除</a>
+          <a
+            v-if="!row.builtIn"
+            type="text"
+            style="color: #ed4014"
+            @click="handleDelete(row)"
+            >删除</a
+          >
+          <span v-else style="color: #c5c8ce">删除</span>
         </div>
       </template>
     </Table>
@@ -96,57 +106,105 @@
     </div>
     <Modal
       v-model="modal.show"
-      :title="modal.type === 'edit' ? '编辑角色' : '添加角色'"
-      :before-close="handleCloseEdit"
+      :title="modal.type === 'edit' ? '编辑角色' : '新增角色'"
       :transfer="false"
-      width="500"
+      width="560"
+      @on-visible-change="onModalVisible"
     >
       <Form
-        v-if="roleInfo && roleInfoReady"
-        ref="roleInfoForm"
-        :model="roleInfo"
-        :rules="roleInfoRules"
+        v-if="formReady"
+        ref="roleForm"
+        :model="roleForm"
+        :rules="roleFormRules"
         label-position="top"
         label-colon
-
       >
-        <FormItem prop="name" label="角色名称">
-          <Input v-model="roleInfo.name" placeholder="请输入角色名称，必填" />
-        </FormItem>
-        <FormItem prop="status" label="是否启用">
-          <RadioGroup v-model="roleInfo.status">
-            <Radio label="1">启用</Radio>
-            <Radio label="0">停用</Radio>
-          </RadioGroup>
-        </FormItem>
-        <FormItem prop="authIds" label="权限管理">
-          <Tree
-            :data="menuList"
-            show-checkbox
-            ref="tree"
-            :children-key="`child`"
-            @on-select-change="change"
+        <FormItem prop="code" label="角色编码">
+          <Input
+            v-model="roleForm.code"
+            placeholder="如 BID_MANAGER，英文字母与下划线"
+            :disabled="modal.type === 'edit' && roleForm.builtIn"
           />
         </FormItem>
-        <FormItem prop="organize_id" label="所属组织">
-          <el-cascader
-            :options="orgList"
-            :props="{ checkStrictly: true,expandTrigger: 'hover' }"
-            clearable
-            v-model="roleInfo.organize_id"
-          ></el-cascader>
+        <FormItem prop="name" label="角色名称">
+          <Input v-model="roleForm.name" placeholder="请输入角色名称" />
+        </FormItem>
+        <FormItem prop="description" label="描述">
+          <Input
+            v-model="roleForm.description"
+            type="textarea"
+            :rows="2"
+            placeholder="可选"
+          />
+        </FormItem>
+        <FormItem prop="permissionIds" label="权限">
+          <Select
+            v-model="roleForm.permissionIds"
+            multiple
+            filterable
+            placeholder="请选择权限（至少一项）"
+          >
+            <Option
+              v-for="p in permissionList"
+              :key="p.id"
+              :value="Number(p.id)"
+              :label="`${p.name} (${p.code})`"
+            >
+              {{ p.name }}（{{ p.code }}）
+            </Option>
+          </Select>
+        </FormItem>
+        <FormItem label="菜单">
+          <div class="role-menu-tree-wrap">
+            <Tree
+              v-if="menuList.length"
+              :data="menuList"
+              show-checkbox
+              ref="menuTree"
+              children-key="child"
+            />
+            <span v-else class="role-menu-tree-empty">暂无菜单数据</span>
+          </div>
+          <div style="font-size: 12px; margin-top: 6px; color: #808695">
+            请勾选该角色可访问的菜单；按钮类菜单需与上方权限一致，否则保存会失败。
+          </div>
         </FormItem>
       </Form>
       <template #footer>
-        <Button v-if="modal.type === 'edit'" type="primary" @click="handleSubmitEdit" :loading="submitting">提交</Button>
-        <Button v-if="modal.type === 'new'" type="primary" @click="handleSubmitNew" :loading="submitting">提交</Button>
+        <Button @click="modal.show = false">取消</Button>
+        <Button type="primary" :loading="submitting" @click="handleSubmit"
+          >保存</Button
+        >
       </template>
     </Modal>
   </div>
 </template>
 
 <script>
-    import { listRoles } from '@api/system';
+    import {
+        listRoles,
+        createRole,
+        updateRole,
+        deleteRole,
+        listMenus,
+        listPermissions
+    } from '@api/system';
+
+    function menuDtoNodesToTree (menus, checkedSet) {
+        return (menus || []).map(m => ({
+            id: m.id,
+            title: m.name || m.code || String(m.id),
+            expand: true,
+            checked: checkedSet.has(Number(m.id)),
+            child: menuDtoNodesToTree(m.children || [], checkedSet)
+        }));
+    }
+
+    function normalizeIdArray (arr) {
+        if (!Array.isArray(arr)) return [];
+        return arr.map(id => Number(id)).filter(n => !Number.isNaN(n));
+    }
+
     export default {
         data () {
             return {
@@ -192,8 +250,8 @@
                         show: true
                     }
                 ],
-                orgList: [],
                 loading: false,
+                listAll: [],
                 list: [],
                 current: 1,
                 limit: 10,
@@ -202,93 +260,229 @@
                 tableFullscreen: false,
                 modal: {
                     show: false,
-                    type: 'edit' // edit || new
+                    type: 'new'
                 },
-                roleInfo: null,
-                roleInfoRules: {
-                    name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-                    // authIds: [{ required: true, message: '请选择权限', trigger: 'blur' }],
-                    status: [{ required: true, message: '请选择启用状态', trigger: 'blur' }]
-                    // organize_id: [{ required: true, message: '请输入角色名称', trigger: 'blur' }]
-                },
-                roleInfoString: '',
-                roleInfoReady: true,
+                formReady: true,
                 submitting: false,
+                roleForm: {
+                    id: null,
+                    code: '',
+                    name: '',
+                    description: '',
+                    builtIn: false,
+                    permissionIds: []
+                },
+                roleFormRules: {
+                    code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
+                    name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
+                    permissionIds: [
+                        {
+                            required: true,
+                            type: 'array',
+                            min: 1,
+                            message: '请至少选择一个权限',
+                            trigger: 'change'
+                        }
+                    ]
+                },
+                menuRoots: [],
+                /** 弹窗内菜单树勾选状态（菜单接口晚返回时用于补渲染） */
+                modalMenuCheckedIds: [],
                 menuList: [],
-                roleMenuList: []
+                permissionList: []
             };
         },
         computed: {
-            // 动态设置列
             tableColumns () {
-                const columns = [...this.columns];
-                return columns.filter(item => item.show);
-            },
-            offset () {
-                return (this.current - 1) * this.limit;
-            }
-        },
-        filters: {
-            timeFilter (val) {
-                console.log(val)
-                return new Date(val - 0).toLocaleDateString() + new Date(val - 0).toLocaleTimeString()
-            },
-            filters: {
-                filterPer (val) {
-                    val.forEach(item => {
-                        if (item.children.length > 0) {
-                            item.checked = false;
-                        }
-                    });
-                    return val;
-                }
+                return this.columns.filter(item => item.show);
             }
         },
         methods: {
-            getData () {
-                listRoles().then(res => {
-                    const arr = Array.isArray(res) ? res : [];
-                    this.list = arr;
-                    this.total = arr.length;
+            loadReference () {
+                listMenus().then(res => {
+                    this.menuRoots = Array.isArray(res) ? res : [];
+                    if (this.modal.show) {
+                        this.rebuildMenuTree(this.modalMenuCheckedIds);
+                    }
+                });
+                listPermissions().then(res => {
+                    this.permissionList = Array.isArray(res) ? res : [];
                 });
             },
-            change () {
-                // console.log(this.menu_list);
+            rebuildMenuTree (checkedIds) {
+                const set = new Set(normalizeIdArray(checkedIds));
+                this.menuList = menuDtoNodesToTree(this.menuRoots, set);
             },
-            // 查找单一角色信息
-            handleGetRole (id) {
-                return this.list.find(item => item.id === id);
+            getData () {
+                if (this.loading) return;
+                this.loading = true;
+                listRoles().then(res => {
+                    const rows = Array.isArray(res) ? res : [];
+                    this.listAll = rows;
+                    this.total = rows.length;
+                    const start = (this.current - 1) * this.limit;
+                    this.list = rows.slice(start, start + this.limit);
+                }).finally(() => {
+                    this.loading = false;
+                });
             },
-            // 删除
-            handleDelete (id) {
+            handleChangeTableSize (size) {
+                this.tableSize = size;
             },
-            // 编辑
-            handleEdit (id) {
+            handleFullscreen () {
+                this.tableFullscreen = !this.tableFullscreen;
+                this.$emit('on-fullscreen', this.tableFullscreen);
             },
-            handleInitRoleInfoForm () {
+            handleRefresh () {
+                this.getData();
             },
-            // 关闭编辑
-            handleCloseEdit () {
+            handleChangePage (page) {
+                this.current = page;
+                this.applyPageSlice();
             },
-            // 添加用户
+            handleChangePageSize (size) {
+                this.current = 1;
+                this.limit = size;
+                this.applyPageSlice();
+            },
+            applyPageSlice () {
+                const rows = this.listAll;
+                this.total = rows.length;
+                const start = (this.current - 1) * this.limit;
+                this.list = rows.slice(start, start + this.limit);
+            },
+            openFormModal () {
+                this.formReady = false;
+                this.$nextTick(() => {
+                    this.formReady = true;
+                    this.$nextTick(() => {
+                        if (this.$refs.roleForm) {
+                            this.$refs.roleForm.clearValidate();
+                        }
+                    });
+                });
+            },
             handleOpenCreate () {
+                this.modal.type = 'new';
+                this.modalMenuCheckedIds = [];
+                this.roleForm = {
+                    id: null,
+                    code: '',
+                    name: '',
+                    description: '',
+                    builtIn: false,
+                    permissionIds: []
+                };
+                this.rebuildMenuTree(this.modalMenuCheckedIds);
+                this.modal.show = true;
+                this.openFormModal();
             },
-            handleSubmitEdit () {
+            handleEdit (row) {
+                this.modal.type = 'edit';
+                this.modalMenuCheckedIds = normalizeIdArray(row.menuIds);
+                this.roleForm = {
+                    id: row.id,
+                    code: row.code || '',
+                    name: row.name || '',
+                    description: row.description || '',
+                    builtIn: !!row.builtIn,
+                    permissionIds: normalizeIdArray(row.permissionIds)
+                };
+                this.rebuildMenuTree(this.modalMenuCheckedIds);
+                this.modal.show = true;
+                this.openFormModal();
             },
-            handleSubmitNew () {
-
+            handleDelete (row) {
+                if (row.builtIn) {
+                    this.$Message.warning('内置角色不能删除');
+                    return;
+                }
+                this.$Modal.confirm({
+                    title: '确认删除',
+                    content: `确定删除角色「${row.name}」吗？若已有用户使用该角色将无法删除。`,
+                    onOk: () => {
+                        return deleteRole(row.id)
+                            .then(() => {
+                                this.$Message.success('删除成功');
+                                this.getData();
+                            })
+                            .catch(() => {});
+                    }
+                });
             },
-            // 获取菜单数据
-            handleGetMenuList () {
+            collectMenuIds () {
+                const tree = this.$refs.menuTree;
+                if (!tree || typeof tree.getCheckedNodes !== 'function') {
+                    return [];
+                }
+                const nodes = tree.getCheckedNodes();
+                return normalizeIdArray(nodes.map(n => n.id));
             },
-            // 获取组织机构
-            handleGetOrgList () {
+            buildPayload () {
+                const menuIds = this.collectMenuIds();
+                return {
+                    code: (this.roleForm.code || '').trim(),
+                    name: (this.roleForm.name || '').trim(),
+                    description: (this.roleForm.description || '').trim() || undefined,
+                    permissionIds: normalizeIdArray(this.roleForm.permissionIds),
+                    menuIds
+                };
+            },
+            handleSubmit () {
+                this.$refs.roleForm.validate(valid => {
+                    if (!valid) return;
+                    const payload = this.buildPayload();
+                    if (!payload.menuIds.length) {
+                        this.$Message.warning('请至少勾选一个菜单');
+                        return;
+                    }
+                    this.submitting = true;
+                    const done = () => {
+                        this.submitting = false;
+                    };
+                    if (this.modal.type === 'new') {
+                        createRole(payload)
+                            .then(() => {
+                                this.$Message.success('新增成功');
+                                this.modal.show = false;
+                                this.getData();
+                            })
+                            .finally(done);
+                    } else {
+                        updateRole(this.roleForm.id, payload)
+                            .then(() => {
+                                this.$Message.success('保存成功');
+                                this.modal.show = false;
+                                this.getData();
+                            })
+                            .finally(done);
+                    }
+                });
+            },
+            onModalVisible (visible) {
+                if (!visible) {
+                    this.menuList = [];
+                    this.modalMenuCheckedIds = [];
+                }
             }
         },
         mounted () {
-            this.getData()
+            this.loadReference();
         }
     };
 </script>
 
-<style lang="less" scoped></style>
+<style lang="less" scoped>
+.role-menu-tree-wrap {
+    max-height: 280px;
+    overflow: auto;
+    padding: 8px 0;
+    border: 1px solid #e8eaec;
+    border-radius: 4px;
+}
+.role-menu-tree-empty {
+    color: #808695;
+    padding: 8px 12px;
+    display: inline-block;
+}
+</style>

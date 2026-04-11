@@ -50,6 +50,6 @@ export default {
                 title: '权限管理'
             },
             component: () => import('@/pages/sys/permissions')
-        },
+        }
     ]
 };

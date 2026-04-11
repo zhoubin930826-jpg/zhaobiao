@@ -5,7 +5,7 @@ import { cloneDeep } from 'lodash';
 import { includeArray } from '@/libs/system';
 
 // 根据 menu 配置的权限，过滤菜单
-function filterMenu(menuList, access, lastList) {
+function filterMenu (menuList, access, lastList) {
     let tree = []
     access.forEach((item, index) => {
         let treeItem = {}
@@ -71,7 +71,7 @@ export default {
         /**
          * @description 根据 user 里登录用户权限，对侧边菜单进行鉴权过滤
          * */
-        filterSider(state, getters, rootState) {
+        filterSider (state, getters, rootState) {
             // const userInfo = rootState.admin.user.info;
             // @权限
             const authTree = rootState.admin.user.AuthTree;
@@ -84,7 +84,7 @@ export default {
         /**
          * @description 根据 user 里登录用户权限，对顶栏菜单进行鉴权过滤
          * */
-        filterHeader(state, getters, rootState) {
+        filterHeader (state, getters, rootState) {
             const userInfo = rootState.admin.user.info;
             // @权限
             const access = userInfo.access;
@@ -119,13 +119,13 @@ export default {
         /**
          * @description 当前 header 的全部信息
          * */
-        currentHeader(state) {
+        currentHeader (state) {
             return state.header.find(item => item.name === state.headerName);
         },
         /**
          * @description 在当前 header 下，是否隐藏 sider（及折叠按钮）
          * */
-        hideSider(state, getters) {
+        hideSider (state, getters) {
             let visible = false;
             if (getters.currentHeader && 'hideSider' in getters.currentHeader) { visible = getters.currentHeader.hideSider; }
             return visible;
@@ -137,7 +137,7 @@ export default {
          * @param {Object} state vuex state
          * @param {Array} menu menu
          */
-        setSider(state, menu) {
+        setSider (state, menu) {
             state.sider = menu;
         },
         /**
@@ -145,7 +145,7 @@ export default {
          * @param {Object} state vuex state
          * @param {Array} menu menu
          */
-        setHeader(state, menu) {
+        setHeader (state, menu) {
             state.header = menu;
         },
         /**
@@ -153,7 +153,7 @@ export default {
          * @param {Object} state vuex state
          * @param {Array} name headerName
          */
-        setHeaderName(state, name) {
+        setHeaderName (state, name) {
             state.headerName = name;
         },
         /**
@@ -161,7 +161,7 @@ export default {
          * @param {Object} state vuex state
          * @param {Array} path fullPath
          */
-        setActivePath(state, path) {
+        setActivePath (state, path) {
             state.activePath = path;
         },
         /**
@@ -169,7 +169,7 @@ export default {
          * @param {Object} state vuex state
          * @param {Array} names openNames
          */
-        setOpenNames(state, names) {
+        setOpenNames (state, names) {
             state.openNames = names;
         },
         /**
@@ -177,19 +177,19 @@ export default {
          * @param {Object} state vuex state
          * @param {Array} menuSider menuSider
          * */
-        setMenuSider(state, menuSider) {
+        setMenuSider (state, menuSider) {
             state.menuSider = menuSider;
         },
         /**
          * @description 2.4.0 设置全部的侧边菜单的徽标
          * */
-        setAllMenuBadge(state, data) {
+        setAllMenuBadge (state, data) {
             state.menuBadge = data;
         },
         /**
          * @description 2.4.0 新增或修改某个侧边菜单的徽标
          * */
-        setMenuBadge(state, { path, badge }) {
+        setMenuBadge (state, { path, badge }) {
             const menuBadge = cloneDeep(state.menuBadge);
             const menuIndex = menuBadge.findIndex(item => item.path === path);
             if (menuIndex >= 0) {
@@ -202,7 +202,7 @@ export default {
         /**
          * @description 2.4.0 删除某个侧边菜单的徽标
          * */
-        removeMenuBadge(state, path) {
+        removeMenuBadge (state, path) {
             const menuIndex = state.menuBadge.findIndex(item => item.path === path);
             if (menuIndex >= 0) state.menuBadge.splice(menuIndex, 1);
         }

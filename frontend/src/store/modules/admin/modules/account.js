@@ -3,7 +3,7 @@
  * */
 import util from '@/libs/util';
 import router from '@/router';
-import { AccountLogin} from '@api/account';
+import { AccountLogin } from '@api/account';
 import { listMenus } from '@api/system';
 import { menuDtosToAuthTree } from '@/libs/bid-menu';
 
