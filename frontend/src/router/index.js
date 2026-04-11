@@ -1,112 +1,65 @@
-import { createRouter, createWebHashHistory } from "vue-router";
-import { useAuthStore } from "@/stores/auth";
-import MainLayout from "@/layouts/MainLayout.vue";
-import LoginView from "@/views/LoginView.vue";
-import DashboardView from "@/views/DashboardView.vue";
-import ProfileView from "@/views/ProfileView.vue";
-import UsersView from "@/views/UsersView.vue";
-import RolesView from "@/views/RolesView.vue";
-import PermissionsView from "@/views/PermissionsView.vue";
-import MenusView from "@/views/MenusView.vue";
-import AuditRecordsView from "@/views/AuditRecordsView.vue";
-import OperationLogsView from "@/views/OperationLogsView.vue";
+import Vue from 'vue';
+import VueRouter from 'vue-router';
+import iView from 'view-design';
 
-const routes = [
-  {
-    path: "/login",
-    name: "login",
-    component: LoginView,
-    meta: { public: true }
-  },
-  {
-    path: "/",
-    component: MainLayout,
-    children: [
-      {
-        path: "",
-        redirect: "/dashboard"
-      },
-      {
-        path: "/dashboard",
-        name: "dashboard",
-        component: DashboardView
-      },
-      {
-        path: "/profile",
-        name: "profile",
-        component: ProfileView
-      },
-      {
-        path: "/users",
-        name: "users",
-        component: UsersView,
-        meta: { permission: "user:view" }
-      },
-      {
-        path: "/roles",
-        name: "roles",
-        component: RolesView,
-        meta: { permission: "role:view" }
-      },
-      {
-        path: "/permissions",
-        name: "permissions",
-        component: PermissionsView,
-        meta: { permission: "permission:view" }
-      },
-      {
-        path: "/menus",
-        name: "menus",
-        component: MenusView,
-        meta: { permission: "menu:view" }
-      },
-      {
-        path: "/audit-records",
-        name: "audit-records",
-        component: AuditRecordsView,
-        meta: { permission: "user:audit:record:view" }
-      },
-      {
-        path: "/operation-logs",
-        name: "operation-logs",
-        component: OperationLogsView,
-        meta: { permission: "operation:log:view" }
-      }
-    ]
-  }
-];
+import util from '@/libs/util'
 
-const router = createRouter({
-  history: createWebHashHistory(),
-  routes
+import Setting from '@/setting';
+
+import store from '@/store/index';
+
+// 路由数据
+import routes from './routes';
+
+Vue.use(VueRouter);
+
+// 导出路由 在 main.js 里使用
+const router = new VueRouter({
+    routes,
+    mode: Setting.routerMode,
+    base: Setting.routerBase
 });
 
-router.beforeEach(async (to) => {
-  const authStore = useAuthStore();
-  if (to.meta.public) {
-    if (authStore.isLoggedIn) {
-      return "/dashboard";
+/**
+ * 路由拦截
+ * 权限验证
+ */
+
+router.beforeEach((to, from, next) => {
+    if (Setting.showProgressBar) iView.LoadingBar.start();
+    // 判断是否需要登录才可以进入
+    if (to.matched.some(_ => _.meta.auth)) {
+        // 这里依据 token 判断是否登录，可视情况修改
+        const token = util.cookies.get('token');
+
+        if (token && token !== 'undefined') {
+            next();
+        } else {
+            // 没有登录的时候跳转到登录界面
+            // 携带上登陆成功之后需要跳转的页面完整路径
+            next({
+                name: 'login',
+                query: {
+                    redirect: to.fullPath
+                }
+            });
+        }
+    } else {
+        // 不需要身份校验 直接通过
+        next();
     }
-    return true;
-  }
+});
 
-  if (!authStore.isLoggedIn) {
-    return "/login";
-  }
-
-  if (!authStore.user) {
-    try {
-      await authStore.fetchCurrentUser();
-    } catch (error) {
-      authStore.clearAuth();
-      return "/login";
-    }
-  }
-
-  if (to.meta.permission && !authStore.hasPermission(to.meta.permission)) {
-    return "/dashboard";
-  }
-  return true;
+router.afterEach(to => {
+    if (Setting.showProgressBar) iView.LoadingBar.finish();
+    // 多页控制 打开新的页面
+    store.dispatch('admin/page/open', to);
+    // 更改标题
+    util.title({
+        title: to.meta.title
+    });
+    // 返回页面顶端
+    window.scrollTo(0, 0);
 });
 
 export default router;
