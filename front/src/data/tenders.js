@@ -17,8 +17,8 @@ export const tenderRegions = [
 const now = Date.now()
 const day = 86400000
 
-/** 演示用统一附件实体；上线后可改为每条对应不同 url */
-const sampleAttachmentUrl = '/attachments/tender-bidding-file-sample.txt'
+/** 演示用统一附件实体；与 Vite base（如 /ztbfb/）一致，避免子路径部署时 404 */
+const sampleAttachmentUrl = `${import.meta.env.BASE_URL}attachments/tender-bidding-file-sample.txt`
 
 export const tenders = [
   {
