@@ -26,7 +26,7 @@ export function auditUser (userId, auditRequest) {
     return request({
         url: `/admin/users/${userId}/audit`,
         method: 'put',
-        data: { request: auditRequest }
+        data: auditRequest
     });
 }
 

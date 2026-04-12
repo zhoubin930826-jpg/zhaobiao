@@ -1,8 +1,11 @@
 <template>
     <span class="i-layout-header-trigger i-layout-header-trigger-min">
         <Dropdown :trigger="isMobile ? 'click' : 'hover'" class="i-layout-header-user" :class="{ 'i-layout-header-user-mobile': isMobile }" @on-click="handleClick">
-            <Avatar size="small" :src="info.avatar || 'http://file.zhiliandun.cn/81f8a509gy1fnjdvkkwgoj20zk0m8ak8.jpg'"  />
-            <span class="i-layout-header-user-name" v-if="!isMobile">{{ info.name }}</span>
+            <Avatar v-if="hasAvatar" size="small" :src="info.avatar" />
+            <span
+                class="i-layout-header-user-name"
+                v-if="!isMobile || !hasAvatar"
+            >{{ info.name }}</span>
             <DropdownMenu slot="list">
                 <!-- <i-link to="/setting/user">
                     <DropdownItem>
@@ -30,6 +33,10 @@
     export default {
         name: 'iHeaderUser',
         computed: {
+            hasAvatar () {
+                const url = this.info && this.info.avatar;
+                return typeof url === 'string' && url.trim().length > 0;
+            },
             ...mapState('admin/user', [
                 'info'
             ]),

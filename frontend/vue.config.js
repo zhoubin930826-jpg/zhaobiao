@@ -16,11 +16,13 @@ module.exports = {
     productionSourceMap: false,
     devServer: {
         publicPath: Setting.publicPath,
+        // 本地联调：Spring Boot 默认 http://127.0.0.1:8080（见项目根 application.yml）
+        // 若需指向其它环境，可临时改为 https://your-domain 并保留 pathRewrite 无
         proxy: {
             '/api': {
-                target: 'https://xiazhiyong.vip',
+                target: process.env.VUE_APP_PROXY_TARGET || 'http://127.0.0.1:8080',
                 changeOrigin: true,
-                secure: true
+                secure: false
             }
         }
     },

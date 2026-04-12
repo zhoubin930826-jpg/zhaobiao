@@ -1,6 +1,7 @@
 import dashboard from './modules/dashboard';
 import system from './modules/system';
 import profile from './modules/profile';
+import setting from './modules/setting';
 import BasicLayout from '@/layouts/basic-layout';
 /**
  * 在主框架内显示
@@ -67,7 +68,8 @@ const frameIn = [
     },
     dashboard,
     system,
-    profile
+    profile,
+    setting
 ];
 
 /**

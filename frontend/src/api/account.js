@@ -27,12 +27,12 @@ export function getUserInfo (params) {
     });
 }
 
-/** 个人资料 OpenAPI: PUT /api/profile，body 为 { request: ProfileUpdateRequest } */
+/** 个人资料：PUT /api/profile，请求体与后端 ProfileUpdateRequest 字段一致（扁平 JSON） */
 export function updateProfile (profileUpdateRequest) {
     return request({
         url: '/profile',
         method: 'put',
-        data: { request: profileUpdateRequest }
+        data: profileUpdateRequest
     });
 }
 

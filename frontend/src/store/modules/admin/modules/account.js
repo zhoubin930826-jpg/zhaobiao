@@ -60,12 +60,13 @@ export default {
                         } catch (e) {
                             tree = [];
                         }
-                        // if (!tree.length && profile.menus) {
-                        //     tree = menuDtosToAuthTree(profile.menus);
-                        // }
-                        // if (!tree.length) {
-                        //     tree = fallbackAuthTree;
-                        // }
+                        // 无 menu:view 时 GET /admin/menus 会 403，侧栏使用登录用户信息里的角色菜单树
+                        if (!tree.length && profile.menus && profile.menus.length) {
+                            tree = menuDtosToAuthTree(profile.menus);
+                        }
+                        if (!tree.length) {
+                            tree = fallbackAuthTree;
+                        }
                         await dispatch('admin/user/setTree', tree, { root: true });
                         // 用户登录后从持久化数据加载一系列的设置
                         await dispatch('load');
