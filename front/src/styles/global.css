@@ -1,0 +1,40 @@
+:root {
+  --color-primary: #1a5fb4;
+  --color-primary-dark: #0d3d7a;
+  --color-accent: #e85d04;
+  --text: #1c1c1c;
+  --text-muted: #5c5c5c;
+  --border: #e2e8f0;
+  --bg-page: #f4f6f9;
+  --bg-card: #ffffff;
+  --radius: 10px;
+  --shadow: 0 4px 24px rgba(15, 23, 42, 0.06);
+  font-family: 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  line-height: 1.5;
+  color: var(--text);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg-page);
+}
+
+a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+a:hover {
+  text-decoration: underline;
+}
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+}
