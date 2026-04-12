@@ -10,6 +10,8 @@
     "build:test": "vue-cli-service build --mode development",
     "build:nomock": "vue-cli-service build --mode nomock",
     "build:travis": "vue-cli-service build --mode travis",
+    "deploy:ssh": "bash scripts/deploy.sh",
+    "deploy:ssh:win": "powershell -ExecutionPolicy Bypass -File scripts/deploy.ps1",
     "lint": "vue-cli-service lint",
     "lint-fix": "vue-cli-service lint --fix",
     "test:unit": "vue-cli-service test:unit"
@@ -70,3 +72,4 @@
     ]
   }
 }
+

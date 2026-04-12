@@ -9,11 +9,13 @@ const Setting = {
      * 基础配置
      * */
     // 网页标题的后缀
-    titleSuffix: 'Hello管家物业管理后台',
+    titleSuffix: '招投标管理系统后台',
+    // 侧边栏菜单上方显示的名称（不配置则与 titleSuffix 相同）
+    siderTitle: '',
     // 路由模式，可选值为 history 或 hash
     routerMode: 'history',
-    // 应用的基路径
-    routerBase: '/',
+    // 与 setting.env.js 的 publicPath 子路径保持一致（history 模式）
+    routerBase: env === 'development' ? '/' : '/ztbgl/',
     // 页面切换时，是否显示模拟的进度条
     showProgressBar: true,
     // 文件服务请求地址

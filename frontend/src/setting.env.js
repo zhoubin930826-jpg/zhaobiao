@@ -10,7 +10,8 @@ const Setting = {
     // 部署应用包时的基本 URL
     apiBaseURL: env === 'development' ? '/api' : 'https://xiazhiyong.vip/api',
     apiBaseFileURL: env === 'development' ? 'http://127.0.0.1:7001' : 'https://dev-image.zhiliandun.cn',
-    publicPath: env === 'development' ? '/' : '/',
+    // 生产环境若挂在 https://域名/ztbgl/ 下，须与 nginx location 一致
+    publicPath: env === 'development' ? '/' : '/ztbgl/',
     // 生产环境构建文件的目录名
     outputDir: 'dist',
     // 放置生成的静态资源 (js、css、img、fonts) 的 (相对于 outputDir 的) 目录。

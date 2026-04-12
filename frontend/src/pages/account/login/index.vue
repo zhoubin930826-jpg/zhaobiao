@@ -7,7 +7,7 @@
         <img class="page-account-img" src="@/assets/images/login/bg.png" alt="">
 
         <div class="page-account-container">
-            <h1 class="page-account-title">Hello管家物业管理后台</h1>
+            <h1 class="page-account-title">招投标管理系统后台</h1>
 
             <Form
                 ref="loginForm"
@@ -48,7 +48,7 @@
         </div>
 
         <div class="page-account-footer">
-            <i-copyright />
+            <!-- <i-copyright /> -->
         </div>
     </div>
 </template>

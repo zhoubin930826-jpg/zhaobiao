@@ -2,10 +2,11 @@
     <div>
         <div class="i-layout-sider-logo" :class="{ 'i-layout-sider-logo-dark': siderTheme === 'dark' }">
             <transition name="fade-quick">
-                <i-link to="/" v-show="!hideLogo">
-                    <img src="@/assets/images/logo-small.png" v-if="menuCollapse">
-                    <img src="@/assets/images/logo.png" v-else-if="siderTheme === 'light'">
-                    <img src="@/assets/images/logo-dark.png" v-else>
+                <i-link to="/" v-show="!hideLogo" class="i-layout-sider-logo-link">
+                    <Tooltip v-if="menuCollapse" :content="siderTitle" placement="right" transfer>
+                        <span class="i-layout-sider-logo-text i-layout-sider-logo-text--collapse">{{ siderTitleCollapsed }}</span>
+                    </Tooltip>
+                    <span v-else class="i-layout-sider-logo-text">{{ siderTitle }}</span>
                 </i-link>
             </transition>
         </div>
@@ -40,6 +41,7 @@
     import tTitle from '../mixins/translate-title';
 
     import { mapState, mapGetters } from 'vuex';
+    import Setting from '@/setting';
 
     // 元素是否在可视区域
     function isElementInViewport (el) {
@@ -69,7 +71,14 @@
             ]),
             ...mapGetters('admin/menu', [
                 'filterSider'
-            ])
+            ]),
+            siderTitle () {
+                return Setting.siderTitle || Setting.titleSuffix || '';
+            },
+            siderTitleCollapsed () {
+                const t = this.siderTitle;
+                return t ? t.charAt(0) : '';
+            }
         },
         watch: {
             '$route': {

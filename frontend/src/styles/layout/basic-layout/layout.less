@@ -337,13 +337,36 @@
             text-align: center;
             border-bottom: 1px solid #f8f8f9;
             overflow: hidden;
+            &-link{
+                display: block;
+                height: 100%;
+                color: inherit;
+                &:hover{
+                    color: inherit;
+                }
+            }
+            &-text{
+                display: inline-block;
+                max-width: ~"calc(100% - 16px)";
+                padding: 0 8px;
+                font-size: 15px;
+                font-weight: 600;
+                color: @text-color;
+                vertical-align: middle;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+                &--collapse{
+                    max-width: 100%;
+                    font-size: 18px;
+                }
+            }
             &-dark{
                 border-bottom: 1px solid @menu-dark-active-bg;
                 background: @menu-dark-title;
-            }
-            img{
-                height: 80%;
-                vertical-align: middle;
+                .i-layout-sider-logo-text{
+                    color: rgba(255, 255, 255, 0.88);
+                }
             }
         }
     }

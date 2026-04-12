@@ -31,7 +31,7 @@
                     </keep-alive>
                 </div>
             </Content>
-            <i-copyright />
+            <!-- <i-copyright /> -->
         </Layout>
     </Layout>
 </template>
