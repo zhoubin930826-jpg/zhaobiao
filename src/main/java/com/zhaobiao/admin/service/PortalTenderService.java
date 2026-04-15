@@ -2,16 +2,15 @@ package com.zhaobiao.admin.service;
 
 import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.common.PageResult;
+import com.zhaobiao.admin.dto.business.BusinessTypeOptionDto;
 import com.zhaobiao.admin.dto.tender.TenderAttachmentDto;
 import com.zhaobiao.admin.dto.tender.TenderDetailDto;
 import com.zhaobiao.admin.dto.tender.TenderListItemDto;
-import com.zhaobiao.admin.entity.MemberUser;
-import com.zhaobiao.admin.entity.MemberUserStatus;
 import com.zhaobiao.admin.entity.Tender;
 import com.zhaobiao.admin.entity.TenderAttachment;
 import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.entity.TenderStatus;
-import com.zhaobiao.admin.repository.MemberUserRepository;
+import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.TenderAttachmentRepository;
 import com.zhaobiao.admin.repository.TenderRepository;
 import com.zhaobiao.admin.security.MemberLoginUser;
@@ -23,8 +22,6 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.Authentication;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -41,27 +38,33 @@ public class PortalTenderService {
 
     private final TenderRepository tenderRepository;
     private final TenderAttachmentRepository tenderAttachmentRepository;
-    private final MemberUserRepository memberUserRepository;
     private final LocalFileStorageService localFileStorageService;
+    private final ViewMapper viewMapper;
 
     public PortalTenderService(TenderRepository tenderRepository,
                                TenderAttachmentRepository tenderAttachmentRepository,
-                               MemberUserRepository memberUserRepository,
-                               LocalFileStorageService localFileStorageService) {
+                               LocalFileStorageService localFileStorageService,
+                               ViewMapper viewMapper) {
         this.tenderRepository = tenderRepository;
         this.tenderAttachmentRepository = tenderAttachmentRepository;
-        this.memberUserRepository = memberUserRepository;
         this.localFileStorageService = localFileStorageService;
+        this.viewMapper = viewMapper;
     }
 
     @Transactional(readOnly = true)
-    public PageResult<TenderListItemDto> listTenders(int pageNum, int pageSize, String keyword, String region) {
+    public PageResult<TenderListItemDto> listTenders(int pageNum,
+                                                     int pageSize,
+                                                     String keyword,
+                                                     String region,
+                                                     MemberLoginUser loginUser) {
+        java.util.List<Long> businessTypeIds = getAccessibleBusinessTypeIds(loginUser);
         Pageable pageable = buildPageable(pageNum, pageSize);
         Page<Tender> page = tenderRepository.searchPortal(
                 normalize(keyword),
                 normalize(region),
                 TenderStatus.PUBLISHED,
                 LocalDateTime.now(),
+                businessTypeIds,
                 pageable
         );
         PageResult<TenderListItemDto> result = new PageResult<>();
@@ -74,18 +77,19 @@ public class PortalTenderService {
     }
 
     @Transactional(readOnly = true)
-    public TenderDetailDto getTenderDetail(Long tenderId) {
-        Tender tender = tenderRepository.findByIdAndStatusAndPublishAtLessThanEqual(
+    public TenderDetailDto getTenderDetail(Long tenderId, MemberLoginUser loginUser) {
+        Tender tender = tenderRepository.findPortalAccessible(
                         tenderId,
                         TenderStatus.PUBLISHED,
-                        LocalDateTime.now()
-                )
+                        LocalDateTime.now(),
+                        getAccessibleBusinessTypeIds(loginUser))
                 .orElseThrow(() -> new BusinessException(404, "招标不存在"));
         List<TenderAttachment> attachments = tenderAttachmentRepository.findDetailsByTenderId(tenderId);
         TenderDetailDto dto = new TenderDetailDto();
         dto.setId(tender.getId());
         dto.setTitle(tender.getTitle());
         dto.setRegion(tender.getRegion());
+        dto.setBusinessType(toBusinessTypeDto(tender));
         dto.setPublishAt(tender.getPublishAt());
         dto.setContent(tender.getContent());
         dto.setContactPerson(tender.getContactPerson());
@@ -98,7 +102,7 @@ public class PortalTenderService {
         dto.setStatus(tender.getStatus());
         dto.setSummary(extractSummary(tender.getContent()));
         dto.setAttachments(attachments.stream().map(this::toAttachmentDto).collect(Collectors.toList()));
-        dto.setCanDownload(currentMemberCanDownload());
+        dto.setCanDownload(loginUser.isCanDownloadFile());
         return dto;
     }
 
@@ -106,19 +110,14 @@ public class PortalTenderService {
     public ResponseEntity<Resource> downloadAttachment(Long tenderId,
                                                        Long attachmentId,
                                                        MemberLoginUser loginUser) {
-        MemberUser memberUser = memberUserRepository.findById(loginUser.getUserId())
-                .orElseThrow(() -> new BusinessException(404, "会员不存在"));
-        if (memberUser.getStatus() != MemberUserStatus.ENABLED) {
-            throw new BusinessException(403, "账号已被禁用");
-        }
-        if (!memberUser.isCanDownloadFile()) {
+        if (!loginUser.isCanDownloadFile()) {
             throw new BusinessException(403, "当前账号暂无附件下载权限");
         }
-        tenderRepository.findByIdAndStatusAndPublishAtLessThanEqual(
+        tenderRepository.findPortalAccessible(
                         tenderId,
                         TenderStatus.PUBLISHED,
-                        LocalDateTime.now()
-                )
+                        LocalDateTime.now(),
+                        getAccessibleBusinessTypeIds(loginUser))
                 .orElseThrow(() -> new BusinessException(404, "招标不存在"));
         TenderAttachment attachment = tenderAttachmentRepository.findDetailByIdAndTenderId(attachmentId, tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标附件不存在"));
@@ -146,6 +145,7 @@ public class PortalTenderService {
         dto.setId(tender.getId());
         dto.setTitle(tender.getTitle());
         dto.setRegion(tender.getRegion());
+        dto.setBusinessType(toBusinessTypeDto(tender));
         dto.setTenderUnit(tender.getTenderUnit());
         dto.setBudget(tender.getBudget());
         dto.setProjectCode(tender.getProjectCode());
@@ -166,15 +166,8 @@ public class PortalTenderService {
         return dto;
     }
 
-    private boolean currentMemberCanDownload() {
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        if (authentication == null || !(authentication.getPrincipal() instanceof MemberLoginUser)) {
-            return false;
-        }
-        Long memberId = ((MemberLoginUser) authentication.getPrincipal()).getUserId();
-        return memberUserRepository.findById(memberId)
-                .map(item -> item.getStatus() == MemberUserStatus.ENABLED && item.isCanDownloadFile())
-                .orElse(false);
+    private BusinessTypeOptionDto toBusinessTypeDto(Tender tender) {
+        return tender.getBusinessType() == null ? null : viewMapper.toBusinessTypeOptionDto(tender.getBusinessType());
     }
 
     private MediaType resolveMediaType(String contentType) {
@@ -208,5 +201,12 @@ public class PortalTenderService {
             return plainText;
         }
         return plainText.substring(0, 120) + "...";
+    }
+
+    private List<Long> getAccessibleBusinessTypeIds(MemberLoginUser loginUser) {
+        if (loginUser == null || loginUser.getBusinessTypeIds() == null || loginUser.getBusinessTypeIds().isEmpty()) {
+            throw new BusinessException(403, "账号未分配可用业务类型，请联系管理员");
+        }
+        return loginUser.getBusinessTypeIds();
     }
 }

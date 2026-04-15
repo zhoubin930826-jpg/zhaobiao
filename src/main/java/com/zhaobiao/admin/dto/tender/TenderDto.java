@@ -1,5 +1,6 @@
 package com.zhaobiao.admin.dto.tender;
 
+import com.zhaobiao.admin.dto.business.BusinessTypeOptionDto;
 import com.zhaobiao.admin.entity.TenderStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -17,6 +18,9 @@ public class TenderDto {
 
     @Schema(description = "地区")
     private String region;
+
+    @Schema(description = "业务类型")
+    private BusinessTypeOptionDto businessType;
 
     @Schema(description = "发布时间")
     private LocalDateTime publishAt;
@@ -85,6 +89,14 @@ public class TenderDto {
 
     public void setRegion(String region) {
         this.region = region;
+    }
+
+    public BusinessTypeOptionDto getBusinessType() {
+        return businessType;
+    }
+
+    public void setBusinessType(BusinessTypeOptionDto businessType) {
+        this.businessType = businessType;
     }
 
     public LocalDateTime getPublishAt() {

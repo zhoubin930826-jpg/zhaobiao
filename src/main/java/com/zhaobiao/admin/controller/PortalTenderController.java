@@ -30,18 +30,22 @@ public class PortalTenderController {
     }
 
     @Operation(summary = "分页查询门户招标列表")
+    @PreAuthorize("hasRole('MEMBER')")
     @GetMapping
     public ApiResponse<PageResult<TenderListItemDto>> list(@RequestParam(defaultValue = "1") int pageNum,
                                                            @RequestParam(defaultValue = "10") int pageSize,
                                                            @RequestParam(required = false) String keyword,
-                                                           @RequestParam(required = false) String region) {
-        return ApiResponse.success(portalTenderService.listTenders(pageNum, pageSize, keyword, region));
+                                                           @RequestParam(required = false) String region,
+                                                           @AuthenticationPrincipal MemberLoginUser loginUser) {
+        return ApiResponse.success(portalTenderService.listTenders(pageNum, pageSize, keyword, region, loginUser));
     }
 
     @Operation(summary = "查询门户招标详情")
+    @PreAuthorize("hasRole('MEMBER')")
     @GetMapping("/{tenderId}")
-    public ApiResponse<TenderDetailDto> detail(@PathVariable Long tenderId) {
-        return ApiResponse.success(portalTenderService.getTenderDetail(tenderId));
+    public ApiResponse<TenderDetailDto> detail(@PathVariable Long tenderId,
+                                               @AuthenticationPrincipal MemberLoginUser loginUser) {
+        return ApiResponse.success(portalTenderService.getTenderDetail(tenderId, loginUser));
     }
 
     @Operation(summary = "下载招标附件")

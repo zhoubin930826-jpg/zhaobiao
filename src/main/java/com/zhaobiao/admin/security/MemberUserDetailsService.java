@@ -19,9 +19,8 @@ public class MemberUserDetailsService implements UserDetailsService {
     @Override
     @Transactional(readOnly = true)
     public UserDetails loadUserByUsername(String username) {
-        return memberUserRepository.findByUsername(username)
+        return memberUserRepository.findDetailByUsername(username)
                 .map(MemberLoginUser::from)
                 .orElseThrow(() -> new BusinessException(404, "会员不存在"));
     }
 }
-

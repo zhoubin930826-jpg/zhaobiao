@@ -24,6 +24,10 @@ public class TenderUpsertRequest {
     @Schema(description = "地区", example = "浙江")
     private String region;
 
+    @NotNull(message = "业务类型不能为空")
+    @Schema(description = "业务类型ID", example = "1")
+    private Long businessTypeId;
+
     @NotNull(message = "发布时间不能为空")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "发布时间", example = "2026-04-15 10:00:00")
@@ -88,6 +92,14 @@ public class TenderUpsertRequest {
 
     public void setRegion(String region) {
         this.region = region;
+    }
+
+    public Long getBusinessTypeId() {
+        return businessTypeId;
+    }
+
+    public void setBusinessTypeId(Long businessTypeId) {
+        this.businessTypeId = businessTypeId;
     }
 
     public LocalDateTime getPublishAt() {

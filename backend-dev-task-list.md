@@ -1,514 +1,564 @@
 # 后端开发任务清单
 
-更新时间：2026-04-15
+更新时间：2026-04-16
 
 说明：
 
-- 本清单基于 [backend-change-analysis.md](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/backend-change-analysis.md) 进一步细化。
-- 默认只做后端，不调整现有前端页面结构与交互。
-- 任务按推荐实施顺序排列，前面的阶段尽量先完成再进入下一阶段。
+- 本清单已按 2026-04-16 最新沟通口径重新整理。
+- 已废弃“会员自注册、会员线上上传资质、后台线上审核入库”这一套旧设定。
+- 当前最终口径是：
+  - 会员账号由后台管理员直接创建并线下发放
+  - 资质在线下确认，不做线上资质上传与审批
+  - 会员类型由管理员创建账号时直接选择，可选一个或多个
+  - 会员与类型是多对多关系
+  - 会员类型不是枚举写死，而是数据库可配置
 
-## 1. 开发目标
+## 1. 本期最终目标
 
-本期后端改造目标：
+本期后端目标：
 
-- 保留现有后台管理员体系，管理员不再走注册流程。
-- 超级管理员可新增后台管理员账号，并分配角色。
-- 会员用户独立建表、独立注册登录。
-- 新增后台“会员用户管理”和“招标管理”能力。
-- 新增本地文件上传下载能力。
-- 新增门户公开招标列表/详情接口，以及会员下载权限校验。
+- 系统改为封闭式会员制，非登录用户不能查看任何内容。
+- 会员账号不再在线注册，由后台管理员直接创建并线下发放。
+- 会员分为多种业务类型，类型数据存数据库，可通过后台“类型管理”菜单配置。
+- 工程/货物/服务只是初始化类型数据，不再写死为枚举。
+- 管理员创建会员账号时必须选择至少一个会员类型。
+- 一个会员可同时绑定多个会员类型。
+- 会员登录后只能查看与自己类型集合匹配的招标信息。
+- 招标信息必须绑定业务类型，门户按会员类型集合做隔离。
+- 超级管理员继续管理后台管理员账号。
+- 会员是否允许下载文件、会员是否启用/禁用，仍由后台控制。
+- 文件存储当前可复用本地存储实现，后续可平滑切 OSS。
 
-## 2. 里程碑总览
+## 2. 已确认的业务口径
 
-### M1 后台管理员语义收敛
+### 2.1 会员准入方式
 
-- 去掉管理员公开注册语义
-- 保留现有后台登录与 RBAC
-- 为“超级管理员新增管理员”预留接口模型
+- 不做门户在线注册
+- 不做会员在线资质上传
+- 不做会员线上审批流
+- 资质由线下确认
+- 线下确认完成后，管理员在后台创建会员账号并发放给会员
 
-### M2 会员用户域落地
+### 2.2 会员类型机制
 
-- 新增会员表
-- 新增会员注册/登录/当前用户接口
-- 与后台管理员域彻底分开
+- 会员类型来源于数据库
+- 后台要新增“类型管理”菜单
+- 管理员可通过页面维护类型数据
+- 工程/货物/服务只是初始化数据
+- 后续若要新增新类型，可直接通过后台新增
+- 一个会员可绑定多个类型
+- 会员与类型应按多对多关系设计
 
-### M3 后台管理能力补齐
+### 2.3 招标类型机制
 
-- 管理员管理
-- 会员用户管理
-- 菜单/权限初始化补齐
+- 当前建议一个招标只归属一个业务类型
+- 门户隔离时，会员按“类型集合”匹配招标
+- 也就是：会员有多个类型时，可看到这些类型对应招标的并集
 
-### M4 招标业务域落地
+### 2.4 访问隔离机制
 
-- 招标主表
-- 文件表
-- 招标附件关联表
-- 后台招标管理 CRUD
+- 门户必须登录后访问
+- 不同类型会员只能看自己类型集合覆盖到的招标
+- 招标详情和附件下载也必须按会员类型集合校验
 
-### M5 本地文件能力落地
+### 2.5 会员后台管理
 
-- 本地上传
-- 元数据入库
-- 受控下载
+- 管理员可创建会员账号
+- 管理员创建会员时可直接勾选一个或多个类型
+- 管理员可修改会员类型集合
+- 管理员可启用/禁用会员
+- 管理员可设置会员是否允许下载文件
+- 管理员可重置会员密码
 
-### M6 门户接口落地
+## 3. 当前后端代码哪些必须调整
 
-- 公开分页列表
-- 公开详情
-- 会员下载校验
+### 3.1 必须停用的旧能力
 
-### M7 测试、迁移、文档补齐
+- 会员自注册必须停用：
+  - [PortalAuthController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/PortalAuthController.java:36)
+  - [PortalAuthService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/PortalAuthService.java:38)
+- 门户匿名访问必须关闭：
+  - [SecurityConfig.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/config/SecurityConfig.java:52)
+  - [PortalTenderController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/PortalTenderController.java:32)
 
-- 集成测试
-- 数据迁移方案
-- Swagger 与配置文档补齐
+### 3.2 必须扩展的现有模型
 
-## 3. 分阶段任务清单
+- 会员主表需要配合“会员-类型关联表”支持多类型：
+  - [MemberUser.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/MemberUser.java:12)
+- 招标表必须补类型字段：
+  - [Tender.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/Tender.java:13)
 
-## 阶段一：后台管理员语义收敛
+### 3.3 必须扩展的现有后台能力
 
-### T1.1 关闭后台管理员公开注册能力
+- 会员管理现在能力不够，只能查列表、改下载权限、改状态：
+  - [MemberAdminController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/MemberAdminController.java:22)
+  - [MemberAdminService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/MemberAdminService.java:16)
+- 需要扩展成完整的“会员账号管理”，并支持为会员绑定多个类型
 
-- [ ] 明确 [AuthController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/AuthController.java) 的 `/api/auth/register` 不再用于后台管理员注册。
-- [ ] 选择处理方案：
-  - 方案 A：直接废弃 `/api/auth/register`
-  - 方案 B：迁移到门户会员注册后，后台域不再暴露该入口
-- [ ] 调整 [AuthService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/AuthService.java) 的职责，保留管理员登录与 `me` 能力。
+### 3.4 必须改造的门户隔离逻辑
+
+- 当前门户招标查询没有按会员类型集合过滤：
+  - [TenderRepository.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/repository/TenderRepository.java:34)
+  - [PortalTenderService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/PortalTenderService.java:57)
+
+### 3.5 应废弃或清理的旧语义
+
+- 旧的“用户审核”模块与当前新口径不符，应迁移或废弃：
+  - [AdminUserController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/AdminUserController.java:25)
+  - [AdminUserService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/AdminUserService.java:30)
+- 初始化权限/菜单里仍保留旧 `user:*` 语义，需要重整：
+  - [DataInitializer.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/config/DataInitializer.java:51)
+
+## 4. 建议的数据模型调整
+
+## 4.1 新增业务类型表
+
+建议新增表：`biz_business_type`
+
+用途：
+
+- 统一维护会员类型和招标类型
+- 后台“类型管理”菜单直接维护此表
+- 工程/货物/服务作为初始化数据写入数据库
+
+建议字段：
+
+- `id`
+- `code`
+- `name`
+- `enabled`
+- `sort_order`
+- `description`
+- `created_at`
+- `updated_at`
+
+建议规则：
+
+- `code` 唯一
+- `name` 唯一
+- 允许新增新类型
+- 允许启用/禁用
+- 若已被会员或招标引用，则不允许物理删除，建议只禁用
+
+初始化建议：
+
+- `ENGINEERING` / 工程
+- `GOODS` / 货物
+- `SERVICE` / 服务
+
+## 4.2 调整会员主表与会员类型关联表
+
+当前表：`portal_member_user`
+
+当前字段见 [MemberUser.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/MemberUser.java:12)
+
+建议：
+
+- `portal_member_user` 主表中不再增加单一 `business_type_id`
+- 新增会员与类型关联表，例如：
+  - `portal_member_business_type`
+  - 或 `portal_member_business_type_rel`
+
+关联表建议字段：
+
+- `id`
+- `member_user_id`
+- `business_type_id`
+- `created_at`
+
+主表可选新增字段：
+
+- `initial_password_reset_required`：可选，首次登录是否强制修改密码
+
+建议保留字段：
+
+- `can_download_file`
+- `status`
+
+说明：
+
+- 会员与类型应按多对多建模，而不是单字段建模。
+- 当前资质确认是线下完成，因此不需要新增“资质材料表”“审核状态表”“线上审核记录表”。
+- 如果后续想在系统里保留线下确认备注，可选增加：
+  - `remark`
+  - `offline_verified_at`
+  - `offline_verified_by`
+  但这不是当前必需项。
+
+## 4.3 调整招标表
+
+当前表：`biz_tender`
+
+当前字段见 [Tender.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/Tender.java:13)
+
+建议新增字段：
+
+- `business_type_id`
+
+用途：
+
+- 让每条招标归属某个业务类型
+- 门户侧按会员类型集合隔离显示
+
+说明：
+
+- 当前建议“一个招标对应一个业务类型”。
+- 如果未来明确提出“一个招标同时属于多个类型”，再额外新增招标与类型关联表。
+
+## 5. 完整开发任务清单
+
+## M1 会员体系口径调整
+
+### T1.1 停用会员自注册
+
+- [ ] 停用 `POST /api/portal/auth/register`
+- [ ] 停用 [PortalAuthService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/PortalAuthService.java:38) 中直接创建会员的逻辑
+- [ ] Swagger 文档中明确该接口停用
+- [ ] 测试中移除“会员自注册成功”的旧断言
 
 验收标准：
 
-- 后台管理员不再依赖公开注册流程。
-- 现有后台登录 `POST /api/auth/login` 仍可正常使用。
+- 会员不能自行在线注册
+- 会员账号只能由后台创建
 
-### T1.2 收敛 `sys_user` 为管理员用户表
+### T1.2 门户改为封闭访问
 
-- [ ] 审视 [User.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/User.java) 字段，确认哪些字段继续服务后台管理员。
-- [ ] 明确 [UserRepository.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/repository/UserRepository.java) 只作为管理员仓储使用。
-- [ ] 调整注释、DTO 语义、接口命名，避免继续把 `sys_user` 当作“全站用户”。
-
-验收标准：
-
-- 后台用户域和门户会员域在命名和职责上清晰分离。
-
-### T1.3 评估旧审核模型的保留范围
-
-- [ ] 梳理 [UserStatus.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/UserStatus.java) 和 [UserAuditRecord.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/UserAuditRecord.java) 的继续使用范围。
-- [ ] 明确后台管理员是否还需要 `PENDING / APPROVED / REJECTED` 语义。
-- [ ] 如果后台管理员不需要审核，清理 `AdminUserController / AdminUserService` 中旧审核主流程职责。
+- [ ] 修改 [SecurityConfig.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/config/SecurityConfig.java:52)，移除门户匿名放行
+- [ ] 修改 [PortalTenderController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/PortalTenderController.java:32)，列表/详情也要求会员登录
+- [ ] 校验门户所有接口都基于会员 token 访问
 
 验收标准：
 
-- 后台管理员的创建、启停、角色分配模型与“注册审核用户”模型不再混用。
+- 非登录用户不能查看招标列表、详情、附件
+- 只有会员登录后才能访问门户内容
 
-## 阶段二：会员用户域落地
+## M2 类型管理模块
 
-### T2.1 新增会员表与实体模型
+### T2.1 新增业务类型实体、仓储、表结构
 
-- [ ] 新增 `portal_member_user` 表。
-- [ ] 新增实体 `MemberUser.java`。
-- [ ] 新增仓储 `MemberUserRepository.java`。
-- [ ] 会员表至少包含：
-  - `username`
-  - `password`
-  - `phone`
-  - `email`
-  - `realName`
-  - `companyName`
-  - `contactPerson`
-  - `unifiedSocialCreditCode`
-  - `canDownloadFile`
-  - `status`
-  - `lastLoginAt`
+- [ ] 新增 `BusinessType.java`
+- [ ] 新增 `BusinessTypeRepository.java`
+- [ ] 新建 `biz_business_type` 表
+- [ ] 初始化工程/货物/服务 3 条类型数据
 
 验收标准：
 
-- 管理员和会员已分表。
-- 会员表不接入后台 RBAC 关联表。
+- 业务类型存储在数据库中
+- 不再通过枚举硬编码类型值
 
-### T2.2 新增会员认证 DTO 和服务
+### T2.2 新增后台“类型管理”菜单与权限
 
-- [ ] 新增 `MemberRegisterRequest.java`
-- [ ] 新增 `MemberLoginRequest.java`
-- [ ] 新增 `MemberUserDto.java`
-- [ ] 新增 `PortalAuthService.java`
-- [ ] 新增会员资料查询 DTO/Mapper
-
-验收标准：
-
-- 会员注册、登录、当前用户查询都有独立 DTO 和服务层。
-
-### T2.3 新增门户认证控制器
-
-- [ ] 新增 `PortalAuthController.java`
-- [ ] 提供接口：
-  - `POST /api/portal/auth/register`
-  - `POST /api/portal/auth/login`
-  - `GET /api/portal/auth/me`
+- [ ] 在 [DataInitializer.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/config/DataInitializer.java:51) 中新增菜单：
+  - `SYSTEM_BUSINESS_TYPE`
+- [ ] 新增权限：
+  - `business:type:view`
+  - `business:type:create`
+  - `business:type:edit`
+  - `business:type:status:update`
+  - `business:type:delete`
+- [ ] 将权限分配给超级管理员和系统管理员
 
 验收标准：
 
-- 门户会员注册登录链路独立可用。
-- 不再复用后台 `/api/auth/register`。
+- 后台具备独立“类型管理”菜单
+- 管理员可配置业务类型
 
-## 阶段三：安全链路支持双用户域
+### T2.3 新增类型管理接口
 
-### T3.1 JWT 增加用户类型
+- [ ] `GET /api/admin/business-types`
+- [ ] `GET /api/admin/business-types/options`
+- [ ] `POST /api/admin/business-types`
+- [ ] `PUT /api/admin/business-types/{id}`
+- [ ] `PUT /api/admin/business-types/{id}/status`
+- [ ] `DELETE /api/admin/business-types/{id}`
 
-- [ ] 修改 [JwtTokenProvider.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/security/JwtTokenProvider.java)，在 token 中增加 `userType`。
-- [ ] 明确 `userType` 枚举值：
-  - `ADMIN`
-  - `MEMBER`
-- [ ] 确保 token 解析后能知道去哪个表查用户。
+建议规则：
 
-验收标准：
-
-- 管理员 token 和会员 token 可区分。
-
-### T3.2 鉴权过滤器支持双域
-
-- [ ] 修改 [JwtAuthenticationFilter.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/security/JwtAuthenticationFilter.java)。
-- [ ] 保留现有管理员加载逻辑。
-- [ ] 新增会员加载逻辑。
-- [ ] 评估是否需要新增 `MemberLoginUser` 或统一 principal 抽象。
+- 删除前检查是否已被会员或招标引用
+- 被引用时只允许禁用，不允许物理删除
 
 验收标准：
 
-- 管理员接口和会员接口都可通过 token 正确鉴权。
+- 业务类型可通过后台页面配置
+- 新增类型后可被会员与招标直接引用
 
-### T3.3 调整安全配置
+## M3 会员账号后台发放
 
-- [ ] 修改 [SecurityConfig.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/config/SecurityConfig.java)。
-- [ ] 放开门户公开接口：
-  - `/api/portal/tenders/**` 中的公开列表与详情
-  - `/api/portal/auth/**`
-- [ ] 保持后台接口需要认证。
-- [ ] 下载接口按会员认证放行，不对游客开放。
+### T3.1 扩展会员主表与会员类型关联表结构
 
-验收标准：
-
-- 游客可以访问公开招标列表和详情。
-- 下载接口需要会员登录。
-
-## 阶段四：后台管理员管理
-
-### T4.1 改造现有管理员管理服务
-
-- [ ] 复用 [AdminUserController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/AdminUserController.java)。
-- [ ] 复用 [AdminUserService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/AdminUserService.java)。
-- [ ] 从旧的“注册审核用户”逻辑改造成“管理员管理”逻辑。
-
-### T4.2 新增管理员管理接口
-
-- [ ] `GET /api/admin/admin-users`
-- [ ] `POST /api/admin/admin-users`
-- [ ] `PUT /api/admin/admin-users/{id}`
-- [ ] `PUT /api/admin/admin-users/{id}/status`
-- [ ] `PUT /api/admin/admin-users/{id}/password/reset`
-- [ ] `PUT /api/admin/admin-users/{id}/roles`
-
-### T4.3 管理员创建请求体与校验
-
-- [ ] 新增管理员创建请求 DTO。
-- [ ] 校验：
-  - 用户名唯一
-  - 手机号唯一
-  - 邮箱唯一
-  - 至少分配一个角色
+- [ ] 新增会员类型关联表，例如 `portal_member_business_type`
+- [ ] 明确会员创建时必须选择至少一个类型
+- [ ] 明确会员编辑时支持多选类型
+- [ ] 如采用首次改密策略，增加首次登录标记字段
 
 验收标准：
 
-- 超级管理员可新增管理员账号。
-- 管理员可被启用/禁用、重置密码、分配角色。
+- 每个会员都必须绑定至少一个业务类型
+- 一个会员可绑定多个业务类型
+- 管理员创建会员时即可配置类型集合
 
-## 阶段五：后台会员用户管理
+### T3.2 改造后台会员管理接口
 
-### T5.1 新增会员管理控制器与服务
+当前 [MemberAdminController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/MemberAdminController.java:22) 只有查列表、改下载权限、改状态。
 
-- [ ] 新增 `MemberAdminController.java`
-- [ ] 新增 `MemberAdminService.java`
-
-### T5.2 新增会员管理接口
+需要新增：
 
 - [ ] `GET /api/admin/members`
 - [ ] `GET /api/admin/members/{id}`
+- [ ] `POST /api/admin/members`
 - [ ] `PUT /api/admin/members/{id}`
-- [ ] `PUT /api/admin/members/{id}/download-permission`
 - [ ] `PUT /api/admin/members/{id}/status`
-
-### T5.3 会员状态模型落地
-
-- [ ] 明确会员状态枚举：
-  - `ENABLED`
-  - `DISABLED`
-  - 如果要审核，再扩展 `PENDING`
-- [ ] 明确 `canDownloadFile` 的默认值。
+- [ ] `PUT /api/admin/members/{id}/download-access`
+- [ ] `PUT /api/admin/members/{id}/password`
 
 验收标准：
 
-- 后台可查看会员。
-- 后台可控制会员启用/禁用。
-- 后台可控制会员是否允许下载文件。
+- 管理员可直接创建会员账号
+- 管理员可设置会员类型集合
+- 管理员可重置密码、禁用账号、修改下载权限
 
-## 阶段六：菜单、权限、初始化数据补齐
+### T3.3 扩展会员管理服务
 
-### T6.1 新增后台权限点
+需要改造：
 
-- [ ] 在 [DataInitializer.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/config/DataInitializer.java) 中新增权限：
-  - `admin:user:view`
-  - `admin:user:create`
-  - `admin:user:edit`
-  - `admin:user:status:update`
-  - `admin:user:role:update`
-  - `member:view`
-  - `member:edit`
-  - `member:download:update`
-  - `member:status:update`
-  - `tender:view`
-  - `tender:create`
-  - `tender:edit`
-  - `tender:delete`
-  - `tender:file:upload`
+- [ ] [MemberAdminService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/MemberAdminService.java:16)
 
-### T6.2 新增后台菜单
+新增职责：
 
-- [ ] 新增“管理员管理”
-- [ ] 新增“会员用户管理”
-- [ ] 新增“招标管理”
-
-### T6.3 调整默认角色权限
-
-- [ ] 超级管理员拥有全部权限。
-- [ ] 系统管理员是否拥有管理员管理权限，需要明确。
-- [ ] 普通后台管理员是否可管理会员，需要明确。
+- [ ] 创建会员
+- [ ] 编辑会员资料
+- [ ] 绑定多个业务类型
+- [ ] 重置会员密码
+- [ ] 修改下载权限
+- [ ] 修改启用禁用状态
 
 验收标准：
 
-- 启动后新权限和新菜单可自动初始化。
+- 会员后台管理链路完整闭环
 
-## 阶段七：招标业务域
+## M4 会员登录与会员可见范围控制
 
-### T7.1 新增招标主表
+### T4.1 保留会员登录，移除会员自注册
 
-- [ ] 新增 `biz_tender` 表。
-- [ ] 新增实体 `Tender.java`。
-- [ ] 新增仓储 `TenderRepository.java`。
-
-字段至少包含：
-
-- `title`
-- `region`
-- `publishAt`
-- `content`
-- `contactPerson`
-- `budget`
-- `contactPhone`
-- `tenderUnit`
-- `deadline`
-- `projectCode`
-- `signupDeadline`
-- `status`
-- `createdBy`
-- `updatedBy`
-
-### T7.2 新增文件元数据表
-
-- [ ] 新增 `biz_file_storage` 表。
-- [ ] 新增实体 `TenderFileStorage.java`
-- [ ] 新增仓储 `TenderFileStorageRepository.java`
-
-### T7.3 新增招标附件关联表
-
-- [ ] 新增 `biz_tender_attachment` 表。
-- [ ] 新增实体 `TenderAttachment.java`
-- [ ] 新增仓储 `TenderAttachmentRepository.java`
+- [ ] 保留 `POST /api/portal/auth/login`
+- [ ] 保留 `GET /api/portal/auth/me`
+- [ ] 删除或停用 `/api/portal/auth/register`
 
 验收标准：
 
-- 一个招标可关联多个文件。
-- 文件和招标是通过关联表维护关系。
+- 会员只能登录，不能自行注册
 
-## 阶段八：后台招标管理接口
+### T4.2 登录时校验会员状态和类型
 
-### T8.1 新增 DTO 和请求体
+需要改造：
 
-- [ ] `TenderDto.java`
-- [ ] `TenderListItemDto.java`
-- [ ] `TenderDetailDto.java`
-- [ ] `TenderUpsertRequest.java`
+- [ ] [PortalAuthService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/PortalAuthService.java:57)
 
-### T8.2 新增后台招标管理服务与控制器
+登录校验建议：
 
-- [ ] `TenderService.java`
-- [ ] `TenderAdminController.java`
-
-### T8.3 新增后台接口
-
-- [ ] `GET /api/admin/tenders`
-- [ ] `GET /api/admin/tenders/{id}`
-- [ ] `POST /api/admin/tenders`
-- [ ] `PUT /api/admin/tenders/{id}`
-- [ ] `DELETE /api/admin/tenders/{id}`
-- [ ] `POST /api/admin/tenders/{id}/attachments`
-- [ ] `DELETE /api/admin/tenders/{id}/attachments/{attachmentId}`
+- [ ] 账号禁用不能登录
+- [ ] 未分配任何业务类型的账号不能登录，或登录后不能访问业务接口
+- [ ] 若会员绑定的类型已被禁用，需明确登录与访问策略
 
 验收标准：
 
-- 后台可维护招标信息。
-- 后台可为招标绑定多个附件。
+- 会员登录后权限边界清晰
 
-## 阶段九：本地文件上传下载
+### T4.3 会员可见范围由业务类型决定
 
-### T9.1 新增文件存储配置
-
-- [ ] 在 [application.yml](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/resources/application.yml) 中新增：
-  - `app.file.storage-path`
-  - `app.file.temp-path`
-  - `spring.servlet.multipart.max-file-size`
-  - `spring.servlet.multipart.max-request-size`
-
-### T9.2 新增本地文件服务
-
-- [ ] 新增 `LocalFileStorageService.java`
-- [ ] 实现：
-  - 文件名去重
-  - 目录创建
-  - 元数据保存
-  - 删除与回收策略
-
-### T9.3 新增上传接口
-
-- [ ] 新增 `POST /api/admin/files/upload`
-- [ ] 返回 `FileUploadResponse.java`
-
-### T9.4 新增受控下载接口
-
-- [ ] 新增下载控制器
-- [ ] 门户下载接口：
-  - `GET /api/portal/tenders/{tenderId}/attachments/{attachmentId}/download`
-- [ ] 校验：
-  - 当前用户是会员
-  - 会员已启用
-  - `canDownloadFile = true`
-  - 该附件确实属于该招标
+- [ ] 登录态中可获取当前会员的 `businessTypeIds`
+- [ ] 门户业务统一按会员类型集合过滤数据
+- [ ] 若会员未绑定任何类型，则禁止查看招标内容
 
 验收标准：
 
-- 后台能上传文件。
-- 游客不能下载。
-- 已登录且有下载权限的会员可以下载。
+- 工程类会员只能看工程类招标
+- 货物类会员只能看货物类招标
+- 多类型会员可同时看到其类型集合覆盖到的所有招标
+- 服务类会员后续启用后可独立生效
 
-## 阶段十：门户招标接口
+## M5 招标管理按类型隔离
 
-### T10.1 新增门户招标控制器
+### T5.1 扩展招标表与 DTO
 
-- [ ] 新增 `PortalTenderController.java`
+- [ ] 给 `biz_tender` 增加 `business_type_id`
+- [ ] 扩展招标 DTO，返回类型信息
+- [ ] 新增类型校验，确保招标创建时必须绑定业务类型
 
-### T10.2 新增公开分页列表接口
+涉及代码：
 
-- [ ] `GET /api/portal/tenders`
-- [ ] 支持参数：
-  - `pageNum`
-  - `pageSize`
-  - 后续可扩展 `keyword / region`
-- [ ] 默认按 `publishAt desc, id desc`
-
-### T10.3 新增公开详情接口
-
-- [ ] `GET /api/portal/tenders/{id}`
-- [ ] 返回字段：
-  - 标题
-  - 地区
-  - 发布时间
-  - 富文本正文
-  - 联系人
-  - 预算
-  - 联系方式
-  - 招标单位
-  - 截止时间
-  - 项目编号
-  - 报名截止时间
-  - 附件文件名列表
-  - `canDownload`
+- [ ] [Tender.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/entity/Tender.java:13)
+- [ ] `TenderDto / TenderDetailDto / TenderListItemDto / TenderUpsertRequest`
 
 验收标准：
 
-- 游客可查看招标列表和详情。
-- 游客看得到附件文件名，但拿不到可直接下载的裸链接。
+- 每条招标必须归属某个业务类型
 
-## 阶段十一：测试与迁移
+### T5.2 改造后台招标管理接口
 
-### T11.1 重写集成测试
-
-- [ ] 重写 [AuthFlowIntegrationTests.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/test/java/com/zhaobiao/admin/AuthFlowIntegrationTests.java)
-- [ ] 新增测试覆盖：
-  - 超级管理员新增管理员
-  - 管理员登录
-  - 会员注册
-  - 会员登录
-  - 会员状态控制
-  - 会员下载权限控制
-  - 招标列表分页倒序
-  - 招标详情
-  - 附件下载鉴权
-
-### T11.2 迁移方案
-
-- [ ] 明确旧 `/api/auth/register` 的迁移策略。
-- [ ] 明确 `sys_user` 中原有非管理员数据如何处理。
-- [ ] 评估是否引入 Flyway/Liquibase。
-
-### T11.3 Swagger 与文档
-
-- [ ] 为新增接口补 Swagger 注解。
-- [ ] 更新 README 中的认证与业务接口说明。
+- [ ] 后台列表支持按类型筛选
+- [ ] 创建/编辑招标时支持选择类型
+- [ ] 招标详情返回类型信息
 
 验收标准：
 
-- 核心链路有自动化测试。
-- 新旧接口迁移关系明确。
+- 后台可按业务类型维护招标
 
-## 4. 推荐执行顺序
+## M6 门户招标查询改造
 
-推荐按下面顺序推进：
+### T6.1 门户列表按会员类型过滤
 
-1. 先做阶段一、二、三，先把“后台管理员”和“门户会员”彻底拆开。
-2. 再做阶段四、五、六，把后台管理能力补齐。
-3. 再做阶段七、八、九，把招标和文件能力做出来。
-4. 最后做阶段十、十一，把门户接口和测试补全。
+需要改造：
 
-## 5. 第一期开工建议
+- [ ] [TenderRepository.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/repository/TenderRepository.java:34)
+- [ ] [PortalTenderService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/PortalTenderService.java:57)
 
-如果要从今天开始进入编码，建议第一期只做这些：
+过滤规则：
 
-- [ ] 关闭后台管理员注册语义
-- [ ] 会员独立建表
-- [ ] JWT 增加 `userType`
-- [ ] 门户会员注册/登录/`me`
-- [ ] 后台管理员新增管理员接口
-- [ ] 后台会员管理接口
+- [ ] 只查询 `status=PUBLISHED`
+- [ ] 只查询 `publishAt <= now`
+- [ ] 只查询 `businessTypeId in 当前会员.businessTypeIds`
 
-原因：
+验收标准：
 
-- 这是所有后续招标、下载权限、门户接口的基础。
-- 如果管理员域和会员域不先拆开，后面业务会越做越乱。
+- 不同类型会员看到的数据完全隔离
+- 多类型会员可看到多个类型的并集数据
 
-## 6. 第二期开工建议
+### T6.2 门户详情与下载也按类型校验
 
-- [ ] 招标三张核心表
-- [ ] 后台招标管理接口
-- [ ] 本地文件上传
-- [ ] 门户列表/详情
-- [ ] 下载鉴权
+- [ ] 详情查询增加业务类型集合校验
+- [ ] 下载接口增加业务类型集合校验
+- [ ] 下载仍保留 `canDownloadFile` 控制
 
-## 7. 完成定义
+验收标准：
 
-以下条件全部满足，才算本期后端改造完成：
+- 会员无法查看或下载非本类型招标附件
+- 多类型会员可查看其任一已绑定类型下的招标与附件
 
-- [ ] 后台管理员不再注册，只能由超级管理员创建
-- [ ] 会员独立注册登录，且不进入后台 RBAC
-- [ ] 后台可管理会员启用状态与下载权限
-- [ ] 后台可维护招标内容并上传多个招标文件
-- [ ] 门户游客可看列表和详情
-- [ ] 只有符合条件的会员可以下载招标文件
-- [ ] 关键链路有集成测试覆盖
+## M7 旧模块迁移与清理
+
+### T7.1 旧“用户审核”模块迁移
+
+当前旧模块：
+
+- [AdminUserController.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/controller/AdminUserController.java:25)
+- [AdminUserService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/AdminUserService.java:30)
+
+处理建议：
+
+- [ ] 将旧 `user:*` 权限标记为遗留
+- [ ] 将旧用户审核接口逐步废弃
+- [ ] 不再新增任何会员线上审核逻辑到该模块
+
+验收标准：
+
+- 后台不存在与现行口径冲突的“审核用户”逻辑
+
+### T7.2 初始化权限与菜单重整
+
+需要改造：
+
+- [ ] [DataInitializer.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/config/DataInitializer.java:51)
+
+调整内容：
+
+- [ ] 保留：管理员管理、会员管理、类型管理、招标管理、角色管理、权限管理、菜单管理、操作日志
+- [ ] 新增：类型管理菜单与权限
+- [ ] 新增：会员创建、会员编辑、会员重置密码等权限
+- [ ] 废弃：`SYSTEM_USER`、`SYSTEM_AUDIT_RECORD`、`user:*`
+
+验收标准：
+
+- 菜单与权限语义与新系统一致
+
+## M8 文件存储与部署能力
+
+### T8.1 文件存储能力抽象
+
+当前能力：
+
+- [LocalFileStorageService.java](/Users/zhoubin/work/ideaWorkSpace/zhou/zhaobiao/src/main/java/com/zhaobiao/admin/service/LocalFileStorageService.java:28)
+
+建议改造：
+
+- [ ] 抽象 `FileStorageService` 接口
+- [ ] 保留本地实现
+- [ ] 预留 OSS 实现
+
+验收标准：
+
+- 当前可先本地存储
+- 后续切 OSS 时不影响业务层
+
+### T8.2 增加部署配置说明
+
+- [ ] 明确生产文件目录
+- [ ] 明确未来切 OSS 时的配置项
+- [ ] 明确测试环境与正式环境的存储差异
+
+验收标准：
+
+- 测试环境和正式环境部署有清晰配置说明
+
+## M9 测试与交付
+
+### T9.1 集成测试补齐
+
+至少补这些测试：
+
+- [ ] 超级管理员创建管理员
+- [ ] 后台创建会员账号
+- [ ] 创建会员时必须选择至少一个类型
+- [ ] 创建会员时可选择多个类型
+- [ ] 会员登录
+- [ ] 门户未登录不可访问
+- [ ] 工程类会员只能看工程类招标
+- [ ] 货物类会员只能看货物类招标
+- [ ] 多类型会员可同时看到多个类型的招标
+- [ ] 多类型会员可下载其任一已绑定类型下的附件
+- [ ] 下载权限开关生效
+- [ ] 禁用账号后 token 失效
+- [ ] 类型管理增删改查
+- [ ] 类型被会员或招标引用时不可删除
+
+### T9.2 Swagger 与文档更新
+
+- [ ] 更新 Swagger 分组
+- [ ] 更新后端分析文档
+- [ ] 更新部署说明
+
+### T9.3 数据迁移方案
+
+- [ ] 历史会员如何补类型集合
+- [ ] 历史招标如何补业务类型
+- [ ] 旧 `user:*` 相关菜单和权限如何清理
+
+## 6. 推荐实施顺序
+
+推荐按以下顺序推进：
+
+1. 先做 `biz_business_type` 和“类型管理”模块
+2. 再新增会员与类型关联表，完成会员-类型多对多建模
+3. 再改后台会员创建、编辑、重置密码、下载权限、启停状态
+4. 再停用会员自注册，关闭门户匿名访问
+5. 再给招标补 `business_type_id`
+6. 再改门户查询与下载隔离逻辑
+7. 最后清理旧 `user:*` 模块、补测试和部署文档
+
+## 7. 完成标准
+
+满足以下条件即可认为这一期后端完成：
+
+- 后台可配置业务类型，工程/货物/服务只是初始化数据
+- 超级管理员可管理管理员账号
+- 后台可创建会员账号并在创建时选择一个或多个类型
+- 会员只能登录，不能自注册
+- 门户必须登录后访问
+- 会员只能看到自己类型集合覆盖到的招标
+- 会员下载仍受下载权限控制
+- 旧“公开注册会员”和“游客查看门户”的链路被关闭
+- 不再包含线上资质上传与线上审批逻辑
+
+## 8. 一句话结论
+
+这次后端改造的正确方向，不是“做会员上传资质审批流”，而是“做封闭式会员制 + 后台发放账号 + 会员类型多对多可配置化 + 招标按类型平行隔离”。

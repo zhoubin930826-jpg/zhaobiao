@@ -9,6 +9,7 @@ import org.springframework.security.core.userdetails.UserDetails;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class MemberLoginUser implements UserDetails {
 
@@ -16,17 +17,23 @@ public class MemberLoginUser implements UserDetails {
     private final String username;
     private final String password;
     private final MemberUserStatus status;
+    private final boolean canDownloadFile;
+    private final List<Long> businessTypeIds;
     private final List<GrantedAuthority> authorities;
 
     public MemberLoginUser(Long userId,
                            String username,
                            String password,
                            MemberUserStatus status,
+                           boolean canDownloadFile,
+                           List<Long> businessTypeIds,
                            List<GrantedAuthority> authorities) {
         this.userId = userId;
         this.username = username;
         this.password = password;
         this.status = status;
+        this.canDownloadFile = canDownloadFile;
+        this.businessTypeIds = businessTypeIds;
         this.authorities = authorities;
     }
 
@@ -36,6 +43,12 @@ public class MemberLoginUser implements UserDetails {
                 user.getUsername(),
                 user.getPassword(),
                 user.getStatus(),
+                user.isCanDownloadFile(),
+                user.getBusinessTypes().stream()
+                        .filter(item -> item != null && item.isEnabled())
+                        .map(item -> item.getId())
+                        .sorted()
+                        .collect(Collectors.toList()),
                 Arrays.asList(new SimpleGrantedAuthority("ROLE_MEMBER"))
         );
     }
@@ -46,6 +59,14 @@ public class MemberLoginUser implements UserDetails {
 
     public MemberUserStatus getStatus() {
         return status;
+    }
+
+    public boolean isCanDownloadFile() {
+        return canDownloadFile;
+    }
+
+    public List<Long> getBusinessTypeIds() {
+        return businessTypeIds;
     }
 
     @Override
@@ -80,7 +101,6 @@ public class MemberLoginUser implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return status == MemberUserStatus.ENABLED;
+        return status == MemberUserStatus.ENABLED && !businessTypeIds.isEmpty();
     }
 }
-

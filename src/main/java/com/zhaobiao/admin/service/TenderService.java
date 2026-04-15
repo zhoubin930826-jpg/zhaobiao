@@ -2,14 +2,18 @@ package com.zhaobiao.admin.service;
 
 import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.common.PageResult;
+import com.zhaobiao.admin.dto.business.BusinessTypeOptionDto;
 import com.zhaobiao.admin.dto.tender.TenderAttachmentDto;
 import com.zhaobiao.admin.dto.tender.TenderDto;
 import com.zhaobiao.admin.dto.tender.TenderListItemDto;
 import com.zhaobiao.admin.dto.tender.TenderUpsertRequest;
+import com.zhaobiao.admin.entity.BusinessType;
 import com.zhaobiao.admin.entity.Tender;
 import com.zhaobiao.admin.entity.TenderAttachment;
 import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.entity.TenderStatus;
+import com.zhaobiao.admin.mapper.ViewMapper;
+import com.zhaobiao.admin.repository.BusinessTypeRepository;
 import com.zhaobiao.admin.repository.TenderAttachmentRepository;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
 import com.zhaobiao.admin.repository.TenderRepository;
@@ -40,21 +44,31 @@ public class TenderService {
     private final TenderAttachmentRepository tenderAttachmentRepository;
     private final TenderFileStorageRepository tenderFileStorageRepository;
     private final LocalFileStorageService localFileStorageService;
+    private final BusinessTypeRepository businessTypeRepository;
+    private final ViewMapper viewMapper;
 
     public TenderService(TenderRepository tenderRepository,
                          TenderAttachmentRepository tenderAttachmentRepository,
                          TenderFileStorageRepository tenderFileStorageRepository,
-                         LocalFileStorageService localFileStorageService) {
+                         LocalFileStorageService localFileStorageService,
+                         BusinessTypeRepository businessTypeRepository,
+                         ViewMapper viewMapper) {
         this.tenderRepository = tenderRepository;
         this.tenderAttachmentRepository = tenderAttachmentRepository;
         this.tenderFileStorageRepository = tenderFileStorageRepository;
         this.localFileStorageService = localFileStorageService;
+        this.businessTypeRepository = businessTypeRepository;
+        this.viewMapper = viewMapper;
     }
 
     @Transactional(readOnly = true)
-    public PageResult<TenderListItemDto> listAdminTenders(int pageNum, int pageSize, String keyword, String region) {
+    public PageResult<TenderListItemDto> listAdminTenders(int pageNum,
+                                                          int pageSize,
+                                                          String keyword,
+                                                          String region,
+                                                          Long businessTypeId) {
         Pageable pageable = buildPageable(pageNum, pageSize);
-        Page<Tender> page = tenderRepository.searchAdmin(normalize(keyword), normalize(region), pageable);
+        Page<Tender> page = tenderRepository.searchAdmin(normalize(keyword), normalize(region), businessTypeId, pageable);
         return toPageResult(page, pageNum, pageSize);
     }
 
@@ -131,6 +145,9 @@ public class TenderService {
     }
 
     private void validateRequest(TenderUpsertRequest request, Long currentTenderId) {
+        if (request.getBusinessTypeId() == null) {
+            throw new BusinessException(400, "业务类型不能为空");
+        }
         if (request.getSignupDeadline().isAfter(request.getDeadline())) {
             throw new BusinessException(400, "报名截止时间不能晚于项目截止时间");
         }
@@ -149,6 +166,7 @@ public class TenderService {
         String operator = currentOperatorUsername();
         tender.setTitle(request.getTitle());
         tender.setRegion(request.getRegion());
+        tender.setBusinessType(loadEnabledBusinessType(request.getBusinessTypeId()));
         tender.setPublishAt(request.getPublishAt());
         tender.setContent(request.getContent());
         tender.setContactPerson(request.getContactPerson());
@@ -247,6 +265,7 @@ public class TenderService {
         dto.setId(tender.getId());
         dto.setTitle(tender.getTitle());
         dto.setRegion(tender.getRegion());
+        dto.setBusinessType(toBusinessTypeDto(tender));
         dto.setTenderUnit(tender.getTenderUnit());
         dto.setBudget(tender.getBudget());
         dto.setProjectCode(tender.getProjectCode());
@@ -262,6 +281,7 @@ public class TenderService {
         dto.setId(tender.getId());
         dto.setTitle(tender.getTitle());
         dto.setRegion(tender.getRegion());
+        dto.setBusinessType(toBusinessTypeDto(tender));
         dto.setPublishAt(tender.getPublishAt());
         dto.setContent(tender.getContent());
         dto.setContactPerson(tender.getContactPerson());
@@ -278,6 +298,10 @@ public class TenderService {
         dto.setCreatedAt(tender.getCreatedAt());
         dto.setUpdatedAt(tender.getUpdatedAt());
         return dto;
+    }
+
+    private BusinessTypeOptionDto toBusinessTypeDto(Tender tender) {
+        return tender.getBusinessType() == null ? null : viewMapper.toBusinessTypeOptionDto(tender.getBusinessType());
     }
 
     private TenderAttachmentDto toAttachmentDto(TenderAttachment attachment) {
@@ -309,5 +333,14 @@ public class TenderService {
             return plainText;
         }
         return plainText.substring(0, 120) + "...";
+    }
+
+    private BusinessType loadEnabledBusinessType(Long businessTypeId) {
+        BusinessType businessType = businessTypeRepository.findById(businessTypeId)
+                .orElseThrow(() -> new BusinessException(400, "业务类型不存在"));
+        if (!businessType.isEnabled()) {
+            throw new BusinessException(400, "不能使用已禁用的业务类型");
+        }
+        return businessType;
     }
 }

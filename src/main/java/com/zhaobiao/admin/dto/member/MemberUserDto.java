@@ -1,9 +1,11 @@
 package com.zhaobiao.admin.dto.member;
 
 import com.zhaobiao.admin.entity.MemberUserStatus;
+import com.zhaobiao.admin.dto.business.BusinessTypeOptionDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "会员用户信息")
 public class MemberUserDto {
@@ -37,6 +39,9 @@ public class MemberUserDto {
 
     @Schema(description = "会员状态")
     private MemberUserStatus status;
+
+    @Schema(description = "会员类型列表")
+    private List<BusinessTypeOptionDto> businessTypes;
 
     @Schema(description = "最后登录时间")
     private LocalDateTime lastLoginAt;
@@ -124,6 +129,14 @@ public class MemberUserDto {
         this.status = status;
     }
 
+    public List<BusinessTypeOptionDto> getBusinessTypes() {
+        return businessTypes;
+    }
+
+    public void setBusinessTypes(List<BusinessTypeOptionDto> businessTypes) {
+        this.businessTypes = businessTypes;
+    }
+
     public LocalDateTime getLastLoginAt() {
         return lastLoginAt;
     }
@@ -140,4 +153,3 @@ public class MemberUserDto {
         this.createdAt = createdAt;
     }
 }
-

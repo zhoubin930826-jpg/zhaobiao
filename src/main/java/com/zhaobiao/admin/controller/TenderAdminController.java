@@ -41,8 +41,9 @@ public class TenderAdminController {
     public ApiResponse<PageResult<TenderListItemDto>> list(@RequestParam(defaultValue = "1") int pageNum,
                                                            @RequestParam(defaultValue = "10") int pageSize,
                                                            @RequestParam(required = false) String keyword,
-                                                           @RequestParam(required = false) String region) {
-        return ApiResponse.success(tenderService.listAdminTenders(pageNum, pageSize, keyword, region));
+                                                           @RequestParam(required = false) String region,
+                                                           @RequestParam(required = false) Long businessTypeId) {
+        return ApiResponse.success(tenderService.listAdminTenders(pageNum, pageSize, keyword, region, businessTypeId));
     }
 
     @Operation(summary = "查询招标详情")

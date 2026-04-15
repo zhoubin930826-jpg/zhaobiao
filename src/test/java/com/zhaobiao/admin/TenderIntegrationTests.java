@@ -14,6 +14,8 @@ import org.springframework.test.web.servlet.MvcResult;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -39,9 +41,13 @@ class TenderIntegrationTests {
     private ObjectMapper objectMapper;
 
     @Test
-    void adminCanUploadCreateTendersAndPortalListIsPagedInDescendingOrder() throws Exception {
+    void adminCanUploadCreateTendersAndPortalListIsPagedInDescendingOrderForMultiTypeMember() throws Exception {
         String adminToken = loginAdmin("admin", "adminqwert");
         String uniqueTag = String.valueOf(System.currentTimeMillis());
+        Long engineeringTypeId = findBusinessTypeIdByCode(adminToken, "ENGINEERING");
+        Long goodsTypeId = findBusinessTypeIdByCode(adminToken, "GOODS");
+        assertNotNull(engineeringTypeId);
+        assertNotNull(goodsTypeId);
 
         Long firstFileId = uploadFile(adminToken, "招标文件-" + uniqueTag + "-1.txt", "first tender file");
         Long secondFileId = uploadFile(adminToken, "招标文件-" + uniqueTag + "-2.txt", "second tender file");
@@ -50,6 +56,7 @@ class TenderIntegrationTests {
         Long olderTenderId = createTender(adminToken,
                 "项目-" + uniqueTag + "-A",
                 "浙江",
+                engineeringTypeId,
                 LocalDateTime.now().minusDays(2),
                 LocalDateTime.now().plusDays(10),
                 LocalDateTime.now().plusDays(5),
@@ -58,6 +65,7 @@ class TenderIntegrationTests {
         Long newerTenderId = createTender(adminToken,
                 "项目-" + uniqueTag + "-B",
                 "浙江",
+                goodsTypeId,
                 LocalDateTime.now().minusHours(4),
                 LocalDateTime.now().plusDays(12),
                 LocalDateTime.now().plusDays(7),
@@ -66,6 +74,7 @@ class TenderIntegrationTests {
         createTender(adminToken,
                 "项目-" + uniqueTag + "-CLOSED",
                 "浙江",
+                engineeringTypeId,
                 LocalDateTime.now().minusHours(3),
                 LocalDateTime.now().plusDays(12),
                 LocalDateTime.now().plusDays(7),
@@ -73,7 +82,10 @@ class TenderIntegrationTests {
                 secondFileId,
                 "CLOSED");
 
+        String memberToken = createMemberAndLogin(adminToken, "multi" + uniqueTag, uniqueTag, engineeringTypeId, goodsTypeId);
+
         mockMvc.perform(get("/api/portal/tenders")
+                        .header("Authorization", "Bearer " + memberToken)
                         .param("keyword", keyword)
                         .param("pageNum", "1")
                         .param("pageSize", "1"))
@@ -82,26 +94,32 @@ class TenderIntegrationTests {
                 .andExpect(jsonPath("$.data.total").value(2))
                 .andExpect(jsonPath("$.data.list", hasSize(1)))
                 .andExpect(jsonPath("$.data.list[0].id").value(newerTenderId))
-                .andExpect(jsonPath("$.data.list[0].title").value("项目-" + uniqueTag + "-B"));
+                .andExpect(jsonPath("$.data.list[0].title").value("项目-" + uniqueTag + "-B"))
+                .andExpect(jsonPath("$.data.list[0].businessType.code").value("GOODS"));
 
         mockMvc.perform(get("/api/portal/tenders")
+                        .header("Authorization", "Bearer " + memberToken)
                         .param("keyword", keyword)
                         .param("pageNum", "2")
                         .param("pageSize", "1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.list[0].id").value(olderTenderId))
-                .andExpect(jsonPath("$.data.list[0].title").value("项目-" + uniqueTag + "-A"));
+                .andExpect(jsonPath("$.data.list[0].title").value("项目-" + uniqueTag + "-A"))
+                .andExpect(jsonPath("$.data.list[0].businessType.code").value("ENGINEERING"));
 
-        mockMvc.perform(get("/api/portal/tenders/{tenderId}", newerTenderId))
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}", newerTenderId)
+                        .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.id").value(newerTenderId))
+                .andExpect(jsonPath("$.data.businessType.code").value("GOODS"))
                 .andExpect(jsonPath("$.data.canDownload").value(false))
                 .andExpect(jsonPath("$.data.attachments", hasSize(1)))
                 .andExpect(jsonPath("$.data.attachments[0].fileName").value("招标文件-" + uniqueTag + "-2.txt"));
 
         mockMvc.perform(get("/api/portal/tenders")
+                        .header("Authorization", "Bearer " + memberToken)
                         .param("keyword", "CLOSED")
                         .param("pageNum", "1")
                         .param("pageSize", "10"))
@@ -111,31 +129,61 @@ class TenderIntegrationTests {
     }
 
     @Test
-    void memberDownloadPermissionControlsAttachmentDownloadAndDisabledTokenBecomesInvalid() throws Exception {
+    void memberDownloadPermissionControlsAttachmentDownloadAndTypeIsolationStillWorks() throws Exception {
         String adminToken = loginAdmin("admin", "adminqwert");
         String uniqueTag = String.valueOf(System.currentTimeMillis());
+        Long engineeringTypeId = findBusinessTypeIdByCode(adminToken, "ENGINEERING");
+        Long goodsTypeId = findBusinessTypeIdByCode(adminToken, "GOODS");
+        assertNotNull(engineeringTypeId);
+        assertNotNull(goodsTypeId);
+
         Long fileId = uploadFile(adminToken, "下载测试-" + uniqueTag + ".txt", "downloadable content");
         Long tenderId = createTender(adminToken,
                 "下载测试项目-" + uniqueTag,
                 "上海",
+                engineeringTypeId,
                 LocalDateTime.now().minusHours(2),
                 LocalDateTime.now().plusDays(3),
                 LocalDateTime.now().plusDays(1),
                 "DL-" + uniqueTag,
                 fileId);
+        Long goodsTenderId = createTender(adminToken,
+                "货物下载测试项目-" + uniqueTag,
+                "上海",
+                goodsTypeId,
+                LocalDateTime.now().minusHours(1),
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(1),
+                "GOODS-" + uniqueTag,
+                fileId);
 
-        Long attachmentId = findAttachmentId(tenderId);
+        Long attachmentId = findAttachmentId(adminToken, tenderId);
         assertNotNull(attachmentId);
 
         String memberUsername = "member" + uniqueTag;
-        registerMember(memberUsername, uniqueTag);
-        String memberToken = loginMember(memberUsername, "123456");
+        String memberToken = createMemberAndLogin(adminToken, memberUsername, uniqueTag, engineeringTypeId);
+
+        mockMvc.perform(get("/api/portal/tenders")
+                        .param("pageNum", "1")
+                        .param("pageSize", "10"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
 
         mockMvc.perform(get("/api/portal/tenders/{tenderId}", tenderId)
                         .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.canDownload").value(false));
+
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}", goodsTenderId)
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(404));
+
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId)
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
 
         mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId))
                 .andExpect(status().isUnauthorized())
@@ -172,7 +220,7 @@ class TenderIntegrationTests {
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
 
-        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId)
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}", tenderId)
                         .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
@@ -198,14 +246,6 @@ class TenderIntegrationTests {
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
     }
 
-    private void registerMember(String username, String uniqueTag) throws Exception {
-        mockMvc.perform(post("/api/portal/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"phone\":\"139" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"测试会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0));
-    }
-
     private Long uploadFile(String adminToken, String fileName, String content) throws Exception {
         MockMultipartFile multipartFile = new MockMultipartFile(
                 "files",
@@ -229,17 +269,19 @@ class TenderIntegrationTests {
     private Long createTender(String adminToken,
                               String title,
                               String region,
+                              Long businessTypeId,
                               LocalDateTime publishAt,
                               LocalDateTime deadline,
                               LocalDateTime signupDeadline,
                               String projectCode,
                               Long attachmentFileId) throws Exception {
-        return createTender(adminToken, title, region, publishAt, deadline, signupDeadline, projectCode, attachmentFileId, "PUBLISHED");
+        return createTender(adminToken, title, region, businessTypeId, publishAt, deadline, signupDeadline, projectCode, attachmentFileId, "PUBLISHED");
     }
 
     private Long createTender(String adminToken,
                               String title,
                               String region,
+                              Long businessTypeId,
                               LocalDateTime publishAt,
                               LocalDateTime deadline,
                               LocalDateTime signupDeadline,
@@ -249,6 +291,7 @@ class TenderIntegrationTests {
         String requestBody = "{"
                 + "\"title\":\"" + title + "\","
                 + "\"region\":\"" + region + "\","
+                + "\"businessTypeId\":" + businessTypeId + ","
                 + "\"publishAt\":\"" + publishAt.format(DATE_TIME_FORMATTER) + "\","
                 + "\"content\":\"<p>这是 " + title + " 的正文</p>\","
                 + "\"contactPerson\":\"张三\","
@@ -271,8 +314,9 @@ class TenderIntegrationTests {
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
     }
 
-    private Long findAttachmentId(Long tenderId) throws Exception {
-        MvcResult result = mockMvc.perform(get("/api/portal/tenders/{tenderId}", tenderId))
+    private Long findAttachmentId(String adminToken, Long tenderId) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/admin/tenders/{tenderId}", tenderId)
+                        .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
@@ -281,6 +325,24 @@ class TenderIntegrationTests {
             return attachments.get(0).path("attachmentId").asLong();
         }
         return null;
+    }
+
+    private String createMemberAndLogin(String adminToken,
+                                        String username,
+                                        String uniqueTag,
+                                        Long... businessTypeIds) throws Exception {
+        String phoneSeed = uniqueTag.substring(Math.max(0, uniqueTag.length() - 8));
+        String creditSeed = uniqueTag.substring(Math.max(0, uniqueTag.length() - 6));
+        String joinedTypeIds = Arrays.stream(businessTypeIds)
+                .map(String::valueOf)
+                .collect(Collectors.joining(","));
+        mockMvc.perform(post("/api/admin/members")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"138" + phoneSeed + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"测试会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K" + creditSeed + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + joinedTypeIds + "],\"canDownloadFile\":false,\"status\":\"ENABLED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+        return loginMember(username, "123456");
     }
 
     private Long findMemberIdByUsername(String adminToken, String username) throws Exception {
@@ -293,6 +355,21 @@ class TenderIntegrationTests {
         for (JsonNode member : members) {
             if (username.equals(member.path("username").asText())) {
                 return member.path("id").asLong();
+            }
+        }
+        return null;
+    }
+
+    private Long findBusinessTypeIdByCode(String adminToken, String code) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/admin/business-types/options")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        JsonNode types = objectMapper.readTree(result.getResponse().getContentAsString()).path("data");
+        for (JsonNode type : types) {
+            if (code.equals(type.path("code").asText())) {
+                return type.path("id").asLong();
             }
         }
         return null;

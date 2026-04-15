@@ -1,6 +1,7 @@
 package com.zhaobiao.admin.controller;
 
 import com.zhaobiao.admin.common.ApiResponse;
+import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
 import com.zhaobiao.admin.dto.member.MemberRegisterRequest;
@@ -37,8 +38,7 @@ public class PortalAuthController {
     @OperationLogRecord(module = "门户会员", action = "会员注册")
     @PostMapping("/register")
     public ApiResponse<Void> register(@Valid @RequestBody MemberRegisterRequest request) {
-        portalAuthService.register(request);
-        return ApiResponse.success("注册成功", null);
+        throw new BusinessException(403, "会员在线注册已停用，请联系管理员发放账号");
     }
 
     @Operation(summary = "会员登录")

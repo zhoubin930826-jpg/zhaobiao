@@ -1,12 +1,17 @@
 package com.zhaobiao.admin.mapper;
 
+import com.zhaobiao.admin.dto.business.BusinessTypeDto;
+import com.zhaobiao.admin.dto.business.BusinessTypeOptionDto;
 import com.zhaobiao.admin.dto.audit.UserAuditRecordDto;
 import com.zhaobiao.admin.dto.log.OperationLogDto;
 import com.zhaobiao.admin.dto.menu.MenuDto;
+import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.dto.permission.PermissionDto;
 import com.zhaobiao.admin.dto.role.RoleDto;
 import com.zhaobiao.admin.dto.user.UserProfileDto;
+import com.zhaobiao.admin.entity.BusinessType;
 import com.zhaobiao.admin.entity.Menu;
+import com.zhaobiao.admin.entity.MemberUser;
 import com.zhaobiao.admin.entity.OperationLog;
 import com.zhaobiao.admin.entity.Permission;
 import com.zhaobiao.admin.entity.Role;
@@ -73,6 +78,50 @@ public class ViewMapper {
         dto.setAuditedBy(user.getAuditedBy());
         dto.setCreatedAt(user.getCreatedAt());
         dto.setLastLoginAt(user.getLastLoginAt());
+        return dto;
+    }
+
+    public BusinessTypeDto toBusinessTypeDto(BusinessType businessType) {
+        BusinessTypeDto dto = new BusinessTypeDto();
+        dto.setId(businessType.getId());
+        dto.setCode(businessType.getCode());
+        dto.setName(businessType.getName());
+        dto.setEnabled(businessType.isEnabled());
+        dto.setSortOrder(businessType.getSortOrder());
+        dto.setDescription(businessType.getDescription());
+        dto.setCreatedAt(businessType.getCreatedAt());
+        dto.setUpdatedAt(businessType.getUpdatedAt());
+        return dto;
+    }
+
+    public BusinessTypeOptionDto toBusinessTypeOptionDto(BusinessType businessType) {
+        BusinessTypeOptionDto dto = new BusinessTypeOptionDto();
+        dto.setId(businessType.getId());
+        dto.setCode(businessType.getCode());
+        dto.setName(businessType.getName());
+        dto.setEnabled(businessType.isEnabled());
+        dto.setSortOrder(businessType.getSortOrder());
+        return dto;
+    }
+
+    public MemberUserDto toMemberUserDto(MemberUser user) {
+        MemberUserDto dto = new MemberUserDto();
+        dto.setId(user.getId());
+        dto.setUsername(user.getUsername());
+        dto.setPhone(user.getPhone());
+        dto.setEmail(user.getEmail());
+        dto.setRealName(user.getRealName());
+        dto.setCompanyName(user.getCompanyName());
+        dto.setContactPerson(user.getContactPerson());
+        dto.setUnifiedSocialCreditCode(user.getUnifiedSocialCreditCode());
+        dto.setCanDownloadFile(user.isCanDownloadFile());
+        dto.setStatus(user.getStatus());
+        dto.setBusinessTypes(user.getBusinessTypes().stream()
+                .sorted(Comparator.comparing(BusinessType::getSortOrder).thenComparing(BusinessType::getId))
+                .map(this::toBusinessTypeOptionDto)
+                .collect(Collectors.toList()));
+        dto.setLastLoginAt(user.getLastLoginAt());
+        dto.setCreatedAt(user.getCreatedAt());
         return dto;
     }
 

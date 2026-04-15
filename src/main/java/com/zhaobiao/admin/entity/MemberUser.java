@@ -4,8 +4,15 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
+import javax.persistence.FetchType;
+import javax.persistence.JoinColumn;
+import javax.persistence.JoinTable;
+import javax.persistence.ManyToMany;
+import javax.persistence.OrderBy;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.Set;
 
 @Entity
 @Table(name = "portal_member_user")
@@ -44,6 +51,15 @@ public class MemberUser extends BaseEntity {
 
     @Column
     private LocalDateTime lastLoginAt;
+
+    @ManyToMany(fetch = FetchType.LAZY)
+    @JoinTable(
+            name = "portal_member_business_type_rel",
+            joinColumns = @JoinColumn(name = "member_user_id"),
+            inverseJoinColumns = @JoinColumn(name = "business_type_id")
+    )
+    @OrderBy("sortOrder asc, id asc")
+    private Set<BusinessType> businessTypes = new LinkedHashSet<>();
 
     public String getUsername() {
         return username;
@@ -132,5 +148,12 @@ public class MemberUser extends BaseEntity {
     public void setLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
     }
-}
 
+    public Set<BusinessType> getBusinessTypes() {
+        return businessTypes;
+    }
+
+    public void setBusinessTypes(Set<BusinessType> businessTypes) {
+        this.businessTypes = businessTypes;
+    }
+}

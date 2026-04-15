@@ -1,6 +1,7 @@
 package com.zhaobiao.admin.config;
 
 import com.zhaobiao.admin.common.SystemConstants;
+import com.zhaobiao.admin.entity.BusinessType;
 import com.zhaobiao.admin.entity.Menu;
 import com.zhaobiao.admin.entity.MenuType;
 import com.zhaobiao.admin.entity.Permission;
@@ -8,6 +9,7 @@ import com.zhaobiao.admin.entity.Role;
 import com.zhaobiao.admin.entity.User;
 import com.zhaobiao.admin.entity.UserStatus;
 import com.zhaobiao.admin.repository.MenuRepository;
+import com.zhaobiao.admin.repository.BusinessTypeRepository;
 import com.zhaobiao.admin.repository.PermissionRepository;
 import com.zhaobiao.admin.repository.RoleRepository;
 import com.zhaobiao.admin.repository.UserRepository;
@@ -29,17 +31,20 @@ public class DataInitializer implements ApplicationRunner {
 
     private final PermissionRepository permissionRepository;
     private final MenuRepository menuRepository;
+    private final BusinessTypeRepository businessTypeRepository;
     private final RoleRepository roleRepository;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
     public DataInitializer(PermissionRepository permissionRepository,
                            MenuRepository menuRepository,
+                           BusinessTypeRepository businessTypeRepository,
                            RoleRepository roleRepository,
                            UserRepository userRepository,
                            PasswordEncoder passwordEncoder) {
         this.permissionRepository = permissionRepository;
         this.menuRepository = menuRepository;
+        this.businessTypeRepository = businessTypeRepository;
         this.roleRepository = roleRepository;
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
@@ -59,8 +64,16 @@ public class DataInitializer implements ApplicationRunner {
         permissions.put("admin:user:password:reset", "重置管理员密码");
         permissions.put("admin:user:role:update", "修改管理员角色");
         permissions.put("member:view", "查看会员");
+        permissions.put("member:create", "新增会员");
+        permissions.put("member:edit", "修改会员");
         permissions.put("member:download:update", "修改会员下载权限");
         permissions.put("member:status:update", "修改会员状态");
+        permissions.put("member:password:reset", "重置会员密码");
+        permissions.put("business:type:view", "查看业务类型");
+        permissions.put("business:type:create", "新增业务类型");
+        permissions.put("business:type:edit", "修改业务类型");
+        permissions.put("business:type:status:update", "修改业务类型状态");
+        permissions.put("business:type:delete", "删除业务类型");
         permissions.put("tender:view", "查看招标");
         permissions.put("tender:create", "新增招标");
         permissions.put("tender:edit", "修改招标");
@@ -90,21 +103,27 @@ public class DataInitializer implements ApplicationRunner {
                 "/admin-users", "admin-users/index", "UserFilled", 10, true, true, "admin:user:view", "管理员账号管理页面");
         Menu memberUserManage = upsertMenu("SYSTEM_MEMBER_USER", "会员管理", MenuType.MENU, systemRoot.getId(),
                 "/member-users", "member-users/index", "User", 20, true, true, "member:view", "会员账号管理页面");
+        Menu businessTypeManage = upsertMenu("SYSTEM_BUSINESS_TYPE", "类型管理", MenuType.MENU, systemRoot.getId(),
+                "/business-types", "business-types/index", "Collection", 30, true, true, "business:type:view", "业务类型管理页面");
         Menu tenderManage = upsertMenu("SYSTEM_TENDER", "招标管理", MenuType.MENU, systemRoot.getId(),
-                "/tenders", "tenders/index", "Document", 30, true, true, "tender:view", "招标信息管理页面");
+                "/tenders", "tenders/index", "Document", 40, true, true, "tender:view", "招标信息管理页面");
         Menu userManage = upsertMenu("SYSTEM_USER", "旧用户管理", MenuType.MENU, systemRoot.getId(),
-                "/users", "users/index", "UserFilled", 40, true, true, "user:view", "历史用户管理页面");
+                "/users", "users/index", "UserFilled", 50, true, true, "user:view", "历史用户管理页面");
         Menu auditRecord = upsertMenu("SYSTEM_AUDIT_RECORD", "审核记录", MenuType.MENU, systemRoot.getId(),
-                "/audit-records", "audit-records/index", "Document", 50, true, true, "user:audit:record:view", "用户审核记录");
+                "/audit-records", "audit-records/index", "Document", 60, true, true, "user:audit:record:view", "用户审核记录");
         Menu roleManage = upsertMenu("SYSTEM_ROLE", "角色管理", MenuType.MENU, systemRoot.getId(),
-                "/roles", "roles/index", "Avatar", 60, true, true, "role:view", "角色管理页面");
+                "/roles", "roles/index", "Avatar", 70, true, true, "role:view", "角色管理页面");
         Menu permissionManage = upsertMenu("SYSTEM_PERMISSION", "权限管理", MenuType.MENU, systemRoot.getId(),
-                "/permissions", "permissions/index", "Lock", 70, true, true, "permission:view", "权限管理页面");
+                "/permissions", "permissions/index", "Lock", 80, true, true, "permission:view", "权限管理页面");
         Menu menuManage = upsertMenu("SYSTEM_MENU", "菜单管理", MenuType.MENU, systemRoot.getId(),
-                "/menus", "menus/index", "Menu", 80, true, true, "menu:view", "菜单管理页面");
+                "/menus", "menus/index", "Menu", 90, true, true, "menu:view", "菜单管理页面");
         Menu operationLog = upsertMenu("SYSTEM_OPERATION_LOG", "操作日志", MenuType.MENU, systemRoot.getId(),
-                "/operation-logs", "operation-logs/index", "Tickets", 90, true, true, "operation:log:view", "操作日志页面");
+                "/operation-logs", "operation-logs/index", "Tickets", 100, true, true, "operation:log:view", "操作日志页面");
 
+        upsertMenu("MEMBER_CREATE_BUTTON", "新增会员按钮", MenuType.BUTTON, memberUserManage.getId(),
+                "", "", "", 5, false, true, "member:create", "新增会员按钮");
+        upsertMenu("MEMBER_EDIT_BUTTON", "编辑会员按钮", MenuType.BUTTON, memberUserManage.getId(),
+                "", "", "", 8, false, true, "member:edit", "编辑会员按钮");
         upsertMenu("ADMIN_USER_CREATE_BUTTON", "新增管理员按钮", MenuType.BUTTON, adminUserManage.getId(),
                 "", "", "", 10, false, true, "admin:user:create", "新增管理员按钮");
         upsertMenu("ADMIN_USER_EDIT_BUTTON", "编辑管理员按钮", MenuType.BUTTON, adminUserManage.getId(),
@@ -119,6 +138,16 @@ public class DataInitializer implements ApplicationRunner {
                 "", "", "", 10, false, true, "member:download:update", "会员下载权限按钮");
         upsertMenu("MEMBER_STATUS_BUTTON", "会员状态按钮", MenuType.BUTTON, memberUserManage.getId(),
                 "", "", "", 20, false, true, "member:status:update", "会员状态按钮");
+        upsertMenu("MEMBER_PASSWORD_BUTTON", "会员重置密码按钮", MenuType.BUTTON, memberUserManage.getId(),
+                "", "", "", 30, false, true, "member:password:reset", "会员重置密码按钮");
+        upsertMenu("BUSINESS_TYPE_CREATE_BUTTON", "新增类型按钮", MenuType.BUTTON, businessTypeManage.getId(),
+                "", "", "", 10, false, true, "business:type:create", "新增类型按钮");
+        upsertMenu("BUSINESS_TYPE_EDIT_BUTTON", "编辑类型按钮", MenuType.BUTTON, businessTypeManage.getId(),
+                "", "", "", 20, false, true, "business:type:edit", "编辑类型按钮");
+        upsertMenu("BUSINESS_TYPE_STATUS_BUTTON", "类型状态按钮", MenuType.BUTTON, businessTypeManage.getId(),
+                "", "", "", 30, false, true, "business:type:status:update", "类型状态按钮");
+        upsertMenu("BUSINESS_TYPE_DELETE_BUTTON", "删除类型按钮", MenuType.BUTTON, businessTypeManage.getId(),
+                "", "", "", 40, false, true, "business:type:delete", "删除类型按钮");
         upsertMenu("TENDER_CREATE_BUTTON", "新增招标按钮", MenuType.BUTTON, tenderManage.getId(),
                 "", "", "", 10, false, true, "tender:create", "新增招标按钮");
         upsertMenu("TENDER_EDIT_BUTTON", "编辑招标按钮", MenuType.BUTTON, tenderManage.getId(),
@@ -154,8 +183,8 @@ public class DataInitializer implements ApplicationRunner {
                 "系统管理员",
                 "负责会员、招标、角色、权限、菜单和日志管理",
                 true,
-                new String[]{"dashboard:view", "profile:view", "profile:edit", "member:view", "member:download:update", "member:status:update", "tender:view", "tender:create", "tender:edit", "tender:delete", "tender:file:upload", "user:view", "user:role:update", "user:audit:record:view", "role:view", "role:edit", "permission:view", "permission:edit", "menu:view", "menu:edit", "operation:log:view"},
-                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_MEMBER_USER", "SYSTEM_TENDER", "SYSTEM_USER", "SYSTEM_AUDIT_RECORD", "SYSTEM_ROLE", "SYSTEM_PERMISSION", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "MEMBER_DOWNLOAD_BUTTON", "MEMBER_STATUS_BUTTON", "TENDER_CREATE_BUTTON", "TENDER_EDIT_BUTTON", "TENDER_DELETE_BUTTON", "TENDER_UPLOAD_BUTTON", "USER_ROLE_BUTTON", "ROLE_EDIT_BUTTON", "PERMISSION_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
+                new String[]{"dashboard:view", "profile:view", "profile:edit", "member:view", "member:create", "member:edit", "member:download:update", "member:status:update", "member:password:reset", "business:type:view", "business:type:create", "business:type:edit", "business:type:status:update", "business:type:delete", "tender:view", "tender:create", "tender:edit", "tender:delete", "tender:file:upload", "user:view", "user:role:update", "user:audit:record:view", "role:view", "role:edit", "permission:view", "permission:edit", "menu:view", "menu:edit", "operation:log:view"},
+                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_MEMBER_USER", "SYSTEM_BUSINESS_TYPE", "SYSTEM_TENDER", "SYSTEM_USER", "SYSTEM_AUDIT_RECORD", "SYSTEM_ROLE", "SYSTEM_PERMISSION", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "MEMBER_CREATE_BUTTON", "MEMBER_EDIT_BUTTON", "MEMBER_DOWNLOAD_BUTTON", "MEMBER_STATUS_BUTTON", "MEMBER_PASSWORD_BUTTON", "BUSINESS_TYPE_CREATE_BUTTON", "BUSINESS_TYPE_EDIT_BUTTON", "BUSINESS_TYPE_STATUS_BUTTON", "BUSINESS_TYPE_DELETE_BUTTON", "TENDER_CREATE_BUTTON", "TENDER_EDIT_BUTTON", "TENDER_DELETE_BUTTON", "TENDER_UPLOAD_BUTTON", "USER_ROLE_BUTTON", "ROLE_EDIT_BUTTON", "PERMISSION_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
         );
 
         upsertRole(
@@ -192,6 +221,10 @@ public class DataInitializer implements ApplicationRunner {
             }});
             userRepository.save(admin);
         }
+
+        upsertBusinessType("ENGINEERING", "工程", 10, "工程类业务");
+        upsertBusinessType("GOODS", "货物", 20, "货物类业务");
+        upsertBusinessType("SERVICE", "服务", 30, "服务类业务");
     }
 
     private Permission upsertPermission(String code, String name) {
@@ -248,5 +281,15 @@ public class DataInitializer implements ApplicationRunner {
                 .map(item -> menuRepository.findByCode(item).orElseThrow(() -> new IllegalStateException("菜单不存在: " + item)))
                 .collect(Collectors.toCollection(LinkedHashSet::new)));
         return roleRepository.save(role);
+    }
+
+    private void upsertBusinessType(String code, String name, int sortOrder, String description) {
+        BusinessType businessType = businessTypeRepository.findByCode(code).orElseGet(BusinessType::new);
+        businessType.setCode(code);
+        businessType.setName(name);
+        businessType.setEnabled(true);
+        businessType.setSortOrder(sortOrder);
+        businessType.setDescription(description);
+        businessTypeRepository.save(businessType);
     }
 }

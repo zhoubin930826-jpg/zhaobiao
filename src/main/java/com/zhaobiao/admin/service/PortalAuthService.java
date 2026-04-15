@@ -4,10 +4,11 @@ import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.config.JwtProperties;
 import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
-import com.zhaobiao.admin.dto.member.MemberRegisterRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
+import com.zhaobiao.admin.entity.BusinessType;
 import com.zhaobiao.admin.entity.MemberUser;
 import com.zhaobiao.admin.entity.MemberUserStatus;
+import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.MemberUserRepository;
 import com.zhaobiao.admin.security.JwtTokenProvider;
 import com.zhaobiao.admin.security.MemberLoginUser;
@@ -24,45 +25,32 @@ public class PortalAuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
+    private final ViewMapper viewMapper;
 
     public PortalAuthService(MemberUserRepository memberUserRepository,
                              PasswordEncoder passwordEncoder,
                              JwtTokenProvider jwtTokenProvider,
-                             JwtProperties jwtProperties) {
+                             JwtProperties jwtProperties,
+                             ViewMapper viewMapper) {
         this.memberUserRepository = memberUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.jwtProperties = jwtProperties;
-    }
-
-    @Transactional
-    public void register(MemberRegisterRequest request) {
-        validatePassword(request.getPassword(), request.getConfirmPassword());
-        ensureMemberUnique(request.getUsername(), request.getPhone(), request.getEmail(), request.getUnifiedSocialCreditCode(), null);
-
-        MemberUser user = new MemberUser();
-        user.setUsername(request.getUsername());
-        user.setPhone(request.getPhone());
-        user.setEmail(request.getEmail());
-        user.setCompanyName(request.getCompanyName());
-        user.setContactPerson(request.getContactPerson());
-        user.setUnifiedSocialCreditCode(request.getUnifiedSocialCreditCode());
-        user.setRealName(request.getRealName());
-        user.setPassword(passwordEncoder.encode(request.getPassword()));
-        user.setStatus(MemberUserStatus.ENABLED);
-        user.setCanDownloadFile(false);
-        memberUserRepository.save(user);
+        this.viewMapper = viewMapper;
     }
 
     @Transactional
     public MemberLoginResponse login(MemberLoginRequest request) {
-        MemberUser user = memberUserRepository.findByUsername(request.getUsername())
+        MemberUser user = memberUserRepository.findDetailByUsername(request.getUsername())
                 .orElseThrow(() -> new BusinessException(400, "用户名或密码错误"));
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BusinessException(400, "用户名或密码错误");
         }
         if (user.getStatus() == MemberUserStatus.DISABLED) {
             throw new BusinessException(403, "账号已被禁用");
+        }
+        if (resolveActiveBusinessTypeIds(user).isEmpty()) {
+            throw new BusinessException(403, "账号未分配可用业务类型，请联系管理员");
         }
         user.setLastLoginAt(LocalDateTime.now());
         memberUserRepository.save(user);
@@ -77,9 +65,9 @@ public class PortalAuthService {
 
     @Transactional(readOnly = true)
     public MemberUserDto currentMember(MemberLoginUser loginUser) {
-        MemberUser user = memberUserRepository.findById(loginUser.getUserId())
+        MemberUser user = memberUserRepository.findDetailById(loginUser.getUserId())
                 .orElseThrow(() -> new BusinessException(404, "会员不存在"));
-        return toMemberDto(user);
+        return viewMapper.toMemberUserDto(user);
     }
 
     public void ensureMemberUnique(String username,
@@ -136,20 +124,14 @@ public class PortalAuthService {
     }
 
     private MemberUserDto toMemberDto(MemberUser user) {
-        MemberUserDto dto = new MemberUserDto();
-        dto.setId(user.getId());
-        dto.setUsername(user.getUsername());
-        dto.setPhone(user.getPhone());
-        dto.setEmail(user.getEmail());
-        dto.setRealName(user.getRealName());
-        dto.setCompanyName(user.getCompanyName());
-        dto.setContactPerson(user.getContactPerson());
-        dto.setUnifiedSocialCreditCode(user.getUnifiedSocialCreditCode());
-        dto.setCanDownloadFile(user.isCanDownloadFile());
-        dto.setStatus(user.getStatus());
-        dto.setLastLoginAt(user.getLastLoginAt());
-        dto.setCreatedAt(user.getCreatedAt());
-        return dto;
+        return viewMapper.toMemberUserDto(user);
+    }
+
+    private java.util.List<Long> resolveActiveBusinessTypeIds(MemberUser user) {
+        return user.getBusinessTypes().stream()
+                .filter(BusinessType::isEnabled)
+                .map(BusinessType::getId)
+                .sorted()
+                .collect(java.util.stream.Collectors.toList());
     }
 }
-
