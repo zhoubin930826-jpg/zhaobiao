@@ -29,8 +29,10 @@ springdoc:
 
 app:
   jwt:
-    secret: ${APP_JWT_SECRET:ChangeThisJwtSecretForProduction1234567890}
+    secret: ${APP_JWT_SECRET:}
     expire-seconds: 7200
+  bootstrap:
+    admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
   file:
     storage-path: ${APP_FILE_STORAGE_PATH:./.uploads/files}
     temp-path: ${APP_FILE_TEMP_PATH:./.uploads/tmp}

@@ -21,8 +21,8 @@
 ### 账号与认证
 
 - 初始化超级管理员
-  - 用户名: `admin`
-  - 密码: `adminqwert`
+  - 用户名固定为: `admin`
+  - 首次启动且数据库中不存在 `admin` 时，必须通过环境变量 `APP_BOOTSTRAP_ADMIN_PASSWORD` 提供初始密码
 - JWT 鉴权
   - 请求头格式: `Authorization: Bearer <token>`
 - 用户注册
@@ -149,6 +149,7 @@ CREATE DATABASE zhaobiao_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_gen
 - `MYSQL_USER`
 - `MYSQL_PASSWORD`
 - `APP_JWT_SECRET`
+- `APP_BOOTSTRAP_ADMIN_PASSWORD`
 
 默认配置文件见 [application.yml](D:/work/workspace/zhaobiao/src/main/resources/application.yml)。
 

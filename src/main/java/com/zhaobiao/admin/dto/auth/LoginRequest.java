@@ -12,7 +12,7 @@ public class LoginRequest {
     private String username;
 
     @NotBlank(message = "密码不能为空")
-    @Schema(description = "密码", example = "adminqwert")
+    @Schema(description = "密码", example = "请输入管理员密码")
     private String password;
 
     public String getUsername() {
@@ -31,4 +31,3 @@ public class LoginRequest {
         this.password = password;
     }
 }
-

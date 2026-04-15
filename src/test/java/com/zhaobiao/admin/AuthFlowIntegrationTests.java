@@ -12,6 +12,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -179,6 +180,57 @@ class AuthFlowIntegrationTests {
         mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"username\":\"" + username + "\",\"password\":\"654321\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void legacyUserManagementEndpointIsDisabledAndCannotBeUsedForPrivilegeEscalation() throws Exception {
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long systemAdminRoleId = findRoleIdByCode(superAdminToken, "SYSTEM_ADMIN");
+        Long superAdminRoleId = findRoleIdByCode(superAdminToken, "SUPER_ADMIN");
+        assertNotNull(systemAdminRoleId);
+        assertNotNull(superAdminRoleId);
+
+        String username = "legacylock" + System.currentTimeMillis();
+        String phoneSuffix = username.substring(username.length() - 8);
+        MvcResult createResult = mockMvc.perform(post("/api/admin/admin-users")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"138" + phoneSuffix + "\",\"email\":\"" + username + "@zhaobiao.com\",\"realName\":\"遗留接口回归测试\",\"password\":\"12345678\",\"confirmPassword\":\"12345678\",\"roleIds\":[" + systemAdminRoleId + "]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+
+        Long adminUserId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .asLong();
+        assertNotNull(adminUserId);
+
+        String managerToken = loginAdmin(username, "12345678");
+
+        mockMvc.perform(get("/api/admin/users")
+                        .header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(410));
+
+        mockMvc.perform(put("/api/admin/users/{userId}/roles", adminUserId)
+                        .header("Authorization", "Bearer " + managerToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"roleIds\":[" + superAdminRoleId + "]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(410));
+
+        mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + managerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.roleCodes", hasItem("SYSTEM_ADMIN")))
+                .andExpect(jsonPath("$.data.roleCodes", not(hasItem("SUPER_ADMIN"))));
+
+        mockMvc.perform(get("/api/admin/admin-users")
+                        .header("Authorization", "Bearer " + managerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
     }

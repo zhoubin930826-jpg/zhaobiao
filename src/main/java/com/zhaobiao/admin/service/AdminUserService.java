@@ -48,6 +48,7 @@ public class AdminUserService {
     @Transactional(readOnly = true)
     public List<UserProfileDto> listUsers() {
         return userRepository.findAllWithDetails().stream()
+                .filter(this::isLegacyPortalUser)
                 .sorted(Comparator.comparing(User::getCreatedAt).reversed())
                 .map(viewMapper::toUserDto)
                 .collect(Collectors.toList());
@@ -55,11 +56,7 @@ public class AdminUserService {
 
     @Transactional
     public UserProfileDto auditUser(Long userId, UserAuditRequest request, LoginUser loginUser) {
-        User user = userRepository.findDetailById(userId)
-                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
-        if (hasSuperAdminRole(user)) {
-            throw new BusinessException(400, "超级管理员不允许通过该接口审核");
-        }
+        User user = getLegacyPortalUser(userId);
         if (!Boolean.TRUE.equals(request.getApproved()) && !StringUtils.hasText(request.getReason())) {
             throw new BusinessException(400, "驳回时必须填写原因");
         }
@@ -83,11 +80,13 @@ public class AdminUserService {
 
     @Transactional
     public UserProfileDto updateUserRoles(Long userId, UserRoleUpdateRequest request) {
-        User user = userRepository.findDetailById(userId)
-                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
+        User user = getLegacyPortalUser(userId);
         Set<Role> roles = loadRoles(request.getRoleIds());
         if (roles.isEmpty()) {
             throw new BusinessException(400, "至少要保留一个角色");
+        }
+        if (roles.stream().anyMatch(this::isAdminRole)) {
+            throw new BusinessException(403, "旧用户接口不允许分配管理员角色");
         }
         if ("admin".equals(user.getUsername()) && roles.stream().noneMatch(role -> SystemConstants.SUPER_ADMIN_ROLE.equals(role.getCode()))) {
             throw new BusinessException(400, "初始超级管理员必须保留超级管理员角色");
@@ -98,6 +97,7 @@ public class AdminUserService {
 
     @Transactional(readOnly = true)
     public List<UserAuditRecordDto> listAuditRecords(Long userId) {
+        getLegacyPortalUser(userId);
         return userAuditRecordRepository.findByUserIdOrderByCreatedAtDesc(userId).stream()
                 .map(viewMapper::toUserAuditRecordDto)
                 .collect(Collectors.toList());
@@ -113,5 +113,22 @@ public class AdminUserService {
 
     private boolean hasSuperAdminRole(User user) {
         return user.getRoles().stream().anyMatch(role -> SystemConstants.SUPER_ADMIN_ROLE.equals(role.getCode()));
+    }
+
+    private User getLegacyPortalUser(Long userId) {
+        User user = userRepository.findDetailById(userId)
+                .orElseThrow(() -> new BusinessException(404, "用户不存在"));
+        if (!isLegacyPortalUser(user)) {
+            throw new BusinessException(410, "旧用户管理接口已停用");
+        }
+        return user;
+    }
+
+    private boolean isLegacyPortalUser(User user) {
+        return user.getRoles().stream().allMatch(role -> !isAdminRole(role));
+    }
+
+    private boolean isAdminRole(Role role) {
+        return !SystemConstants.NORMAL_USER_ROLE.equals(role.getCode());
     }
 }

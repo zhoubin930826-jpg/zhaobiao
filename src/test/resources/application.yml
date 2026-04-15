@@ -20,6 +20,8 @@ app:
   jwt:
     secret: TestJwtSecretTestJwtSecretTestJwt
     expire-seconds: 7200
+  bootstrap:
+    admin-password: adminqwert
   file:
     storage-path: ./.test-uploads/files
     temp-path: ./.test-uploads/tmp
