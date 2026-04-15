@@ -14,3 +14,12 @@ spring:
     properties:
       hibernate:
         dialect: org.hibernate.dialect.H2Dialect
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
+
+app:
+  file:
+    storage-path: ./.preview/uploads/files
+    temp-path: ./.preview/uploads/tmp

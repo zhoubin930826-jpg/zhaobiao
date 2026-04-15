@@ -18,12 +18,15 @@ import java.io.IOException;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final CustomUserDetailsService userDetailsService;
+    private final CustomUserDetailsService adminUserDetailsService;
+    private final MemberUserDetailsService memberUserDetailsService;
 
     public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider,
-                                   CustomUserDetailsService userDetailsService) {
+                                   CustomUserDetailsService adminUserDetailsService,
+                                   MemberUserDetailsService memberUserDetailsService) {
         this.jwtTokenProvider = jwtTokenProvider;
-        this.userDetailsService = userDetailsService;
+        this.adminUserDetailsService = adminUserDetailsService;
+        this.memberUserDetailsService = memberUserDetailsService;
     }
 
     @Override
@@ -34,7 +37,17 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         if (StringUtils.hasText(token) && jwtTokenProvider.validate(token)
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String username = jwtTokenProvider.getUsername(token);
-            UserDetails userDetails = userDetailsService.loadUserByUsername(username);
+            TokenUserType userType = jwtTokenProvider.getUserType(token);
+            UserDetails userDetails = userType == TokenUserType.MEMBER
+                    ? memberUserDetailsService.loadUserByUsername(username)
+                    : adminUserDetailsService.loadUserByUsername(username);
+            if (!userDetails.isEnabled()
+                    || !userDetails.isAccountNonLocked()
+                    || !userDetails.isAccountNonExpired()
+                    || !userDetails.isCredentialsNonExpired()) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             UsernamePasswordAuthenticationToken authentication =
                     new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
             authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
@@ -51,4 +64,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return null;
     }
 }
-

@@ -16,7 +16,7 @@ public class OpenApiConfig {
         return new OpenAPI()
                 .info(new Info()
                         .title("招标系统后台接口文档")
-                        .description("基础后台管理系统接口，包含登录注册、用户管理、角色管理、权限管理和个人中心")
+                        .description("招标平台后端接口，包含管理员认证、会员认证、会员管理、招标管理、附件上传下载与门户公开接口")
                         .version("v1.0.0"))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(new Components().addSecuritySchemes("bearerAuth",
@@ -26,4 +26,3 @@ public class OpenApiConfig {
                                 .bearerFormat("JWT")));
     }
 }
-

@@ -16,6 +16,10 @@ spring:
     open-in-view: false
   jackson:
     default-property-inclusion: non_null
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 100MB
 
 springdoc:
   swagger-ui:
@@ -27,8 +31,10 @@ app:
   jwt:
     secret: ${APP_JWT_SECRET:ChangeThisJwtSecretForProduction1234567890}
     expire-seconds: 7200
+  file:
+    storage-path: ${APP_FILE_STORAGE_PATH:./.uploads/files}
+    temp-path: ${APP_FILE_TEMP_PATH:./.uploads/tmp}
 
 logging:
   level:
     org.hibernate.SQL: warn
-

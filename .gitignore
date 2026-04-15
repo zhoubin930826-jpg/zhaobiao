@@ -4,6 +4,9 @@ target/
 logs/
 .run/
 .preview/
+.uploads/
+.test-uploads/
+server-config.md
 .DS_Store
 frontend/node_modules/
 frontend/dist/

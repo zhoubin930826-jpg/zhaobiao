@@ -49,7 +49,10 @@ public class LoginUser implements UserDetails {
                 .sorted()
                 .collect(Collectors.toList());
         List<GrantedAuthority> authorities = Stream.concat(
-                        user.getRoles().stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode())),
+                        Stream.concat(
+                                Stream.of(new SimpleGrantedAuthority("ROLE_ADMIN")),
+                                user.getRoles().stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode()))
+                        ),
                         user.getRoles().stream()
                                 .map(Role::getPermissions)
                                 .flatMap(Collection::stream)

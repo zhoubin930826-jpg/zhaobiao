@@ -4,18 +4,12 @@ import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EnumType;
 import javax.persistence.Enumerated;
-import javax.persistence.FetchType;
-import javax.persistence.JoinColumn;
-import javax.persistence.JoinTable;
-import javax.persistence.ManyToMany;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
-import java.util.LinkedHashSet;
-import java.util.Set;
 
 @Entity
-@Table(name = "sys_user")
-public class User extends BaseEntity {
+@Table(name = "portal_member_user")
+public class MemberUser extends BaseEntity {
 
     @Column(nullable = false, unique = true, length = 64)
     private String username;
@@ -32,35 +26,21 @@ public class User extends BaseEntity {
     @Column(length = 64)
     private String realName;
 
-    @Column(length = 128)
+    @Column(nullable = false, length = 128)
     private String companyName;
 
-    @Column(length = 64)
+    @Column(nullable = false, length = 64)
     private String contactPerson;
 
-    @Column(unique = true, length = 32)
+    @Column(nullable = false, unique = true, length = 32)
     private String unifiedSocialCreditCode;
+
+    @Column(nullable = false)
+    private boolean canDownloadFile;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 32)
-    private UserStatus status;
-
-    @Column(length = 255)
-    private String auditReason;
-
-    @Column
-    private LocalDateTime auditedAt;
-
-    @Column(length = 64)
-    private String auditedBy;
-
-    @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-            name = "sys_user_role",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
-    private Set<Role> roles = new LinkedHashSet<>();
+    private MemberUserStatus status;
 
     @Column
     private LocalDateTime lastLoginAt;
@@ -129,44 +109,20 @@ public class User extends BaseEntity {
         this.unifiedSocialCreditCode = unifiedSocialCreditCode;
     }
 
-    public UserStatus getStatus() {
+    public boolean isCanDownloadFile() {
+        return canDownloadFile;
+    }
+
+    public void setCanDownloadFile(boolean canDownloadFile) {
+        this.canDownloadFile = canDownloadFile;
+    }
+
+    public MemberUserStatus getStatus() {
         return status;
     }
 
-    public void setStatus(UserStatus status) {
+    public void setStatus(MemberUserStatus status) {
         this.status = status;
-    }
-
-    public String getAuditReason() {
-        return auditReason;
-    }
-
-    public void setAuditReason(String auditReason) {
-        this.auditReason = auditReason;
-    }
-
-    public LocalDateTime getAuditedAt() {
-        return auditedAt;
-    }
-
-    public void setAuditedAt(LocalDateTime auditedAt) {
-        this.auditedAt = auditedAt;
-    }
-
-    public String getAuditedBy() {
-        return auditedBy;
-    }
-
-    public void setAuditedBy(String auditedBy) {
-        this.auditedBy = auditedBy;
-    }
-
-    public Set<Role> getRoles() {
-        return roles;
-    }
-
-    public void setRoles(Set<Role> roles) {
-        this.roles = roles;
     }
 
     public LocalDateTime getLastLoginAt() {
@@ -177,3 +133,4 @@ public class User extends BaseEntity {
         this.lastLoginAt = lastLoginAt;
     }
 }
+

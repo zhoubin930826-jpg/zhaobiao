@@ -52,6 +52,20 @@ public class DataInitializer implements ApplicationRunner {
         permissions.put("dashboard:view", "查看工作台");
         permissions.put("profile:view", "查看个人信息");
         permissions.put("profile:edit", "修改个人信息");
+        permissions.put("admin:user:view", "查看管理员账号");
+        permissions.put("admin:user:create", "新增管理员账号");
+        permissions.put("admin:user:edit", "修改管理员账号");
+        permissions.put("admin:user:status:update", "修改管理员状态");
+        permissions.put("admin:user:password:reset", "重置管理员密码");
+        permissions.put("admin:user:role:update", "修改管理员角色");
+        permissions.put("member:view", "查看会员");
+        permissions.put("member:download:update", "修改会员下载权限");
+        permissions.put("member:status:update", "修改会员状态");
+        permissions.put("tender:view", "查看招标");
+        permissions.put("tender:create", "新增招标");
+        permissions.put("tender:edit", "修改招标");
+        permissions.put("tender:delete", "删除招标");
+        permissions.put("tender:file:upload", "上传招标附件");
         permissions.put("user:view", "查看用户");
         permissions.put("user:audit", "审核用户");
         permissions.put("user:role:update", "修改用户角色");
@@ -72,19 +86,47 @@ public class DataInitializer implements ApplicationRunner {
                 "/profile", "profile/index", "User", 20, true, true, "profile:view", "个人信息维护");
         Menu systemRoot = upsertMenu("SYSTEM_ROOT", "系统管理", MenuType.DIRECTORY, null,
                 "/system", "", "Setting", 30, true, true, null, "系统管理目录");
-        Menu userManage = upsertMenu("SYSTEM_USER", "用户管理", MenuType.MENU, systemRoot.getId(),
-                "/users", "users/index", "UserFilled", 10, true, true, "user:view", "用户管理页面");
+        Menu adminUserManage = upsertMenu("SYSTEM_ADMIN_USER", "管理员管理", MenuType.MENU, systemRoot.getId(),
+                "/admin-users", "admin-users/index", "UserFilled", 10, true, true, "admin:user:view", "管理员账号管理页面");
+        Menu memberUserManage = upsertMenu("SYSTEM_MEMBER_USER", "会员管理", MenuType.MENU, systemRoot.getId(),
+                "/member-users", "member-users/index", "User", 20, true, true, "member:view", "会员账号管理页面");
+        Menu tenderManage = upsertMenu("SYSTEM_TENDER", "招标管理", MenuType.MENU, systemRoot.getId(),
+                "/tenders", "tenders/index", "Document", 30, true, true, "tender:view", "招标信息管理页面");
+        Menu userManage = upsertMenu("SYSTEM_USER", "旧用户管理", MenuType.MENU, systemRoot.getId(),
+                "/users", "users/index", "UserFilled", 40, true, true, "user:view", "历史用户管理页面");
         Menu auditRecord = upsertMenu("SYSTEM_AUDIT_RECORD", "审核记录", MenuType.MENU, systemRoot.getId(),
-                "/audit-records", "audit-records/index", "Document", 20, true, true, "user:audit:record:view", "用户审核记录");
+                "/audit-records", "audit-records/index", "Document", 50, true, true, "user:audit:record:view", "用户审核记录");
         Menu roleManage = upsertMenu("SYSTEM_ROLE", "角色管理", MenuType.MENU, systemRoot.getId(),
-                "/roles", "roles/index", "Avatar", 30, true, true, "role:view", "角色管理页面");
+                "/roles", "roles/index", "Avatar", 60, true, true, "role:view", "角色管理页面");
         Menu permissionManage = upsertMenu("SYSTEM_PERMISSION", "权限管理", MenuType.MENU, systemRoot.getId(),
-                "/permissions", "permissions/index", "Lock", 40, true, true, "permission:view", "权限管理页面");
+                "/permissions", "permissions/index", "Lock", 70, true, true, "permission:view", "权限管理页面");
         Menu menuManage = upsertMenu("SYSTEM_MENU", "菜单管理", MenuType.MENU, systemRoot.getId(),
-                "/menus", "menus/index", "Menu", 50, true, true, "menu:view", "菜单管理页面");
+                "/menus", "menus/index", "Menu", 80, true, true, "menu:view", "菜单管理页面");
         Menu operationLog = upsertMenu("SYSTEM_OPERATION_LOG", "操作日志", MenuType.MENU, systemRoot.getId(),
-                "/operation-logs", "operation-logs/index", "Tickets", 60, true, true, "operation:log:view", "操作日志页面");
+                "/operation-logs", "operation-logs/index", "Tickets", 90, true, true, "operation:log:view", "操作日志页面");
 
+        upsertMenu("ADMIN_USER_CREATE_BUTTON", "新增管理员按钮", MenuType.BUTTON, adminUserManage.getId(),
+                "", "", "", 10, false, true, "admin:user:create", "新增管理员按钮");
+        upsertMenu("ADMIN_USER_EDIT_BUTTON", "编辑管理员按钮", MenuType.BUTTON, adminUserManage.getId(),
+                "", "", "", 20, false, true, "admin:user:edit", "编辑管理员按钮");
+        upsertMenu("ADMIN_USER_STATUS_BUTTON", "管理员状态按钮", MenuType.BUTTON, adminUserManage.getId(),
+                "", "", "", 30, false, true, "admin:user:status:update", "修改管理员状态按钮");
+        upsertMenu("ADMIN_USER_PASSWORD_BUTTON", "管理员重置密码按钮", MenuType.BUTTON, adminUserManage.getId(),
+                "", "", "", 40, false, true, "admin:user:password:reset", "管理员重置密码按钮");
+        upsertMenu("ADMIN_USER_ROLE_BUTTON", "管理员角色按钮", MenuType.BUTTON, adminUserManage.getId(),
+                "", "", "", 50, false, true, "admin:user:role:update", "管理员角色按钮");
+        upsertMenu("MEMBER_DOWNLOAD_BUTTON", "会员下载权限按钮", MenuType.BUTTON, memberUserManage.getId(),
+                "", "", "", 10, false, true, "member:download:update", "会员下载权限按钮");
+        upsertMenu("MEMBER_STATUS_BUTTON", "会员状态按钮", MenuType.BUTTON, memberUserManage.getId(),
+                "", "", "", 20, false, true, "member:status:update", "会员状态按钮");
+        upsertMenu("TENDER_CREATE_BUTTON", "新增招标按钮", MenuType.BUTTON, tenderManage.getId(),
+                "", "", "", 10, false, true, "tender:create", "新增招标按钮");
+        upsertMenu("TENDER_EDIT_BUTTON", "编辑招标按钮", MenuType.BUTTON, tenderManage.getId(),
+                "", "", "", 20, false, true, "tender:edit", "编辑招标按钮");
+        upsertMenu("TENDER_DELETE_BUTTON", "删除招标按钮", MenuType.BUTTON, tenderManage.getId(),
+                "", "", "", 30, false, true, "tender:delete", "删除招标按钮");
+        upsertMenu("TENDER_UPLOAD_BUTTON", "上传附件按钮", MenuType.BUTTON, tenderManage.getId(),
+                "", "", "", 40, false, true, "tender:file:upload", "上传招标附件按钮");
         upsertMenu("USER_AUDIT_BUTTON", "审核按钮", MenuType.BUTTON, userManage.getId(),
                 "", "", "", 10, false, true, "user:audit", "用户审核按钮");
         upsertMenu("USER_ROLE_BUTTON", "分配角色按钮", MenuType.BUTTON, userManage.getId(),
@@ -110,10 +152,10 @@ public class DataInitializer implements ApplicationRunner {
         upsertRole(
                 SystemConstants.SYSTEM_ADMIN_ROLE,
                 "系统管理员",
-                "负责用户、角色、权限、菜单和日志管理",
+                "负责会员、招标、角色、权限、菜单和日志管理",
                 true,
-                new String[]{"dashboard:view", "profile:view", "profile:edit", "user:view", "user:role:update", "user:audit:record:view", "role:view", "role:edit", "permission:view", "permission:edit", "menu:view", "menu:edit", "operation:log:view"},
-                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_USER", "SYSTEM_AUDIT_RECORD", "SYSTEM_ROLE", "SYSTEM_PERMISSION", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "USER_ROLE_BUTTON", "ROLE_EDIT_BUTTON", "PERMISSION_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
+                new String[]{"dashboard:view", "profile:view", "profile:edit", "member:view", "member:download:update", "member:status:update", "tender:view", "tender:create", "tender:edit", "tender:delete", "tender:file:upload", "user:view", "user:role:update", "user:audit:record:view", "role:view", "role:edit", "permission:view", "permission:edit", "menu:view", "menu:edit", "operation:log:view"},
+                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_MEMBER_USER", "SYSTEM_TENDER", "SYSTEM_USER", "SYSTEM_AUDIT_RECORD", "SYSTEM_ROLE", "SYSTEM_PERMISSION", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "MEMBER_DOWNLOAD_BUTTON", "MEMBER_STATUS_BUTTON", "TENDER_CREATE_BUTTON", "TENDER_EDIT_BUTTON", "TENDER_DELETE_BUTTON", "TENDER_UPLOAD_BUTTON", "USER_ROLE_BUTTON", "ROLE_EDIT_BUTTON", "PERMISSION_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
         );
 
         upsertRole(

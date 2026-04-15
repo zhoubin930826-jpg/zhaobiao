@@ -8,6 +8,7 @@ import com.zhaobiao.admin.security.LoginUser;
 import com.zhaobiao.admin.service.ProfileService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -29,6 +30,7 @@ public class ProfileController {
     }
 
     @Operation(summary = "获取个人信息")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping
     public ApiResponse<UserProfileDto> getProfile(@AuthenticationPrincipal LoginUser loginUser) {
         return ApiResponse.success(profileService.getProfile(loginUser));
@@ -36,10 +38,10 @@ public class ProfileController {
 
     @Operation(summary = "修改个人信息")
     @OperationLogRecord(module = "个人中心", action = "修改个人信息")
+    @PreAuthorize("hasRole('ADMIN')")
     @PutMapping
     public ApiResponse<UserProfileDto> updateProfile(@AuthenticationPrincipal LoginUser loginUser,
                                                      @Valid @RequestBody ProfileUpdateRequest request) {
         return ApiResponse.success(profileService.updateProfile(loginUser, request));
     }
 }
-

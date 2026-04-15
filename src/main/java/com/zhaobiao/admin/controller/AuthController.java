@@ -10,6 +10,7 @@ import com.zhaobiao.admin.security.LoginUser;
 import com.zhaobiao.admin.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,12 +33,12 @@ public class AuthController {
         this.authService = authService;
     }
 
-    @Operation(summary = "用户注册")
-    @OperationLogRecord(module = "认证", action = "用户注册")
+    @Operation(summary = "后台管理员公开注册（已停用）")
+    @OperationLogRecord(module = "认证", action = "管理员公开注册")
     @PostMapping("/register")
     public ApiResponse<Void> register(@Valid @RequestBody RegisterRequest request) {
         authService.register(request);
-        return ApiResponse.success("注册成功，请等待管理员审核", null);
+        return ApiResponse.success("success", null);
     }
 
     @Operation(summary = "用户登录")
@@ -48,6 +49,7 @@ public class AuthController {
     }
 
     @Operation(summary = "获取当前登录用户信息")
+    @PreAuthorize("hasRole('ADMIN')")
     @GetMapping("/me")
     public ApiResponse<UserProfileDto> me(@AuthenticationPrincipal LoginUser loginUser) {
         return ApiResponse.success(authService.currentUser(loginUser));
