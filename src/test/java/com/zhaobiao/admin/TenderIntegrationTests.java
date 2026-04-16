@@ -1,5 +1,7 @@
 package com.zhaobiao.admin;
 
+import com.zhaobiao.admin.entity.TenderFileStorage;
+import com.zhaobiao.admin.repository.TenderFileStorageRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -12,12 +14,15 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.hasSize;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -39,6 +44,9 @@ class TenderIntegrationTests {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private TenderFileStorageRepository tenderFileStorageRepository;
 
     @Test
     void adminCanUploadCreateTendersAndPortalListIsPagedInDescendingOrderForMultiTypeMember() throws Exception {
@@ -226,6 +234,28 @@ class TenderIntegrationTests {
                 .andExpect(jsonPath("$.code").value(401));
     }
 
+    @Test
+    void duplicateUploadReusesExistingFileStorageAndKeepsFirstFileName() throws Exception {
+        String adminToken = loginAdmin("admin", "adminqwert");
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        String firstFileName = "duplicate-" + uniqueTag + "-first.txt";
+        String secondFileName = "duplicate-" + uniqueTag + "-second.txt";
+        String content = "same-content-" + uniqueTag;
+
+        JsonNode firstUpload = uploadFileResponse(adminToken, firstFileName, content);
+        JsonNode secondUpload = uploadFileResponse(adminToken, secondFileName, content);
+
+        Long firstFileId = firstUpload.path("fileId").asLong();
+        Long secondFileId = secondUpload.path("fileId").asLong();
+        assertEquals(firstFileId, secondFileId);
+        assertEquals(firstFileName, firstUpload.path("fileName").asText());
+        assertEquals(firstFileName, secondUpload.path("fileName").asText());
+
+        TenderFileStorage storage = tenderFileStorageRepository.findById(firstFileId).orElseThrow(AssertionError::new);
+        assertEquals(firstFileName, storage.getOriginalName());
+        assertEquals(sha256(content), storage.getContentHash());
+    }
+
     private String loginAdmin(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -247,6 +277,10 @@ class TenderIntegrationTests {
     }
 
     private Long uploadFile(String adminToken, String fileName, String content) throws Exception {
+        return uploadFileResponse(adminToken, fileName, content).path("fileId").asLong();
+    }
+
+    private JsonNode uploadFileResponse(String adminToken, String fileName, String content) throws Exception {
         MockMultipartFile multipartFile = new MockMultipartFile(
                 "files",
                 fileName,
@@ -261,9 +295,7 @@ class TenderIntegrationTests {
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString())
                 .path("data")
-                .path(0)
-                .path("fileId")
-                .asLong();
+                .path(0);
     }
 
     private Long createTender(String adminToken,
@@ -373,5 +405,20 @@ class TenderIntegrationTests {
             }
         }
         return null;
+    }
+
+    private String sha256(String content) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] bytes = digest.digest(content.getBytes(StandardCharsets.UTF_8));
+            StringBuilder builder = new StringBuilder(bytes.length * 2);
+            for (byte item : bytes) {
+                builder.append(Character.forDigit((item >> 4) & 0xF, 16));
+                builder.append(Character.forDigit(item & 0xF, 16));
+            }
+            return builder.toString();
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(ex);
+        }
     }
 }

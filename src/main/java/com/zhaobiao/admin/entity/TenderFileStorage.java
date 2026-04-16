@@ -11,6 +11,9 @@ public class TenderFileStorage extends BaseEntity {
     @Column(nullable = false, length = 255)
     private String originalName;
 
+    @Column(length = 64, unique = true)
+    private String contentHash;
+
     @Column(nullable = false, length = 255)
     private String storageName;
 
@@ -29,6 +32,14 @@ public class TenderFileStorage extends BaseEntity {
 
     public void setOriginalName(String originalName) {
         this.originalName = originalName;
+    }
+
+    public String getContentHash() {
+        return contentHash;
+    }
+
+    public void setContentHash(String contentHash) {
+        this.contentHash = contentHash;
     }
 
     public String getStorageName() {

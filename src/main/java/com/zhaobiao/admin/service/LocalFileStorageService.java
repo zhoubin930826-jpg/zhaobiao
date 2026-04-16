@@ -5,6 +5,7 @@ import com.zhaobiao.admin.config.FileStorageProperties;
 import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
@@ -14,11 +15,14 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
+import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -64,6 +68,11 @@ public class LocalFileStorageService {
             throw new BusinessException(400, "上传文件不能为空");
         }
         String originalName = sanitizeOriginalName(file.getOriginalFilename());
+        String contentHash = calculateContentHash(file);
+        TenderFileStorage existing = tenderFileStorageRepository.findByContentHash(contentHash).orElse(null);
+        if (existing != null) {
+            return toUploadResponse(existing);
+        }
         String extension = resolveExtension(originalName);
         String storageName = UUID.randomUUID().toString().replace("-", "") + extension;
         String dateDir = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
@@ -77,11 +86,12 @@ public class LocalFileStorageService {
 
             TenderFileStorage storage = new TenderFileStorage();
             storage.setOriginalName(originalName);
+            storage.setContentHash(contentHash);
             storage.setStorageName(storageName);
             storage.setStoragePath(relativePath);
             storage.setContentType(file.getContentType());
             storage.setFileSize(file.getSize());
-            storage = tenderFileStorageRepository.save(storage);
+            storage = saveStorage(storage, target, contentHash);
             return toUploadResponse(storage);
         } catch (IOException ex) {
             throw new BusinessException(500, "保存文件失败");
@@ -137,5 +147,54 @@ public class LocalFileStorageService {
             return "";
         }
         return fileName.substring(index);
+    }
+
+    private String calculateContentHash(MultipartFile file) {
+        try (InputStream inputStream = file.getInputStream()) {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = inputStream.read(buffer)) != -1) {
+                digest.update(buffer, 0, read);
+            }
+            return toHex(digest.digest());
+        } catch (IOException ex) {
+            throw new BusinessException(500, "计算文件摘要失败");
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException("当前运行环境不支持 SHA-256", ex);
+        }
+    }
+
+    private TenderFileStorage saveStorage(TenderFileStorage storage, Path target, String contentHash) {
+        try {
+            return tenderFileStorageRepository.saveAndFlush(storage);
+        } catch (DataIntegrityViolationException ex) {
+            deleteQuietly(target);
+            TenderFileStorage existing = tenderFileStorageRepository.findByContentHash(contentHash).orElse(null);
+            if (existing != null) {
+                return existing;
+            }
+            throw new BusinessException(500, "保存文件记录失败");
+        } catch (RuntimeException ex) {
+            deleteQuietly(target);
+            throw ex;
+        }
+    }
+
+    private void deleteQuietly(Path target) {
+        try {
+            Files.deleteIfExists(target);
+        } catch (IOException ignored) {
+            // 文件记录保存失败时优先返回主错误，忽略清理失败
+        }
+    }
+
+    private String toHex(byte[] bytes) {
+        StringBuilder builder = new StringBuilder(bytes.length * 2);
+        for (byte item : bytes) {
+            builder.append(Character.forDigit((item >> 4) & 0xF, 16));
+            builder.append(Character.forDigit(item & 0xF, 16));
+        }
+        return builder.toString();
     }
 }
