@@ -77,10 +77,8 @@
         {{ row.username }}
       </template>
       <template slot-scope="{ row }" slot="status">
-        <Badge v-if="row.status === 'APPROVED'" color="green" text="已通过" />
-        <Badge v-else-if="row.status === 'PENDING'" color="gold" text="待审核" />
-        <Badge v-else-if="row.status === 'REJECTED'" color="red" text="已驳回" />
-        <Badge v-else-if="row.status === 'DISABLED'" color="default" text="已禁用" />
+        <Badge v-if="row.status === 'APPROVED'" color="green" text="启用" />
+        <Badge v-else-if="row.status === 'DISABLED'" color="default" text="禁用" />
         <span v-else>{{ row.status }}</span>
       </template>
       <template slot-scope="{ row }" slot="roleNames">
@@ -92,9 +90,9 @@
           <Divider type="vertical" />
           <a type="text" @click="handleEdit(row)">编辑</a>
           <Divider type="vertical" />
-          <a type="text" @click="handleAudit(row)">审核</a>
+          <a type="text" @click="handleStatus(row)">状态</a>
           <Divider type="vertical" />
-          <a type="text" style="color: #ed4014" @click="handleDelete(row)">删除</a>
+          <a type="text" style="color: #ed4014" @click="handleResetPassword(row)">重置密码</a>
         </div>
       </template>
     </Table>
@@ -162,6 +160,26 @@
             </FormItem>
           </Col>
         </Row>
+        <Row :gutter="32">
+          <Col span="24">
+            <FormItem label="邮箱" prop="email">
+              <Input
+                v-model="formData.email"
+                placeholder="请输入邮箱"
+              />
+            </FormItem>
+          </Col>
+        </Row>
+        <Row :gutter="32">
+          <Col span="24">
+            <FormItem label="姓名">
+              <Input
+                v-model="formData.realName"
+                placeholder="请输入姓名（选填）"
+              />
+            </FormItem>
+          </Col>
+        </Row>
         <Row :gutter="32" v-if="modal.type !== 'view'">
           <Col span="24">
             <FormItem label="角色" prop="roleIds">
@@ -183,10 +201,8 @@
           <Col span="24">
             <FormItem label="状态">
               <span>
-                <Badge v-if="formData.status === 'APPROVED'" color="green" text="已通过" />
-                <Badge v-else-if="formData.status === 'PENDING'" color="gold" text="待审核" />
-                <Badge v-else-if="formData.status === 'REJECTED'" color="red" text="已驳回" />
-                <Badge v-else-if="formData.status === 'DISABLED'" color="default" text="已禁用" />
+                <Badge v-if="formData.status === 'APPROVED'" color="green" text="启用" />
+                <Badge v-else-if="formData.status === 'DISABLED'" color="default" text="禁用" />
                 <span v-else>{{ formData.status }}</span>
               </span>
             </FormItem>
@@ -211,47 +227,35 @@
       </template>
     </Modal>
 
-    <!-- 审核模态框 -->
+    <!-- 状态模态框 -->
     <Modal
-      v-model="auditModal.show"
-      title="用户审核"
+      v-model="statusModal.show"
+      title="修改账号状态"
       width="460"
-      :before-close="handleCloseAudit"
+      :before-close="handleCloseStatus"
       :transfer="false"
     >
       <Form
-        v-if="auditFormReady"
-        ref="auditForm"
-        :model="auditData"
-        :rules="auditRules"
+        v-if="statusFormReady"
+        ref="statusForm"
+        :model="statusData"
+        :rules="statusRules"
         label-position="top"
       >
         <Row :gutter="32">
           <Col span="24">
-            <FormItem label="审核结果" prop="status">
-              <RadioGroup v-model="auditData.status">
-                <Radio label="APPROVED">通过</Radio>
-                <Radio label="REJECTED">驳回</Radio>
+            <FormItem label="账号状态" prop="status">
+              <RadioGroup v-model="statusData.status">
+                <Radio label="APPROVED">启用</Radio>
+                <Radio label="DISABLED">禁用</Radio>
               </RadioGroup>
-            </FormItem>
-          </Col>
-        </Row>
-        <Row :gutter="32" v-if="auditData.status === 'REJECTED'">
-          <Col span="24">
-            <FormItem label="驳回原因">
-              <Input
-                v-model="auditData.reason"
-                type="textarea"
-                :rows="3"
-                placeholder="请输入驳回原因（选填）"
-              />
             </FormItem>
           </Col>
         </Row>
       </Form>
       <template #footer>
-        <Button @click="handleCloseAudit">取消</Button>
-        <Button type="primary" @click="handleSubmitAudit" :loading="auditSubmitting">确定</Button>
+        <Button @click="handleCloseStatus">取消</Button>
+        <Button type="primary" @click="handleSubmitStatus" :loading="statusSubmitting">确定</Button>
       </template>
     </Modal>
   </div>
@@ -259,13 +263,14 @@
 
 <script>
     import {
-        listUsers,
-        updateUserRoles,
-        getRoleList,
-        auditUser,
-        DeleteUser
+        listAdminUsers,
+        createAdminUser,
+        updateAdminUser,
+        updateAdminUserRoles,
+        updateAdminUserStatus,
+        resetAdminUserPassword,
+        getRoleList
     } from '@api/system';
-    import { AccountRegister } from '@api/account';
     import { cloneDeep } from 'lodash';
 
     export default {
@@ -290,10 +295,14 @@
                     ],
                     phone: [
                         { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
+                    ],
+                    email: [
+                        { required: true, message: '请输入邮箱', trigger: 'blur' },
+                        { type: 'email', message: '请输入正确的邮箱', trigger: 'blur' }
                     ]
                 },
-                auditRules: {
-                    status: [{ required: true, message: '请选择审核结果', trigger: 'change' }]
+                statusRules: {
+                    status: [{ required: true, message: '请选择账号状态', trigger: 'change' }]
                 },
                 userListAll: [],
                 columns: [
@@ -315,6 +324,12 @@
                         title: '手机号',
                         key: 'phone',
                         minWidth: 120,
+                        show: true
+                    },
+                    {
+                        title: '邮箱',
+                        key: 'email',
+                        minWidth: 180,
                         show: true
                     },
                     {
@@ -366,25 +381,27 @@
                     username: '',
                     password: '',
                     phone: '',
+                    email: '',
+                    realName: '',
                     roleIds: []
                 },
-                // 审核表单
-                auditData: {
+                // 状态表单
+                statusData: {
                     userId: null,
-                    status: '',
-                    reason: ''
+                    status: 'APPROVED'
                 },
                 formReady: true,
-                auditFormReady: true,
+                statusFormReady: true,
                 modal: {
                     show: false,
                     type: 'add' // add, edit, view, audit
                 },
-                auditModal: {
+                statusModal: {
                     show: false
                 },
                 submitting: false,
-                auditSubmitting: false
+                statusSubmitting: false,
+                resetPassword: ''
             };
         },
         computed: {
@@ -422,7 +439,7 @@
                     }
                     return out;
                 };
-                listUsers().then(res => {
+                listAdminUsers().then(res => {
                     const rows = Array.isArray(res) ? res : [];
                     this.userListAll = rows;
                     const filtered = applyFilter(rows);
@@ -469,6 +486,8 @@
                     username: '',
                     password: '',
                     phone: '',
+                    email: '',
+                    realName: '',
                     roleIds: []
                 };
                 this.modal.type = 'add';
@@ -482,6 +501,8 @@
                     username: row.username,
                     password: '',
                     phone: row.phone || '',
+                    email: row.email || '',
+                    realName: row.realName || '',
                     roleIds: Array.isArray(row.roleIds) ? [...row.roleIds] : []
                 };
                 this.modal.type = 'edit';
@@ -495,54 +516,59 @@
                 this.modal.show = true;
                 this.initForm();
             },
-            // 删除用户
-            handleDelete (row) {
+            // 修改状态
+            handleStatus (row) {
+                this.statusData = {
+                    userId: row.id,
+                    status: row.status === 'DISABLED' ? 'DISABLED' : 'APPROVED'
+                };
+                this.statusModal.show = true;
+                this.initStatusForm();
+            },
+            // 重置密码
+            handleResetPassword (row) {
+                this.resetPassword = '';
                 this.$Modal.confirm({
-                    title: '确认删除',
-                    content: `确定要删除用户「${row.username}」吗？删除后无法恢复！`,
+                    title: `重置 ${row.username} 的密码`,
+                    render: h => h('Input', {
+                        props: {
+                            value: this.resetPassword,
+                            type: 'password',
+                            placeholder: '请输入新密码（至少6位）'
+                        },
+                        on: {
+                            input: val => { this.resetPassword = val; }
+                        }
+                    }),
                     onOk: () => {
-                        DeleteUser(row.id).then(() => {
-                            this.$Message.success('删除成功');
-                            this.getData();
-                        }).catch(err => {
-                            // 如果后端接口不可用，显示提示
-                            this.$Message.warning('删除用户功能暂不可用：' + (err.message || '接口未实现'));
+                        const password = (this.resetPassword || '').trim();
+                        if (password.length < 6) {
+                            this.$Message.error('密码长度至少6位');
+                            return Promise.reject(new Error('invalid password'));
+                        }
+                        return resetAdminUserPassword(row.id, { password, confirmPassword: password }).then(() => {
+                            this.$Message.success('重置密码成功');
                         });
                     }
                 });
             },
-            // 审核用户
-            handleAudit (row) {
-                this.auditData = {
-                    userId: row.id,
-                    status: row.status === 'PENDING' ? '' : (row.status === 'APPROVED' ? 'APPROVED' : 'REJECTED'),
-                    reason: ''
-                };
-                this.auditModal.show = true;
-                this.initAuditForm();
-            },
-            // 提交审核
-            handleSubmitAudit () {
-                this.$refs.auditForm.validate(valid => {
+            handleSubmitStatus () {
+                this.$refs.statusForm.validate(valid => {
                     if (!valid) return;
-                    this.auditSubmitting = true;
-                    const auditRequest = {
-                        approved: this.auditData.status === 'APPROVED',
-                        reason: this.auditData.reason
-                    };
-                    auditUser(this.auditData.userId, auditRequest).then(() => {
-                        this.auditSubmitting = false;
-                        this.auditModal.show = false;
-                        this.$Message.success('审核操作成功');
+                    this.statusSubmitting = true;
+                    updateAdminUserStatus(this.statusData.userId, { status: this.statusData.status }).then(() => {
+                        this.statusSubmitting = false;
+                        this.statusModal.show = false;
+                        this.$Message.success('状态更新成功');
                         this.getData();
                     }).catch(() => {
-                        this.auditSubmitting = false;
+                        this.statusSubmitting = false;
                     });
                 });
             },
-            // 关闭审核模态框
-            handleCloseAudit () {
-                this.auditModal.show = false;
+            // 关闭状态模态框
+            handleCloseStatus () {
+                this.statusModal.show = false;
             },
             // 关闭用户模态框
             handleCloseModal () {
@@ -554,28 +580,34 @@
                     if (!valid) return;
                     this.submitting = true;
                     if (this.modal.type === 'add') {
-                        // 新增用户 - 使用注册接口
                         const data = {
                             username: this.formData.username,
                             password: this.formData.password,
-                            phone: this.formData.phone
+                            confirmPassword: this.formData.password,
+                            phone: this.formData.phone,
+                            email: this.formData.email,
+                            realName: this.formData.realName,
+                            roleIds: this.formData.roleIds || []
                         };
-                        AccountRegister(data).then(() => {
+                        createAdminUser(data).then(() => {
                             this.submitting = false;
                             this.modal.show = false;
-                            this.$Message.success('新增用户成功');
+                            this.$Message.success('新增管理员成功');
                             this.getData();
                         }).catch(() => {
                             this.submitting = false;
                         });
                     } else if (this.modal.type === 'edit') {
-                        // 编辑用户 - 更新角色
-                        updateUserRoles(this.formData.id, {
+                        updateAdminUser(this.formData.id, {
+                            phone: this.formData.phone,
+                            email: this.formData.email,
+                            realName: this.formData.realName
+                        }).then(() => updateAdminUserRoles(this.formData.id, {
                             roleIds: this.formData.roleIds || []
-                        }).then(() => {
+                        })).then(() => {
                             this.submitting = false;
                             this.modal.show = false;
-                            this.$Message.success('用户信息已更新');
+                            this.$Message.success('管理员信息已更新');
                             this.getData();
                         }).catch(() => {
                             this.submitting = false;
@@ -589,10 +621,10 @@
                     this.formReady = true;
                 });
             },
-            initAuditForm () {
-                this.auditFormReady = false;
+            initStatusForm () {
+                this.statusFormReady = false;
                 this.$nextTick(() => {
-                    this.auditFormReady = true;
+                    this.statusFormReady = true;
                 });
             }
         }

@@ -6,6 +6,7 @@
 <script>
     import SimpleMDE from 'simplemde';
     import 'simplemde/dist/simplemde.min.css';
+    import 'font-awesome/css/font-awesome.min.css';
 
     export default {
         name: 'i-mde',
@@ -75,12 +76,22 @@
                 }
             }
         },
+        watch: {
+            value (val) {
+                if (!this.mde) return;
+                if (val !== this.mde.value()) {
+                    this.mde.value(val || '');
+                }
+            }
+        },
         mounted () {
             // 初始化
             this.init();
         },
         beforeDestroy () {
-            // 在组件销毁后销毁实例
+            if (this.mde && this.mde.toTextArea) {
+                this.mde.toTextArea();
+            }
             this.mde = null;
         }
     }

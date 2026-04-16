@@ -25,6 +25,24 @@ export default {
             component: () => import('@/pages/sys/user')
         },
         {
+            path: 'member',
+            name: `${pre}member`,
+            meta: {
+                ...meta,
+                title: '会员管理'
+            },
+            component: () => import('@/pages/sys/member')
+        },
+        {
+            path: 'business-type',
+            name: `${pre}business-type`,
+            meta: {
+                ...meta,
+                title: '类型管理'
+            },
+            component: () => import('@/pages/sys/business-type')
+        },
+        {
             path: 'menu',
             name: `${pre}menu`,
             meta: {

@@ -20,7 +20,7 @@ module.exports = {
         // 若需指向其它环境，可临时改为 https://your-domain 并保留 pathRewrite 无
         proxy: {
             '/api': {
-                target: process.env.VUE_APP_PROXY_TARGET || 'http://127.0.0.1:8080',
+                target: process.env.VUE_APP_PROXY_TARGET || 'https://xiazhiyong.vip',
                 changeOrigin: true,
                 secure: false
             }

@@ -2,39 +2,222 @@ import request from '@/plugins/request';
 
 /* ========== 用户管理（管理员）========== */
 
-export function listUsers () {
+export function listAdminUsers () {
     return request({
-        url: '/admin/users',
+        url: '/admin/admin-users',
         method: 'get'
     });
 }
 
 /** @deprecated 旧物业接口名；现等价于拉取全量用户后由前端筛选分页 */
 export function GetUserList () {
-    return listUsers();
+    return listAdminUsers();
 }
 
-export function updateUserRoles (userId, data) {
+export function createAdminUser (data) {
     return request({
-        url: `/admin/users/${userId}/roles`,
+        url: '/admin/admin-users',
+        method: 'post',
+        data
+    });
+}
+
+export function updateAdminUser (userId, data) {
+    return request({
+        url: `/admin/admin-users/${userId}`,
         method: 'put',
         data
     });
 }
 
-export function auditUser (userId, auditRequest) {
+export function updateAdminUserRoles (userId, data) {
     return request({
-        url: `/admin/users/${userId}/audit`,
+        url: `/admin/admin-users/${userId}/roles`,
         method: 'put',
-        data: auditRequest
+        data
     });
 }
 
-export function listUserAuditRecords (userId) {
+export function updateAdminUserStatus (userId, data) {
     return request({
-        url: `/admin/users/${userId}/audit-records`,
+        url: `/admin/admin-users/${userId}/status`,
+        method: 'put',
+        data
+    });
+}
+
+export function resetAdminUserPassword (userId, data) {
+    return request({
+        url: `/admin/admin-users/${userId}/password`,
+        method: 'put',
+        data
+    });
+}
+
+// 兼容旧方法名
+export const listUsers = listAdminUsers;
+export const updateUserRoles = updateAdminUserRoles;
+
+/* ========== 会员管理 ========== */
+
+export function listMembers () {
+    return request({
+        url: '/admin/members',
         method: 'get'
     });
+}
+
+export function getMemberDetail (memberId) {
+    return request({
+        url: `/admin/members/${memberId}`,
+        method: 'get'
+    });
+}
+
+export function createMember (data) {
+    return request({
+        url: '/admin/members',
+        method: 'post',
+        data
+    });
+}
+
+export function updateMember (memberId, data) {
+    return request({
+        url: `/admin/members/${memberId}`,
+        method: 'put',
+        data
+    });
+}
+
+export function updateMemberDownloadAccess (memberId, data) {
+    return request({
+        url: `/admin/members/${memberId}/download-access`,
+        method: 'put',
+        data
+    });
+}
+
+export function updateMemberStatus (memberId, data) {
+    return request({
+        url: `/admin/members/${memberId}/status`,
+        method: 'put',
+        data
+    });
+}
+
+export function resetMemberPassword (memberId, data) {
+    return request({
+        url: `/admin/members/${memberId}/password`,
+        method: 'put',
+        data
+    });
+}
+
+export function listBusinessTypeOptions () {
+    return request({
+        url: '/admin/business-types/options',
+        method: 'get'
+    });
+}
+
+export function listBusinessTypes () {
+    return request({
+        url: '/admin/business-types',
+        method: 'get'
+    });
+}
+
+export function createBusinessType (data) {
+    return request({
+        url: '/admin/business-types',
+        method: 'post',
+        data
+    });
+}
+
+export function updateBusinessType (businessTypeId, data) {
+    return request({
+        url: `/admin/business-types/${businessTypeId}`,
+        method: 'put',
+        data
+    });
+}
+
+export function updateBusinessTypeStatus (businessTypeId, data) {
+    return request({
+        url: `/admin/business-types/${businessTypeId}/status`,
+        method: 'put',
+        data
+    });
+}
+
+export function deleteBusinessType (businessTypeId) {
+    return request({
+        url: `/admin/business-types/${businessTypeId}`,
+        method: 'delete'
+    });
+}
+
+/* ========== 招标管理 ========== */
+
+export function listTenders (params) {
+    return request({
+        url: '/admin/tenders',
+        method: 'get',
+        params
+    });
+}
+
+export function getTenderDetail (tenderId) {
+    return request({
+        url: `/admin/tenders/${tenderId}`,
+        method: 'get'
+    });
+}
+
+export function createTender (data) {
+    return request({
+        url: '/admin/tenders',
+        method: 'post',
+        data
+    });
+}
+
+export function updateTender (tenderId, data) {
+    return request({
+        url: `/admin/tenders/${tenderId}`,
+        method: 'put',
+        data
+    });
+}
+
+export function deleteTender (tenderId) {
+    return request({
+        url: `/admin/tenders/${tenderId}`,
+        method: 'delete'
+    });
+}
+
+export function uploadTenderFiles (files) {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return request({
+        url: '/admin/files/upload',
+        method: 'post',
+        data: formData,
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
+export function auditUser () {
+    return Promise.reject(new Error('管理员账号不支持审核，请使用状态接口 updateAdminUserStatus'));
+}
+
+export function listUserAuditRecords () {
+    return Promise.resolve([]);
 }
 
 /* ========== 角色 ========== */
