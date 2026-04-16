@@ -71,6 +71,8 @@
         </template>
         <template slot="action" slot-scope="{ row }">
           <div @click.stop.prevent>
+            <a @click="handleEdit(row)">编辑</a>
+            <Divider type="vertical" />
             <a @click="toggleStatus(row)">{{ row.status === 'ENABLED' ? '禁用' : '启用' }}</a>
             <Divider type="vertical" />
             <a @click="toggleDownload(row)">{{ row.canDownloadFile ? '关闭下载' : '开启下载' }}</a>
@@ -95,7 +97,7 @@
 
       <Modal
         v-model="modal.show"
-        title="新增会员"
+        :title="modal.type === 'add' ? '新增会员' : '编辑会员'"
         width="620"
         :before-close="handleCloseModal"
         :transfer="false"
@@ -104,7 +106,7 @@
           <Row :gutter="16">
             <Col span="12">
               <FormItem label="用户名" prop="username">
-                <Input v-model="formData.username" placeholder="请输入用户名" />
+                <Input v-model="formData.username" :disabled="modal.type === 'edit'" placeholder="请输入用户名" />
               </FormItem>
             </Col>
             <Col span="12">
@@ -147,12 +149,12 @@
           <Row :gutter="16">
             <Col span="12">
               <FormItem label="密码" prop="password">
-                <Input v-model="formData.password" type="password" placeholder="请输入密码（6-32位）" />
+                <Input v-model="formData.password" type="password" :placeholder="modal.type === 'add' ? '请输入密码（6-32位）' : '编辑时无需填写密码'" />
               </FormItem>
             </Col>
             <Col span="12">
               <FormItem label="确认密码" prop="confirmPassword">
-                <Input v-model="formData.confirmPassword" type="password" placeholder="请再次输入密码" />
+                <Input v-model="formData.confirmPassword" type="password" :placeholder="modal.type === 'add' ? '请再次输入密码' : '编辑时无需填写确认密码'" />
               </FormItem>
             </Col>
           </Row>
@@ -195,6 +197,8 @@
     import {
         listMembers,
         createMember,
+        updateMember,
+        getMemberDetail,
         listBusinessTypeOptions,
         updateMemberStatus,
         updateMemberDownloadAccess,
@@ -217,9 +221,11 @@
                 resetPasswordValue: '',
                 businessTypeOptions: [],
                 modal: {
-                    show: false
+                    show: false,
+                    type: 'add'
                 },
                 formData: {
+                    id: null,
                     username: '',
                     phone: '',
                     email: '',
@@ -253,13 +259,33 @@
                         { pattern: /^[0-9A-Z]{18}$/, message: '统一社会信用代码格式不正确', trigger: 'blur' }
                     ],
                     password: [
-                        { required: true, message: '请输入密码', trigger: 'blur' },
+                        {
+                            validator: (rule, value, callback) => {
+                                if (this.modal.type === 'edit') {
+                                    callback();
+                                    return;
+                                }
+                                if (!value) {
+                                    callback(new Error('请输入密码'));
+                                    return;
+                                }
+                                callback();
+                            },
+                            trigger: 'blur'
+                        },
                         { min: 6, max: 32, message: '密码长度需在6-32位之间', trigger: 'blur' }
                     ],
                     confirmPassword: [
-                        { required: true, message: '请输入确认密码', trigger: 'blur' },
                         {
                             validator: (rule, value, callback) => {
+                                if (this.modal.type === 'edit') {
+                                    callback();
+                                    return;
+                                }
+                                if (!value) {
+                                    callback(new Error('请输入确认密码'));
+                                    return;
+                                }
                                 if (value !== this.formData.password) {
                                     callback(new Error('两次输入密码不一致'));
                                     return;
@@ -280,7 +306,7 @@
                     { title: '业务类型', slot: 'businessTypes', minWidth: 180, show: true },
                     { title: '下载权限', slot: 'download', minWidth: 100, show: true },
                     { title: '状态', slot: 'status', minWidth: 100, show: true },
-                    { title: '操作', slot: 'action', minWidth: 240, align: 'center', fixed: 'right', show: true }
+                    { title: '操作', slot: 'action', minWidth: 280, align: 'center', fixed: 'right', show: true }
                 ]
             };
         },
@@ -337,6 +363,7 @@
             },
             handleAdd () {
                 this.formData = {
+                    id: null,
                     username: '',
                     phone: '',
                     email: '',
@@ -350,11 +377,42 @@
                     canDownloadFile: false,
                     status: 'ENABLED'
                 };
-                this.modal.show = true;
+                this.modal = {
+                    show: true,
+                    type: 'add'
+                };
                 this.$nextTick(() => {
                     if (this.$refs.memberForm) {
                         this.$refs.memberForm.resetFields();
                     }
+                });
+            },
+            handleEdit (row) {
+                getMemberDetail(row.id).then(res => {
+                    this.formData = {
+                        id: res.id,
+                        username: res.username || '',
+                        phone: res.phone || '',
+                        email: res.email || '',
+                        companyName: res.companyName || '',
+                        contactPerson: res.contactPerson || '',
+                        unifiedSocialCreditCode: res.unifiedSocialCreditCode || '',
+                        realName: res.realName || '',
+                        password: '',
+                        confirmPassword: '',
+                        businessTypeIds: Array.isArray(res.businessTypes) ? res.businessTypes.map(item => item.id) : [],
+                        canDownloadFile: !!res.canDownloadFile,
+                        status: res.status || 'ENABLED'
+                    };
+                    this.modal = {
+                        show: true,
+                        type: 'edit'
+                    };
+                    this.$nextTick(() => {
+                        if (this.$refs.memberForm) {
+                            this.$refs.memberForm.clearValidate();
+                        }
+                    });
                 });
             },
             handleCloseModal () {
@@ -364,23 +422,34 @@
                 this.$refs.memberForm.validate(valid => {
                     if (!valid) return;
                     this.submitting = true;
-                    createMember({
-                        username: this.formData.username,
-                        phone: this.formData.phone,
-                        email: this.formData.email,
-                        companyName: this.formData.companyName,
-                        contactPerson: this.formData.contactPerson,
-                        unifiedSocialCreditCode: this.formData.unifiedSocialCreditCode,
-                        realName: this.formData.realName,
-                        password: this.formData.password,
-                        confirmPassword: this.formData.confirmPassword,
-                        businessTypeIds: this.formData.businessTypeIds,
-                        canDownloadFile: this.formData.canDownloadFile,
-                        status: this.formData.status
-                    }).then(() => {
+                    const request = this.modal.type === 'add'
+                        ? createMember({
+                            username: this.formData.username,
+                            phone: this.formData.phone,
+                            email: this.formData.email,
+                            companyName: this.formData.companyName,
+                            contactPerson: this.formData.contactPerson,
+                            unifiedSocialCreditCode: this.formData.unifiedSocialCreditCode,
+                            realName: this.formData.realName,
+                            password: this.formData.password,
+                            confirmPassword: this.formData.confirmPassword,
+                            businessTypeIds: this.formData.businessTypeIds,
+                            canDownloadFile: this.formData.canDownloadFile,
+                            status: this.formData.status
+                        })
+                        : updateMember(this.formData.id, {
+                            phone: this.formData.phone,
+                            email: this.formData.email,
+                            companyName: this.formData.companyName,
+                            contactPerson: this.formData.contactPerson,
+                            unifiedSocialCreditCode: this.formData.unifiedSocialCreditCode,
+                            realName: this.formData.realName,
+                            businessTypeIds: this.formData.businessTypeIds
+                    });
+                    request.then(() => {
                         this.submitting = false;
                         this.modal.show = false;
-                        this.$Message.success('新增会员成功');
+                        this.$Message.success(this.modal.type === 'add' ? '新增会员成功' : '编辑会员成功');
                         this.current = 1;
                         this.getData();
                     }).catch(() => {

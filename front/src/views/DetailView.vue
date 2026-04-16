@@ -1,10 +1,12 @@
 <template>
   <div class="detail-page">
-    <p v-if="!item" class="not-found">未找到该公告，<router-link to="/list">返回列表</router-link></p>
+    <p v-if="loading" class="not-found">正在加载公告详情...</p>
+    <p v-else-if="error" class="not-found">{{ error }}，<router-link to="/list">返回列表</router-link></p>
+    <p v-else-if="!item" class="not-found">未找到该公告，<router-link to="/list">返回列表</router-link></p>
 
     <template v-else>
       <nav class="crumb">
-        <router-link to="/">首页</router-link>
+        <router-link to="/home">首页</router-link>
         <span aria-hidden="true">/</span>
         <router-link to="/list">招标公告</router-link>
         <span aria-hidden="true">/</span>
@@ -36,16 +38,20 @@
             <dd>{{ formatDate(item.deadline) }}</dd>
           </div>
         </dl>
-        <section v-if="item.attachment" class="block download-block">
+        <section v-if="item.attachments && item.attachments.length" class="block download-block">
           <h2>文件下载</h2>
-          <p class="download-desc">招标文件及相关资料（演示为文本样例，正式环境可替换为 PDF 等）。</p>
-          <a
-            class="btn-download"
-            :href="item.attachment.url"
-            :download="item.attachment.fileName"
-          >
-            ⬇ 下载招标文件
-          </a>
+          <p class="download-desc">招标文件及相关资料下载。</p>
+          <div class="download-list">
+            <button
+              v-for="file in item.attachments"
+              :key="file.attachmentId"
+              class="btn-download"
+              type="button"
+              @click="handleDownload(file)"
+            >
+              ⬇ {{ file.fileName || `附件-${file.attachmentId}` }}
+            </button>
+          </div>
         </section>
         <section class="block">
           <h2>项目简介</h2>
@@ -62,13 +68,39 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { getTenderById } from '@/data/tenders'
+import { downloadPortalAttachment, getPortalTenderDetail } from '@/api/portal'
 import { formatDate } from '@/utils/format'
 
 const route = useRoute()
-const item = computed(() => getTenderById(route.params.id))
+const loading = ref(false)
+const error = ref('')
+const item = ref(null)
+
+async function loadDetail() {
+  loading.value = true
+  error.value = ''
+  try {
+    item.value = await getPortalTenderDetail(route.params.id)
+  } catch (e) {
+    error.value = (e && e.message) || '加载详情失败'
+    item.value = null
+  } finally {
+    loading.value = false
+  }
+}
+
+async function handleDownload(file) {
+  if (!item.value || !file) return
+  try {
+    await downloadPortalAttachment(item.value.id, file.attachmentId, file.fileName || '')
+  } catch (e) {
+    window.alert((e && e.message) || '下载失败，请稍后重试')
+  }
+}
+
+onMounted(loadDetail)
 </script>
 
 <style scoped>
@@ -214,6 +246,12 @@ h1 {
   font-weight: 500;
   border: none;
   box-shadow: 0 2px 8px rgba(26, 95, 180, 0.25);
+}
+
+.download-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.65rem;
 }
 
 .btn-download:hover {

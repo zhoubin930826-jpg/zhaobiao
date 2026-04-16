@@ -1,18 +1,11 @@
 import { reactive, computed } from 'vue'
+import { getPortalProfile, portalLogin } from '@/api/portal'
 
 const STORAGE_KEY = 'zb_portal_auth'
 
-/** 未登录时首页「最新」条数 */
-export const GUEST_HOME_LATEST = 1
-/** 未登录时列表最多展示条数 */
-export const GUEST_LIST_LIMIT = 2
-
-/** 演示账号（正式环境请改为对接后端登录接口） */
-const DEMO_USER = 'demo'
-const DEMO_PASS = 'demo123'
-
 export const authState = reactive({
   token: null,
+  tokenType: 'Bearer',
   username: null
 })
 
@@ -20,7 +13,11 @@ function persist() {
   if (authState.token) {
     localStorage.setItem(
       STORAGE_KEY,
-      JSON.stringify({ token: authState.token, username: authState.username })
+      JSON.stringify({
+        token: authState.token,
+        tokenType: authState.tokenType || 'Bearer',
+        username: authState.username
+      })
     )
   } else {
     localStorage.removeItem(STORAGE_KEY)
@@ -34,6 +31,7 @@ export function initAuth() {
     const p = JSON.parse(raw)
     if (p && p.token) {
       authState.token = p.token
+      authState.tokenType = p.tokenType || 'Bearer'
       authState.username = p.username || '用户'
     }
   } catch (_) {
@@ -57,16 +55,29 @@ export function useAuth() {
   }
 }
 
-export function login(username, password) {
+export async function login(username, password) {
   const u = String(username || '').trim()
   const p = String(password || '')
-  if (u === DEMO_USER && p === DEMO_PASS) {
-    authState.token = 'demo-token'
-    authState.username = u
-    persist()
-    return { ok: true }
+  if (!u || !p) {
+    return { ok: false, message: '请输入用户名和密码' }
   }
-  return { ok: false, message: '账号或密码错误（演示账号：demo / demo123）' }
+  try {
+    const res = await portalLogin(u, p)
+    authState.token = res.token || ''
+    authState.tokenType = res.tokenType || 'Bearer'
+    authState.username = (res.user && res.user.username) || u
+    persist()
+    try {
+      const profile = await getPortalProfile()
+      authState.username = profile.username || authState.username
+      persist()
+    } catch (_) {
+      // 忽略拉取用户信息失败，保持登录状态
+    }
+    return { ok: true }
+  } catch (error) {
+    return { ok: false, message: error && error.message ? error.message : '登录失败' }
+  }
 }
 
 export function logout() {

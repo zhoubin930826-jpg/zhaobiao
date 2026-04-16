@@ -1,7 +1,6 @@
 <template>
   <footer class="footer">
     <div class="inner">
-      <p>本站为招投标信息展示演示站点，数据为示例，正式环境请对接后端接口。</p>
       <p class="muted">© {{ year }} 招投标信息公示</p>
     </div>
   </footer>

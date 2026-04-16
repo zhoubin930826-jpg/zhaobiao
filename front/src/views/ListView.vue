@@ -2,10 +2,7 @@
   <div class="list-page">
     <header class="page-title">
       <h1>招标公告</h1>
-      <p>
-        按类型、地区与关键词筛选（演示数据）。
-        <template v-if="!isLoggedIn">未登录仅展示前 {{ GUEST_LIST_LIMIT }} 条，详情需登录查看。</template>
-      </p>
+      <p>按类型、地区与关键词筛选，数据来自门户招标接口。</p>
     </header>
 
     <div class="filters card-surface">
@@ -32,35 +29,67 @@
       <button type="button" class="reset" @click="reset">重置</button>
     </div>
 
-    <p v-if="!filtered.length" class="empty">暂无符合条件的公告。</p>
+    <p v-if="loading" class="empty">正在加载公告...</p>
+    <p v-else-if="error" class="empty">{{ error }}</p>
+    <p v-else-if="!filtered.length" class="empty">暂无符合条件的公告。</p>
     <div v-else class="grid">
-      <TenderCard v-for="item in visibleList" :key="item.id" :item="item" />
-    </div>
-
-    <div v-if="hiddenCount > 0" class="unlock card-surface">
-      <p>
-        还有 <strong>{{ hiddenCount }}</strong> 条符合条件的公告未展示。
-        <router-link :to="{ name: 'login', query: { redirect: route.fullPath } }">登录</router-link>
-        后可查看完整列表并阅读公告详情。
-      </p>
+      <TenderCard v-for="item in filtered" :key="item.id" :item="item" />
     </div>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TenderCard from '@/components/TenderCard.vue'
-import { filterTenders, tenderCategories, tenderRegions } from '@/data/tenders'
-import { GUEST_LIST_LIMIT, useAuth } from '@/auth'
+import { listPortalTenders } from '@/api/portal'
+import { useAuth } from '@/auth'
 
 const route = useRoute()
 const router = useRouter()
 const { isLoggedIn } = useAuth()
+const loading = ref(false)
+const error = ref('')
+const tenders = ref([])
+const tenderCategories = ref([{ value: '', label: '全部类型' }])
+const tenderRegions = ref([{ value: '', label: '全部地区' }])
 
 const category = ref(route.query.category || '')
 const region = ref(route.query.region || '')
 const keyword = ref(route.query.q || '')
+
+async function loadList() {
+  loading.value = true
+  error.value = ''
+  try {
+    const res = await listPortalTenders({
+      pageNum: 1,
+      pageSize: 100,
+      keyword: keyword.value || undefined,
+      region: region.value || undefined
+    })
+    tenders.value = Array.isArray(res.list) ? res.list : []
+    const categorySet = new Set()
+    const regionSet = new Set()
+    tenders.value.forEach(item => {
+      if (item.category) categorySet.add(item.category)
+      if (item.region && item.region !== '-') regionSet.add(item.region)
+    })
+    tenderCategories.value = [
+      { value: '', label: '全部类型' },
+      ...Array.from(categorySet).map(name => ({ value: name, label: name }))
+    ]
+    tenderRegions.value = [
+      { value: '', label: '全部地区' },
+      ...Array.from(regionSet).map(name => ({ value: name, label: name }))
+    ]
+  } catch (e) {
+    error.value = (e && e.message) || '加载公告失败'
+    tenders.value = []
+  } finally {
+    loading.value = false
+  }
+}
 
 function syncQuery() {
   const q = {}
@@ -72,31 +101,24 @@ function syncQuery() {
 
 watch([category, region, keyword], () => {
   syncQuery()
+  loadList()
 })
 
 const filtered = computed(() =>
-  filterTenders({
-    category: category.value,
-    region: region.value,
-    keyword: keyword.value
-  })
+  tenders.value.filter(item => !category.value || item.category === category.value)
 )
-
-const visibleList = computed(() => {
-  if (isLoggedIn.value) return filtered.value
-  return filtered.value.slice(0, GUEST_LIST_LIMIT)
-})
-
-const hiddenCount = computed(() => {
-  if (isLoggedIn.value) return 0
-  return Math.max(0, filtered.value.length - GUEST_LIST_LIMIT)
-})
 
 function reset() {
   category.value = ''
   region.value = ''
   keyword.value = ''
 }
+
+onMounted(() => {
+  if (isLoggedIn.value) {
+    loadList()
+  }
+})
 </script>
 
 <style scoped>
@@ -185,24 +207,4 @@ function reset() {
   border: 1px dashed var(--border);
 }
 
-.unlock {
-  margin-top: 1.25rem;
-  padding: 1rem 1.25rem;
-  border-left: 4px solid var(--color-primary);
-}
-
-.unlock p {
-  margin: 0;
-  font-size: 0.92rem;
-  color: var(--text-muted);
-  line-height: 1.55;
-}
-
-.unlock strong {
-  color: var(--text);
-}
-
-.unlock a {
-  font-weight: 600;
-}
 </style>

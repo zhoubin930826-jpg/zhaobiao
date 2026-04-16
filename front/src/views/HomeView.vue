@@ -9,7 +9,7 @@
           登录解锁全部
         </router-link>
       </div>
-      <p v-if="!isLoggedIn" class="hero-note">未登录时首页仅展示 {{ GUEST_HOME_LATEST }} 条预览，列表最多 {{ GUEST_LIST_LIMIT }} 条；公告详情需登录。</p>
+      <p v-if="!isLoggedIn" class="hero-note">请先登录后浏览招标列表与公告详情。</p>
     </section>
 
     <section class="section">
@@ -25,7 +25,7 @@
     <section class="highlights">
       <div class="box">
         <strong>{{ isLoggedIn ? stats.total : '—' }}</strong>
-        <span>{{ isLoggedIn ? '条示例公告' : '条公告总数（登录后可见数字）' }}</span>
+        <span>{{ isLoggedIn ? '条公告' : '条公告总数（登录后可见）' }}</span>
       </div>
       <div class="box">
         <strong>{{ isLoggedIn ? stats.open : '—' }}</strong>
@@ -40,23 +40,33 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import TenderCard from '@/components/TenderCard.vue'
-import { tenders } from '@/data/tenders'
-import { GUEST_HOME_LATEST, GUEST_LIST_LIMIT, useAuth } from '@/auth'
+import { listPortalTenders } from '@/api/portal'
+import { useAuth } from '@/auth'
 
 const { isLoggedIn } = useAuth()
+const list = ref([])
 
 const latest = computed(() => {
-  const sorted = [...tenders].sort((a, b) => new Date(b.publishAt) - new Date(a.publishAt))
-  const limit = isLoggedIn.value ? 3 : GUEST_HOME_LATEST
-  return sorted.slice(0, limit)
+  const sorted = [...list.value].sort((a, b) => new Date(b.publishAt) - new Date(a.publishAt))
+  return sorted.slice(0, 3)
 })
 
 const stats = computed(() => ({
-  total: tenders.length,
-  open: tenders.filter((t) => t.status === '进行中').length
+  total: list.value.length,
+  open: list.value.filter((t) => t.status === '进行中').length
 }))
+
+onMounted(async () => {
+  if (!isLoggedIn.value) return
+  try {
+    const res = await listPortalTenders({ pageNum: 1, pageSize: 100 })
+    list.value = Array.isArray(res.list) ? res.list : []
+  } catch (_) {
+    list.value = []
+  }
+})
 </script>
 
 <style scoped>

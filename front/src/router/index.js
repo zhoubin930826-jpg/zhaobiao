@@ -4,15 +4,19 @@ import { isLoggedIn } from '@/auth'
 const routes = [
   {
     path: '/',
+    redirect: () => (isLoggedIn() ? '/list' : '/login')
+  },
+  {
+    path: '/home',
     name: 'home',
     component: () => import('@/views/HomeView.vue'),
-    meta: { title: '首页' }
+    meta: { title: '首页', requiresAuth: true }
   },
   {
     path: '/list',
     name: 'list',
     component: () => import('@/views/ListView.vue'),
-    meta: { title: '招标公告' }
+    meta: { title: '招标公告', requiresAuth: true }
   },
   {
     path: '/login',
@@ -37,6 +41,10 @@ const router = createRouter({
 })
 
 router.beforeEach((to) => {
+  if (to.name === 'login' && isLoggedIn()) {
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/list'
+    return redirect.startsWith('/') ? redirect : '/list'
+  }
   if (to.meta.requiresAuth && !isLoggedIn()) {
     return {
       name: 'login',

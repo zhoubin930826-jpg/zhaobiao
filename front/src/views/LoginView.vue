@@ -2,7 +2,7 @@
   <div class="login-page">
     <div class="panel card-surface">
       <h1>登录</h1>
-      <p class="hint">登录后可查看完整招标列表与公告详情。</p>
+      <p class="hint">请先登录会员账号，登录后即可查看招标公告与附件下载。</p>
 
       <form class="form" @submit.prevent="onSubmit">
         <label class="field">
@@ -25,8 +25,7 @@
         </button>
       </form>
 
-      <p class="demo">演示账号：<code>demo</code> / <code>demo123</code></p>
-      <router-link to="/" class="back">← 返回首页</router-link>
+      <router-link to="/" class="back">← 返回入口</router-link>
     </div>
   </div>
 </template>
@@ -55,11 +54,11 @@ watch(
   { immediate: true }
 )
 
-function onSubmit() {
+async function onSubmit() {
   error.value = ''
   loading.value = true
   try {
-    const res = doLogin(username.value, password.value)
+    const res = await doLogin(username.value, password.value)
     if (!res.ok) {
       error.value = res.message || '登录失败'
     }
@@ -146,19 +145,6 @@ function onSubmit() {
 .submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
-}
-
-.demo {
-  margin: 1.25rem 0 0;
-  font-size: 0.8rem;
-  color: var(--text-muted);
-}
-
-.demo code {
-  font-size: 0.85em;
-  padding: 0.1rem 0.35rem;
-  background: #f1f5f9;
-  border-radius: 4px;
 }
 
 .back {
