@@ -151,6 +151,12 @@ CREATE DATABASE zhaobiao_admin DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_gen
 - `APP_JWT_SECRET`
 - `APP_BOOTSTRAP_ADMIN_PASSWORD`
 
+生产环境额外要求:
+
+- 设置 `SPRING_PROFILES_ACTIVE=prod`
+- 必须显式配置 `MYSQL_USER` 和 `MYSQL_PASSWORD`
+- `prod` 环境禁止使用 `root` 作为数据库账号，也禁止继续使用默认密码 `root`
+
 默认配置文件见 [application.yml](D:/work/workspace/zhaobiao/src/main/resources/application.yml)。
 
 ### 3. 启动后端

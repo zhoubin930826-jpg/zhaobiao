@@ -39,12 +39,14 @@ target/zhaobiao-admin-0.0.1-SNAPSHOT.jar
 后端运行时会读取这些环境变量：
 
 ```text
+SPRING_PROFILES_ACTIVE
 MYSQL_HOST
 MYSQL_PORT
 MYSQL_DB
 MYSQL_USER
 MYSQL_PASSWORD
 APP_JWT_SECRET
+APP_BOOTSTRAP_ADMIN_PASSWORD
 ```
 
 ## 3. 登录服务器
@@ -306,18 +308,23 @@ scp target/zhaobiao-admin-0.0.1-SNAPSHOT.jar ubuntu@123.123.123.123:/opt/zhaobia
 ```bash
 cd /opt/zhaobiao/app
 cat > app.env <<'EOF'
+SPRING_PROFILES_ACTIVE=prod
 MYSQL_HOST=127.0.0.1
 MYSQL_PORT=3306
 MYSQL_DB=zhaobiao_admin
 MYSQL_USER=zb_app
 MYSQL_PASSWORD=YourAppPassword123!
 APP_JWT_SECRET=ChangeThisToAVeryLongRandomSecretValue123456789
+APP_BOOTSTRAP_ADMIN_PASSWORD=ChangeThisInitialAdminPassword123!
 EOF
 ```
 
 建议：
 
+- 生产环境使用 `prod` profile 启动，这样会启用启动期安全校验
 - `APP_JWT_SECRET` 要尽量长、足够随机，不要和其他项目共用
+- `APP_BOOTSTRAP_ADMIN_PASSWORD` 只用于首次创建 `admin` 超级管理员
+- `prod` 环境下如果仍使用 `root` 数据库账号，或者数据库密码仍为默认值 `root`，后端会直接启动失败
 - 不要把 `app.env` 提交进 Git 仓库
 
 ## 11. 先手动启动一次后端
@@ -361,7 +368,7 @@ http://your_server_ip:8080/swagger-ui.html
 
 ```text
 username: admin
-password: adminqwert
+password: 首次启动时由 APP_BOOTSTRAP_ADMIN_PASSWORD 提供
 ```
 
 ## 13. 将后端配置为 systemd 服务
