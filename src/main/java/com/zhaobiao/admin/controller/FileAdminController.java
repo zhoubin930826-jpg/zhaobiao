@@ -3,7 +3,7 @@ package com.zhaobiao.admin.controller;
 import com.zhaobiao.admin.common.ApiResponse;
 import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.logging.OperationLogRecord;
-import com.zhaobiao.admin.service.LocalFileStorageService;
+import com.zhaobiao.admin.service.FileStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,10 +22,10 @@ import java.util.List;
 @PreAuthorize("hasRole('ADMIN')")
 public class FileAdminController {
 
-    private final LocalFileStorageService localFileStorageService;
+    private final FileStorageService fileStorageService;
 
-    public FileAdminController(LocalFileStorageService localFileStorageService) {
-        this.localFileStorageService = localFileStorageService;
+    public FileAdminController(FileStorageService fileStorageService) {
+        this.fileStorageService = fileStorageService;
     }
 
     @Operation(summary = "上传招标附件")
@@ -33,6 +33,6 @@ public class FileAdminController {
     @OperationLogRecord(module = "招标管理", action = "上传招标附件")
     @PostMapping("/upload")
     public ApiResponse<List<FileUploadResponse>> upload(@RequestParam("files") MultipartFile[] files) {
-        return ApiResponse.success(localFileStorageService.store(Arrays.asList(files)));
+        return ApiResponse.success(fileStorageService.store(Arrays.asList(files)));
     }
 }

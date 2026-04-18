@@ -23,6 +23,7 @@ app:
   bootstrap:
     admin-password: adminqwert
   file:
+    type: local
     storage-path: ./.test-uploads/files
     temp-path: ./.test-uploads/tmp
 
