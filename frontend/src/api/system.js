@@ -206,6 +206,7 @@ export function uploadTenderFiles (files) {
         url: '/admin/files/upload',
         method: 'post',
         data: formData,
+        timeout: 120000,
         headers: {
             'Content-Type': 'multipart/form-data'
         }

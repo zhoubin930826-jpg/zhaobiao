@@ -62,7 +62,7 @@
       <Modal
         v-model="modal.show"
         :title="modal.type === 'add' ? '新增招标' : '编辑招标'"
-        width="760"
+        width="920"
         :transfer="false"
       >
         <Form ref="tenderForm" :model="formData" :rules="formRules" label-position="top">
@@ -168,10 +168,14 @@
             </Col>
           </Row>
           <FormItem label="正文" prop="content">
-            <i-mde
+            <i-quill-editor
+              v-if="modal.show"
+              :key="'tender-editor-' + tenderEditorKey"
               v-model="formData.content"
-              :config="mdeConfig"
               border
+              :min-height="280"
+              placeholder="请输入招标正文（富文本），支持标题、列表、引用、链接等"
+              @on-change="handleContentEditorChange"
             />
           </FormItem>
           <FormItem label="附件上传">
@@ -210,7 +214,7 @@
 </template>
 
 <script>
-    import IMde from '@/components/mde';
+    import IQuillEditor from '@/components/quill-editor';
     import {
         listTenders,
         getTenderDetail,
@@ -224,7 +228,7 @@
     export default {
         name: 'system-tender',
         components: {
-            IMde
+            IQuillEditor
         },
         data () {
             const toDate = (value) => {
@@ -284,6 +288,22 @@
                 }
                 callback();
             };
+            const stripEditorText = (html) => {
+                if (!html) return '';
+                if (typeof document === 'undefined') {
+                    return String(html).replace(/<[^>]+>/g, '').trim();
+                }
+                const div = document.createElement('div');
+                div.innerHTML = html;
+                return (div.textContent || '').replace(/\u00a0/g, ' ').trim();
+            };
+            const validateContent = (rule, value, callback) => {
+                if (!stripEditorText(value)) {
+                    callback(new Error('请输入正文'));
+                    return;
+                }
+                callback();
+            };
             return {
                 loading: false,
                 submitting: false,
@@ -297,10 +317,7 @@
                     businessTypeId: undefined
                 },
                 businessTypeOptions: [],
-                mdeConfig: {
-                    spellChecker: false,
-                    placeholder: '请输入招标正文内容'
-                },
+                tenderEditorKey: 0,
                 regionOptions: ['北京', '上海', '广东', '浙江', '江苏', '山东', '四川', '湖北', '福建', '湖南'],
                 columns: [
                     { title: '标题', key: 'title', minWidth: 220 },
@@ -339,7 +356,7 @@
                     region: [{ required: true, message: '请选择地区', trigger: 'change' }],
                     businessTypeId: [{ validator: validateBusinessTypeId, trigger: 'change' }],
                     publishAt: [{ validator: validatePublishAt, trigger: 'change' }],
-                    content: [{ required: true, message: '请输入正文', trigger: 'change' }],
+                    content: [{ validator: validateContent, trigger: 'change' }],
                     contactPerson: [{ required: true, message: '请输入联系人', trigger: 'blur' }],
                     budget: [{ required: true, message: '请输入预算', trigger: 'blur' }],
                     contactPhone: [{ required: true, message: '请输入联系方式', trigger: 'blur' }],
@@ -355,9 +372,30 @@
             this.getData();
         },
         methods: {
+            apiErrorMessage (err) {
+                if (!err) return '';
+                const data = err.response && err.response.data;
+                if (data && typeof data.message === 'string' && data.message) {
+                    return data.message;
+                }
+                if (typeof err.message === 'string' && err.message) {
+                    return err.message;
+                }
+                return '';
+            },
+            handleContentEditorChange () {
+                this.$nextTick(() => {
+                    if (this.$refs.tenderForm) {
+                        this.$refs.tenderForm.validateField('content');
+                    }
+                });
+            },
             loadBusinessTypeOptions () {
                 listBusinessTypeOptions().then(res => {
                     this.businessTypeOptions = Array.isArray(res) ? res : [];
+                }).catch(err => {
+                    const msg = this.apiErrorMessage(err);
+                    if (msg) this.$Message.error(msg);
                 });
             },
             getData () {
@@ -370,10 +408,13 @@
                     businessTypeId: this.query.businessTypeId || undefined
                 }).then(res => {
                     this.list = res && Array.isArray(res.list) ? res.list : [];
-                    this.total = res && typeof res.total === 'number' ? res.total : 0;
+                    const rawTotal = res && res.total;
+                    this.total = typeof rawTotal === 'number' ? rawTotal : Number(rawTotal) || 0;
                     this.loading = false;
-                }).catch(() => {
+                }).catch(err => {
                     this.loading = false;
+                    const msg = this.apiErrorMessage(err);
+                    if (msg) this.$Message.error(msg);
                 });
             },
             handleSearch () {
@@ -403,6 +444,7 @@
                 });
             },
             handleAdd () {
+                this.tenderEditorKey += 1;
                 this.modal = { show: true, type: 'add' };
                 this.formData = {
                     id: null,
@@ -426,6 +468,7 @@
             },
             handleEdit (row) {
                 getTenderDetail(row.id).then(res => {
+                    this.tenderEditorKey += 1;
                     this.modal = { show: true, type: 'edit' };
                     this.formData = {
                         id: res.id,
@@ -448,6 +491,9 @@
                         ? res.attachments.map(item => ({ fileId: item.fileId, fileName: item.fileName, localUrl: '' }))
                         : [];
                     this.$nextTick(() => this.$refs.tenderForm && this.$refs.tenderForm.clearValidate());
+                }).catch(err => {
+                    const msg = this.apiErrorMessage(err);
+                    if (msg) this.$Message.error(msg);
                 });
             },
             handleSubmit () {
@@ -473,13 +519,16 @@
                     const req = this.modal.type === 'add'
                         ? createTender(payload)
                         : updateTender(this.formData.id, payload);
+                    const wasAdd = this.modal.type === 'add';
                     req.then(() => {
                         this.submitting = false;
                         this.modal.show = false;
-                        this.$Message.success(this.modal.type === 'add' ? '新增招标成功' : '更新招标成功');
+                        this.$Message.success(wasAdd ? '新增招标成功' : '更新招标成功');
                         this.getData();
-                    }).catch(() => {
+                    }).catch(err => {
                         this.submitting = false;
+                        const msg = this.apiErrorMessage(err);
+                        if (msg) this.$Message.error(msg);
                     });
                 });
             },
@@ -507,6 +556,9 @@
                         });
                     });
                     this.$Message.success('附件上传成功');
+                }).catch(err => {
+                    const msg = this.apiErrorMessage(err);
+                    if (msg) this.$Message.error(msg);
                 });
                 return false;
             },

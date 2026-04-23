@@ -19,7 +19,7 @@
       <Table :columns="columns" :data="list" :loading="loading" class="ivu-mt">
         <template slot="enabled" slot-scope="{ row }">
           <Badge v-if="row.enabled" color="green" text="启用" />
-          <Badge v-else color="default" text="禁用" />
+          <Badge v-else color="red" text="禁用" />
         </template>
         <template slot="action" slot-scope="{ row }">
           <div @click.stop.prevent>

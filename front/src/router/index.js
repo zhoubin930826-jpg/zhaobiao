@@ -4,25 +4,19 @@ import { isLoggedIn } from '@/auth'
 const routes = [
   {
     path: '/',
-    redirect: () => (isLoggedIn() ? '/list' : '/login')
+    name: 'home',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: '登录', bare: true }
   },
   {
-    path: '/home',
-    name: 'home',
-    component: () => import('@/views/HomeView.vue'),
-    meta: { title: '首页', requiresAuth: true }
+    path: '/login',
+    redirect: to => ({ path: '/', query: to.query })
   },
   {
     path: '/list',
     name: 'list',
     component: () => import('@/views/ListView.vue'),
     meta: { title: '招标公告', requiresAuth: true }
-  },
-  {
-    path: '/login',
-    name: 'login',
-    component: () => import('@/views/LoginView.vue'),
-    meta: { title: '登录' }
   },
   {
     path: '/detail/:id',
@@ -40,21 +34,19 @@ const router = createRouter({
   }
 })
 
-router.beforeEach((to) => {
-  if (to.name === 'login' && isLoggedIn()) {
-    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : '/list'
-    return redirect.startsWith('/') ? redirect : '/list'
+router.beforeEach(to => {
+  if (to.path === '/' && isLoggedIn()) {
+    const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : ''
+    if (redirect && redirect.startsWith('/')) return redirect
+    return '/list'
   }
   if (to.meta.requiresAuth && !isLoggedIn()) {
-    return {
-      name: 'login',
-      query: { redirect: to.fullPath }
-    }
+    return { path: '/', query: { redirect: to.fullPath } }
   }
   return true
 })
 
-router.afterEach((to) => {
+router.afterEach(to => {
   const base = '招投标信息公示'
   document.title = to.meta.title ? `${to.meta.title} · ${base}` : base
 })

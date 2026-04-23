@@ -54,15 +54,16 @@ export default {
                         };
                         await dispatch('admin/user/set', info, { root: true });
                         let tree = [];
-                        try {
-                            const resMenus = await listMenus();
-                            tree = menuDtosToAuthTree(resMenus);
-                        } catch (e) {
-                            tree = [];
-                        }
-                        // 无 menu:view 时 GET /admin/menus 会 403，侧栏使用登录用户信息里的角色菜单树
-                        if (!tree.length && profile.menus && profile.menus.length) {
+                        // 登录返回的 user 信息里通常已经带有角色菜单树（避免额外请求 /admin/menus）
+                        if (profile.menus && profile.menus.length) {
                             tree = menuDtosToAuthTree(profile.menus);
+                        } else {
+                            try {
+                                const resMenus = await listMenus();
+                                tree = menuDtosToAuthTree(resMenus);
+                            } catch (e) {
+                                tree = [];
+                            }
                         }
                         if (!tree.length) {
                             tree = fallbackAuthTree;

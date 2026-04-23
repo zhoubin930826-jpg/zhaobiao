@@ -1,12 +1,11 @@
 <template>
   <header class="header">
     <div class="inner">
-      <router-link to="/" class="brand">
-        <span class="logo" aria-hidden="true" />
+      <router-link to="/" class="brand" aria-label="招投标信息公示 首页">
+        <img class="logo" :src="logoUrl" width="36" height="36" alt="" />
         <span class="name">招投标信息公示</span>
       </router-link>
       <nav class="nav">
-        <router-link to="/" exact-active-class="active">首页</router-link>
         <router-link to="/list" active-class="active">招标公告</router-link>
       </nav>
       <div class="actions">
@@ -14,7 +13,7 @@
           <span class="user" :title="username">{{ username }}</span>
           <button type="button" class="btn-text" @click="onLogout">退出</button>
         </template>
-        <router-link v-else to="/login" class="btn-login">登录</router-link>
+        <router-link v-else to="/" class="btn-login">登录</router-link>
       </div>
     </div>
   </header>
@@ -23,6 +22,8 @@
 <script setup>
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth, logout } from '@/auth'
+
+const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
 
 const route = useRoute()
 const router = useRouter()
@@ -38,16 +39,17 @@ function onLogout() {
 
 <style scoped>
 .header {
-  background: linear-gradient(135deg, var(--color-primary) 0%, var(--color-primary-dark) 100%);
+  background: linear-gradient(135deg, #1e6bc9 0%, var(--color-primary) 42%, var(--color-primary-dark) 100%);
   color: #fff;
-  box-shadow: var(--shadow);
+  box-shadow: 0 4px 18px rgba(13, 61, 122, 0.22);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .inner {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1.25rem;
-  height: 56px;
+  height: 58px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -70,11 +72,12 @@ function onLogout() {
 }
 
 .logo {
-  width: 32px;
-  height: 32px;
-  border-radius: 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  width: 36px;
+  height: 36px;
+  flex-shrink: 0;
+  border-radius: 9px;
+  display: block;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
 
 .nav {
@@ -92,12 +95,17 @@ function onLogout() {
 }
 
 .user {
-  font-size: 0.85rem;
-  color: rgba(255, 255, 255, 0.92);
-  max-width: 7rem;
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95);
+  max-width: 7.5rem;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 0.28rem 0.65rem;
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.22);
 }
 
 .btn-text {
@@ -130,20 +138,26 @@ function onLogout() {
 }
 
 .nav a {
-  color: rgba(255, 255, 255, 0.88);
+  color: rgba(255, 255, 255, 0.9);
   text-decoration: none;
-  font-size: 0.95rem;
-  padding: 0.35rem 0;
-  border-bottom: 2px solid transparent;
+  font-size: 0.92rem;
+  font-weight: 500;
+  padding: 0.42rem 1rem;
+  border-radius: 999px;
+  border: 1px solid transparent;
+  transition: background 0.15s ease, border-color 0.15s ease;
 }
 
 .nav a:hover {
   color: #fff;
   text-decoration: none;
+  background: rgba(255, 255, 255, 0.1);
 }
 
 .nav a.active {
   color: #fff;
-  border-bottom-color: #fff;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+  border-color: rgba(255, 255, 255, 0.28);
 }
 </style>
