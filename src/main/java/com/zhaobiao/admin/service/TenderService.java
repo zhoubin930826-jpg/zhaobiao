@@ -43,20 +43,20 @@ public class TenderService {
     private final TenderRepository tenderRepository;
     private final TenderAttachmentRepository tenderAttachmentRepository;
     private final TenderFileStorageRepository tenderFileStorageRepository;
-    private final LocalFileStorageService localFileStorageService;
+    private final FileStorageService fileStorageService;
     private final BusinessTypeRepository businessTypeRepository;
     private final ViewMapper viewMapper;
 
     public TenderService(TenderRepository tenderRepository,
                          TenderAttachmentRepository tenderAttachmentRepository,
                          TenderFileStorageRepository tenderFileStorageRepository,
-                         LocalFileStorageService localFileStorageService,
+                         FileStorageService fileStorageService,
                          BusinessTypeRepository businessTypeRepository,
                          ViewMapper viewMapper) {
         this.tenderRepository = tenderRepository;
         this.tenderAttachmentRepository = tenderAttachmentRepository;
         this.tenderFileStorageRepository = tenderFileStorageRepository;
-        this.localFileStorageService = localFileStorageService;
+        this.fileStorageService = fileStorageService;
         this.businessTypeRepository = businessTypeRepository;
         this.viewMapper = viewMapper;
     }
@@ -224,7 +224,7 @@ public class TenderService {
         for (TenderAttachment attachment : attachments) {
             TenderFileStorage fileStorage = attachment.getFileStorage();
             if (tenderAttachmentRepository.countByFileStorage_Id(fileStorage.getId()) == 0) {
-                localFileStorageService.deleteStoredFile(fileStorage);
+                fileStorageService.deleteStoredFile(fileStorage);
                 tenderFileStorageRepository.delete(fileStorage);
             }
         }

@@ -21,5 +21,6 @@ spring:
 
 app:
   file:
+    type: local
     storage-path: ./.preview/uploads/files
     temp-path: ./.preview/uploads/tmp

@@ -7,9 +7,29 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties(prefix = "app.file")
 public class FileStorageProperties {
 
+    private String type = "local";
+
     private String storagePath;
 
     private String tempPath;
+
+    private String ossBucket;
+
+    private String ossEndpoint;
+
+    private String ossAccessKeyId;
+
+    private String ossAccessKeySecret;
+
+    private String ossKeyPrefix = "zb/files";
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
 
     public String getStoragePath() {
         return storagePath;
@@ -25,5 +45,45 @@ public class FileStorageProperties {
 
     public void setTempPath(String tempPath) {
         this.tempPath = tempPath;
+    }
+
+    public String getOssBucket() {
+        return ossBucket;
+    }
+
+    public void setOssBucket(String ossBucket) {
+        this.ossBucket = ossBucket;
+    }
+
+    public String getOssEndpoint() {
+        return ossEndpoint;
+    }
+
+    public void setOssEndpoint(String ossEndpoint) {
+        this.ossEndpoint = ossEndpoint;
+    }
+
+    public String getOssAccessKeyId() {
+        return ossAccessKeyId;
+    }
+
+    public void setOssAccessKeyId(String ossAccessKeyId) {
+        this.ossAccessKeyId = ossAccessKeyId;
+    }
+
+    public String getOssAccessKeySecret() {
+        return ossAccessKeySecret;
+    }
+
+    public void setOssAccessKeySecret(String ossAccessKeySecret) {
+        this.ossAccessKeySecret = ossAccessKeySecret;
+    }
+
+    public String getOssKeyPrefix() {
+        return ossKeyPrefix;
+    }
+
+    public void setOssKeyPrefix(String ossKeyPrefix) {
+        this.ossKeyPrefix = ossKeyPrefix;
     }
 }

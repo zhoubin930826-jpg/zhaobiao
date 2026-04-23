@@ -5,24 +5,21 @@ import com.zhaobiao.admin.config.FileStorageProperties;
 import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
 import java.io.IOException;
-import java.io.InputStream;
 import java.net.MalformedURLException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.nio.file.StandardCopyOption;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -30,10 +27,10 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-public class LocalFileStorageService {
+@ConditionalOnProperty(prefix = "app.file", name = "type", havingValue = "local", matchIfMissing = true)
+public class LocalFileStorageService extends AbstractFileStorageService implements FileStorageService {
 
     private final FileStorageProperties fileStorageProperties;
-    private final TenderFileStorageRepository tenderFileStorageRepository;
 
     private Path storageRoot;
 
@@ -41,8 +38,8 @@ public class LocalFileStorageService {
 
     public LocalFileStorageService(FileStorageProperties fileStorageProperties,
                                    TenderFileStorageRepository tenderFileStorageRepository) {
+        super(tenderFileStorageRepository);
         this.fileStorageProperties = fileStorageProperties;
-        this.tenderFileStorageRepository = tenderFileStorageRepository;
     }
 
     @PostConstruct
@@ -57,6 +54,7 @@ public class LocalFileStorageService {
         }
     }
 
+    @Override
     @Transactional
     public List<FileUploadResponse> store(List<MultipartFile> files) {
         return files.stream().map(this::store).collect(Collectors.toList());
@@ -98,12 +96,7 @@ public class LocalFileStorageService {
         }
     }
 
-    @Transactional(readOnly = true)
-    public TenderFileStorage getFile(Long fileId) {
-        return tenderFileStorageRepository.findById(fileId)
-                .orElseThrow(() -> new BusinessException(404, "附件文件不存在"));
-    }
-
+    @Override
     @Transactional(readOnly = true)
     public Resource loadAsResource(TenderFileStorage storage) {
         try {
@@ -118,6 +111,7 @@ public class LocalFileStorageService {
         }
     }
 
+    @Override
     public void deleteStoredFile(TenderFileStorage storage) {
         try {
             Files.deleteIfExists(storageRoot.resolve(storage.getStoragePath()).normalize());
@@ -133,36 +127,6 @@ public class LocalFileStorageService {
         response.setContentType(storage.getContentType());
         response.setFileSize(storage.getFileSize());
         return response;
-    }
-
-    private String sanitizeOriginalName(String originalFilename) {
-        String fileName = StringUtils.hasText(originalFilename) ? Paths.get(originalFilename).getFileName().toString() : "file";
-        String cleaned = fileName.replaceAll("[\\\\/:*?\"<>|]", "_").trim();
-        return cleaned.length() == 0 ? "file" : cleaned;
-    }
-
-    private String resolveExtension(String fileName) {
-        int index = fileName.lastIndexOf('.');
-        if (index < 0 || index == fileName.length() - 1) {
-            return "";
-        }
-        return fileName.substring(index);
-    }
-
-    private String calculateContentHash(MultipartFile file) {
-        try (InputStream inputStream = file.getInputStream()) {
-            MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            byte[] buffer = new byte[8192];
-            int read;
-            while ((read = inputStream.read(buffer)) != -1) {
-                digest.update(buffer, 0, read);
-            }
-            return toHex(digest.digest());
-        } catch (IOException ex) {
-            throw new BusinessException(500, "计算文件摘要失败");
-        } catch (NoSuchAlgorithmException ex) {
-            throw new IllegalStateException("当前运行环境不支持 SHA-256", ex);
-        }
     }
 
     private TenderFileStorage saveStorage(TenderFileStorage storage, Path target, String contentHash) {
@@ -187,14 +151,5 @@ public class LocalFileStorageService {
         } catch (IOException ignored) {
             // 文件记录保存失败时优先返回主错误，忽略清理失败
         }
-    }
-
-    private String toHex(byte[] bytes) {
-        StringBuilder builder = new StringBuilder(bytes.length * 2);
-        for (byte item : bytes) {
-            builder.append(Character.forDigit((item >> 4) & 0xF, 16));
-            builder.append(Character.forDigit(item & 0xF, 16));
-        }
-        return builder.toString();
     }
 }

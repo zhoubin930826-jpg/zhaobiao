@@ -38,16 +38,16 @@ public class PortalTenderService {
 
     private final TenderRepository tenderRepository;
     private final TenderAttachmentRepository tenderAttachmentRepository;
-    private final LocalFileStorageService localFileStorageService;
+    private final FileStorageService fileStorageService;
     private final ViewMapper viewMapper;
 
     public PortalTenderService(TenderRepository tenderRepository,
                                TenderAttachmentRepository tenderAttachmentRepository,
-                               LocalFileStorageService localFileStorageService,
+                               FileStorageService fileStorageService,
                                ViewMapper viewMapper) {
         this.tenderRepository = tenderRepository;
         this.tenderAttachmentRepository = tenderAttachmentRepository;
-        this.localFileStorageService = localFileStorageService;
+        this.fileStorageService = fileStorageService;
         this.viewMapper = viewMapper;
     }
 
@@ -122,7 +122,7 @@ public class PortalTenderService {
         TenderAttachment attachment = tenderAttachmentRepository.findDetailByIdAndTenderId(attachmentId, tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标附件不存在"));
         TenderFileStorage fileStorage = attachment.getFileStorage();
-        Resource resource = localFileStorageService.loadAsResource(fileStorage);
+        Resource resource = fileStorageService.loadAsResource(fileStorage);
         return ResponseEntity.ok()
                 .contentType(resolveMediaType(fileStorage.getContentType()))
                 .header(HttpHeaders.CONTENT_DISPOSITION, buildAttachmentDisposition(fileStorage.getOriginalName()))

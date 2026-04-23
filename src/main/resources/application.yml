@@ -34,8 +34,14 @@ app:
   bootstrap:
     admin-password: ${APP_BOOTSTRAP_ADMIN_PASSWORD:}
   file:
+    type: ${APP_FILE_TYPE:local}
     storage-path: ${APP_FILE_STORAGE_PATH:./.uploads/files}
     temp-path: ${APP_FILE_TEMP_PATH:./.uploads/tmp}
+    oss-bucket: ${APP_FILE_OSS_BUCKET:}
+    oss-endpoint: ${APP_FILE_OSS_ENDPOINT:}
+    oss-access-key-id: ${APP_FILE_OSS_ACCESS_KEY_ID:}
+    oss-access-key-secret: ${APP_FILE_OSS_ACCESS_KEY_SECRET:}
+    oss-key-prefix: ${APP_FILE_OSS_KEY_PREFIX:zb/files}
 
 logging:
   level:
