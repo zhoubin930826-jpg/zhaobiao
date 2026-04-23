@@ -606,4 +606,16 @@
     color: #808695;
     cursor: pointer;
   }
+
+  /* 让弹窗表单区域滚动，而不是触发全屏滚动（iView Modal 内部 DOM 需要穿透样式） */
+  ::v-deep .ivu-modal-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  ::v-deep .ivu-modal-body {
+    flex: 1;
+    max-height: calc(100vh - 220px);
+    overflow-y: auto;
+  }
 </style>
