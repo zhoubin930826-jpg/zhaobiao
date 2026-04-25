@@ -20,12 +20,11 @@ public class RoleRequest {
     @Schema(description = "角色描述")
     private String description;
 
-    @NotEmpty(message = "请至少分配一个权限")
-    @Schema(description = "权限ID列表")
+    @Schema(description = "已废弃的兼容字段，后端保存角色时会忽略，授权只由 menuIds 对应菜单编码决定")
     private List<Long> permissionIds;
 
     @NotEmpty(message = "请至少分配一个菜单")
-    @Schema(description = "菜单ID列表")
+    @Schema(description = "菜单ID列表，包含目录、菜单和按钮节点；后端授权以这些节点的菜单编码为准")
     private List<Long> menuIds;
 
     public String getCode() {

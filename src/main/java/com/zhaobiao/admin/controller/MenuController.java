@@ -32,14 +32,14 @@ public class MenuController {
     }
 
     @Operation(summary = "查询菜单树")
-    @PreAuthorize("hasAuthority('menu:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_MENU')")
     @GetMapping
     public ApiResponse<List<MenuDto>> listMenus() {
         return ApiResponse.success(menuService.listMenus());
     }
 
     @Operation(summary = "新增菜单")
-    @PreAuthorize("hasAuthority('menu:edit')")
+    @PreAuthorize("hasAuthority('MENU_EDIT_BUTTON')")
     @OperationLogRecord(module = "菜单管理", action = "新增菜单")
     @PostMapping
     public ApiResponse<MenuDto> createMenu(@Valid @RequestBody MenuRequest request) {
@@ -47,7 +47,7 @@ public class MenuController {
     }
 
     @Operation(summary = "修改菜单")
-    @PreAuthorize("hasAuthority('menu:edit')")
+    @PreAuthorize("hasAuthority('MENU_EDIT_BUTTON')")
     @OperationLogRecord(module = "菜单管理", action = "修改菜单")
     @PutMapping("/{menuId}")
     public ApiResponse<MenuDto> updateMenu(@PathVariable Long menuId, @Valid @RequestBody MenuRequest request) {
@@ -55,7 +55,7 @@ public class MenuController {
     }
 
     @Operation(summary = "删除菜单")
-    @PreAuthorize("hasAuthority('menu:edit')")
+    @PreAuthorize("hasAuthority('MENU_EDIT_BUTTON')")
     @OperationLogRecord(module = "菜单管理", action = "删除菜单")
     @DeleteMapping("/{menuId}")
     public ApiResponse<Void> deleteMenu(@PathVariable Long menuId) {

@@ -22,16 +22,16 @@ public class RoleDto {
     @Schema(description = "是否系统内置")
     private boolean builtIn;
 
-    @Schema(description = "权限ID列表")
+    @Schema(description = "已废弃的兼容字段，固定返回空列表")
     private List<Long> permissionIds;
 
-    @Schema(description = "权限编码列表")
+    @Schema(description = "已废弃的兼容字段，固定返回空列表；授权编码请读取 menuCodes")
     private List<String> permissionCodes;
 
     @Schema(description = "菜单ID列表")
     private List<Long> menuIds;
 
-    @Schema(description = "菜单编码列表")
+    @Schema(description = "菜单编码列表，后端实际授权编码来源")
     private List<String> menuCodes;
 
     public Long getId() {

@@ -36,7 +36,7 @@ public class TenderAdminController {
     }
 
     @Operation(summary = "分页查询招标列表")
-    @PreAuthorize("hasAuthority('tender:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_TENDER')")
     @GetMapping
     public ApiResponse<PageResult<TenderListItemDto>> list(@RequestParam(defaultValue = "1") int pageNum,
                                                            @RequestParam(defaultValue = "10") int pageSize,
@@ -47,14 +47,14 @@ public class TenderAdminController {
     }
 
     @Operation(summary = "查询招标详情")
-    @PreAuthorize("hasAuthority('tender:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_TENDER')")
     @GetMapping("/{tenderId}")
     public ApiResponse<TenderDto> detail(@PathVariable Long tenderId) {
         return ApiResponse.success(tenderService.getTender(tenderId));
     }
 
     @Operation(summary = "新增招标")
-    @PreAuthorize("hasAuthority('tender:create')")
+    @PreAuthorize("hasAuthority('TENDER_CREATE_BUTTON')")
     @OperationLogRecord(module = "招标管理", action = "新增招标")
     @PostMapping
     public ApiResponse<TenderDto> create(@Valid @RequestBody TenderUpsertRequest request) {
@@ -62,7 +62,7 @@ public class TenderAdminController {
     }
 
     @Operation(summary = "修改招标")
-    @PreAuthorize("hasAuthority('tender:edit')")
+    @PreAuthorize("hasAuthority('TENDER_EDIT_BUTTON')")
     @OperationLogRecord(module = "招标管理", action = "修改招标")
     @PutMapping("/{tenderId}")
     public ApiResponse<TenderDto> update(@PathVariable Long tenderId,
@@ -71,7 +71,7 @@ public class TenderAdminController {
     }
 
     @Operation(summary = "删除招标")
-    @PreAuthorize("hasAuthority('tender:delete')")
+    @PreAuthorize("hasAuthority('TENDER_DELETE_BUTTON')")
     @OperationLogRecord(module = "招标管理", action = "删除招标")
     @DeleteMapping("/{tenderId}")
     public ApiResponse<Void> delete(@PathVariable Long tenderId) {
@@ -80,7 +80,7 @@ public class TenderAdminController {
     }
 
     @Operation(summary = "为招标追加附件")
-    @PreAuthorize("hasAnyAuthority('tender:create', 'tender:edit')")
+    @PreAuthorize("hasAnyAuthority('TENDER_CREATE_BUTTON', 'TENDER_EDIT_BUTTON')")
     @OperationLogRecord(module = "招标管理", action = "追加招标附件")
     @PostMapping("/{tenderId}/attachments")
     public ApiResponse<TenderDto> addAttachments(@PathVariable Long tenderId,
@@ -89,7 +89,7 @@ public class TenderAdminController {
     }
 
     @Operation(summary = "删除招标附件")
-    @PreAuthorize("hasAuthority('tender:edit')")
+    @PreAuthorize("hasAuthority('TENDER_EDIT_BUTTON')")
     @OperationLogRecord(module = "招标管理", action = "删除招标附件")
     @DeleteMapping("/{tenderId}/attachments/{attachmentId}")
     public ApiResponse<TenderDto> removeAttachment(@PathVariable Long tenderId,

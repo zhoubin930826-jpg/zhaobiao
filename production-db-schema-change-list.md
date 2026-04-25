@@ -163,26 +163,17 @@ ALTER TABLE `portal_member_user`
 
 当前代码会在启动时自动补齐。
 
-### 3.2 权限与菜单初始化数据
+### 3.2 菜单初始化数据
 
-本轮新增了以下后台权限语义：
+2026-04-25 起，后台授权以 `sys_menu.code` 为准，不再使用单独权限编码。生产库如果已经有 `sys_permission`、`sys_role_permission` 或 `sys_menu.permission_code` 历史数据，可以先保留表结构，但运行时授权不再依赖这些数据。
 
-- `business:type:view`
-- `business:type:create`
-- `business:type:edit`
-- `business:type:status:update`
-- `business:type:delete`
-- `member:create`
-- `member:edit`
-- `member:password:reset`
-
-本轮新增了以下后台菜单语义：
+本轮需要关注以下后台菜单语义：
 
 - `SYSTEM_BUSINESS_TYPE`
 - 会员管理相关按钮权限
 - 类型管理相关按钮权限
 
-当前代码会在启动时通过初始化逻辑自动补齐，不需要手工改表结构。
+当前代码会在初始化逻辑中补齐菜单，并清空内置角色的历史 `sys_role_permission` 关系。上线前如需手工同步，按菜单编码补齐 `sys_role_menu` 即可。
 
 ### 3.3 后台菜单路由对齐
 
@@ -195,11 +186,12 @@ UPDATE sys_menu SET route_path = '/system/user', component = 'sys/user' WHERE co
 UPDATE sys_menu SET route_path = '/system/member', component = 'sys/member' WHERE code = 'SYSTEM_MEMBER_USER';
 UPDATE sys_menu SET route_path = '/system/business-type', component = 'sys/business-type' WHERE code = 'SYSTEM_BUSINESS_TYPE';
 UPDATE sys_menu SET route_path = '/tenders', component = 'sys/tender' WHERE code = 'SYSTEM_TENDER';
-UPDATE sys_menu SET visible = 0, enabled = 0 WHERE code IN ('SYSTEM_USER', 'SYSTEM_AUDIT_RECORD', 'USER_AUDIT_BUTTON', 'USER_ROLE_BUTTON');
+UPDATE sys_menu SET visible = 0, enabled = 0 WHERE code IN ('SYSTEM_USER', 'SYSTEM_AUDIT_RECORD', 'USER_AUDIT_BUTTON', 'USER_ROLE_BUTTON', 'SYSTEM_PERMISSION', 'PERMISSION_EDIT_BUTTON');
 UPDATE sys_menu SET route_path = '/system/role', component = 'sys/role' WHERE code = 'SYSTEM_ROLE';
-UPDATE sys_menu SET route_path = '/system/permissions', component = 'sys/permissions' WHERE code = 'SYSTEM_PERMISSION';
+UPDATE sys_menu SET route_path = '/system/permissions', component = 'sys/permissions', visible = 0, enabled = 0 WHERE code = 'SYSTEM_PERMISSION';
 UPDATE sys_menu SET route_path = '/system/menu', component = 'sys/menu' WHERE code = 'SYSTEM_MENU';
 UPDATE sys_menu SET route_path = '/log', component = 'system/log' WHERE code = 'SYSTEM_OPERATION_LOG';
+UPDATE sys_menu SET permission_code = NULL;
 ```
 
 ## 4. 上线前必须处理的数据迁移事项

@@ -54,9 +54,10 @@ public class ViewMapper {
         dto.setRoleCodes(user.getRoles().stream().map(Role::getCode).sorted().collect(Collectors.toList()));
         dto.setRoleNames(user.getRoles().stream().map(Role::getName).sorted().collect(Collectors.toList()));
         dto.setPermissions(user.getRoles().stream()
-                .map(Role::getPermissions)
+                .map(Role::getMenus)
                 .flatMap(Collection::stream)
-                .map(Permission::getCode)
+                .filter(Menu::isEnabled)
+                .map(Menu::getCode)
                 .filter(Objects::nonNull)
                 .distinct()
                 .sorted()
@@ -135,8 +136,8 @@ public class ViewMapper {
         dto.setName(role.getName());
         dto.setDescription(role.getDescription());
         dto.setBuiltIn(role.isBuiltIn());
-        dto.setPermissionIds(role.getPermissions().stream().map(Permission::getId).sorted().collect(Collectors.toList()));
-        dto.setPermissionCodes(role.getPermissions().stream().map(Permission::getCode).sorted().collect(Collectors.toList()));
+        dto.setPermissionIds(Collections.emptyList());
+        dto.setPermissionCodes(Collections.emptyList());
         dto.setMenuIds(role.getMenus().stream().map(Menu::getId).sorted().collect(Collectors.toList()));
         dto.setMenuCodes(role.getMenus().stream().map(Menu::getCode).sorted().collect(Collectors.toList()));
         return dto;

@@ -46,7 +46,7 @@ public class UserProfileDto {
     @Schema(description = "角色名称列表")
     private List<String> roleNames;
 
-    @Schema(description = "权限编码列表")
+    @Schema(description = "兼容旧前端字段，当前返回启用菜单/按钮的菜单编码列表")
     private List<String> permissions;
 
     @Schema(description = "菜单树，仅当前登录用户接口返回")

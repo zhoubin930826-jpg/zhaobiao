@@ -30,7 +30,7 @@ public class ProfileController {
     }
 
     @Operation(summary = "获取个人信息")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PROFILE')")
     @GetMapping
     public ApiResponse<UserProfileDto> getProfile(@AuthenticationPrincipal LoginUser loginUser) {
         return ApiResponse.success(profileService.getProfile(loginUser));
@@ -38,7 +38,7 @@ public class ProfileController {
 
     @Operation(summary = "修改个人信息")
     @OperationLogRecord(module = "个人中心", action = "修改个人信息")
-    @PreAuthorize("hasRole('ADMIN')")
+    @PreAuthorize("hasAuthority('PROFILE_EDIT_BUTTON')")
     @PutMapping
     public ApiResponse<UserProfileDto> updateProfile(@AuthenticationPrincipal LoginUser loginUser,
                                                      @Valid @RequestBody ProfileUpdateRequest request) {

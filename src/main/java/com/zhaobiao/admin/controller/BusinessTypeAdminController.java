@@ -36,21 +36,21 @@ public class BusinessTypeAdminController {
     }
 
     @Operation(summary = "查询业务类型列表")
-    @PreAuthorize("hasAuthority('business:type:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_BUSINESS_TYPE')")
     @GetMapping
     public ApiResponse<List<BusinessTypeDto>> list() {
         return ApiResponse.success(businessTypeAdminService.listAll());
     }
 
     @Operation(summary = "查询启用中的业务类型选项")
-    @PreAuthorize("hasAuthority('business:type:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_BUSINESS_TYPE')")
     @GetMapping("/options")
     public ApiResponse<List<BusinessTypeOptionDto>> options() {
         return ApiResponse.success(businessTypeAdminService.listEnabledOptions());
     }
 
     @Operation(summary = "新增业务类型")
-    @PreAuthorize("hasAuthority('business:type:create')")
+    @PreAuthorize("hasAuthority('BUSINESS_TYPE_CREATE_BUTTON')")
     @OperationLogRecord(module = "类型管理", action = "新增业务类型")
     @PostMapping
     public ApiResponse<BusinessTypeDto> create(@Valid @RequestBody BusinessTypeCreateRequest request) {
@@ -58,7 +58,7 @@ public class BusinessTypeAdminController {
     }
 
     @Operation(summary = "修改业务类型")
-    @PreAuthorize("hasAuthority('business:type:edit')")
+    @PreAuthorize("hasAuthority('BUSINESS_TYPE_EDIT_BUTTON')")
     @OperationLogRecord(module = "类型管理", action = "修改业务类型")
     @PutMapping("/{businessTypeId}")
     public ApiResponse<BusinessTypeDto> update(@PathVariable Long businessTypeId,
@@ -67,7 +67,7 @@ public class BusinessTypeAdminController {
     }
 
     @Operation(summary = "修改业务类型状态")
-    @PreAuthorize("hasAuthority('business:type:status:update')")
+    @PreAuthorize("hasAuthority('BUSINESS_TYPE_STATUS_BUTTON')")
     @OperationLogRecord(module = "类型管理", action = "修改业务类型状态")
     @PutMapping("/{businessTypeId}/status")
     public ApiResponse<BusinessTypeDto> updateStatus(@PathVariable Long businessTypeId,
@@ -76,7 +76,7 @@ public class BusinessTypeAdminController {
     }
 
     @Operation(summary = "删除业务类型")
-    @PreAuthorize("hasAuthority('business:type:delete')")
+    @PreAuthorize("hasAuthority('BUSINESS_TYPE_DELETE_BUTTON')")
     @OperationLogRecord(module = "类型管理", action = "删除业务类型")
     @DeleteMapping("/{businessTypeId}")
     public ApiResponse<Void> delete(@PathVariable Long businessTypeId) {

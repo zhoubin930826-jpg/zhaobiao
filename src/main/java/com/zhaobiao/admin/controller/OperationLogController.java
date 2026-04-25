@@ -24,7 +24,7 @@ public class OperationLogController {
     }
 
     @Operation(summary = "查询操作日志列表")
-    @PreAuthorize("hasAuthority('operation:log:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_OPERATION_LOG')")
     @GetMapping
     public ApiResponse<List<OperationLogDto>> listLogs() {
         return ApiResponse.success(operationLogService.listLogs());

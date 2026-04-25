@@ -36,21 +36,21 @@ public class MemberAdminController {
     }
 
     @Operation(summary = "查询会员列表")
-    @PreAuthorize("hasAuthority('member:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_MEMBER_USER')")
     @GetMapping
     public ApiResponse<List<MemberUserDto>> listMembers() {
         return ApiResponse.success(memberAdminService.listMembers());
     }
 
     @Operation(summary = "查询会员详情")
-    @PreAuthorize("hasAuthority('member:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_MEMBER_USER')")
     @GetMapping("/{memberId}")
     public ApiResponse<MemberUserDto> detail(@PathVariable Long memberId) {
         return ApiResponse.success(memberAdminService.getMemberDetail(memberId));
     }
 
     @Operation(summary = "新增会员")
-    @PreAuthorize("hasAuthority('member:create')")
+    @PreAuthorize("hasAuthority('MEMBER_CREATE_BUTTON')")
     @OperationLogRecord(module = "会员管理", action = "新增会员")
     @PostMapping
     public ApiResponse<MemberUserDto> create(@Valid @RequestBody MemberCreateRequest request) {
@@ -58,7 +58,7 @@ public class MemberAdminController {
     }
 
     @Operation(summary = "修改会员信息")
-    @PreAuthorize("hasAuthority('member:edit')")
+    @PreAuthorize("hasAuthority('MEMBER_EDIT_BUTTON')")
     @OperationLogRecord(module = "会员管理", action = "修改会员信息")
     @PutMapping("/{memberId}")
     public ApiResponse<MemberUserDto> update(@PathVariable Long memberId,
@@ -67,7 +67,7 @@ public class MemberAdminController {
     }
 
     @Operation(summary = "修改会员下载权限")
-    @PreAuthorize("hasAuthority('member:download:update')")
+    @PreAuthorize("hasAuthority('MEMBER_DOWNLOAD_BUTTON')")
     @OperationLogRecord(module = "会员管理", action = "修改会员下载权限")
     @PutMapping("/{memberId}/download-access")
     public ApiResponse<MemberUserDto> updateDownloadAccess(@PathVariable Long memberId,
@@ -76,7 +76,7 @@ public class MemberAdminController {
     }
 
     @Operation(summary = "修改会员状态")
-    @PreAuthorize("hasAuthority('member:status:update')")
+    @PreAuthorize("hasAuthority('MEMBER_STATUS_BUTTON')")
     @OperationLogRecord(module = "会员管理", action = "修改会员状态")
     @PutMapping("/{memberId}/status")
     public ApiResponse<MemberUserDto> updateStatus(@PathVariable Long memberId,
@@ -85,7 +85,7 @@ public class MemberAdminController {
     }
 
     @Operation(summary = "重置会员密码")
-    @PreAuthorize("hasAuthority('member:password:reset')")
+    @PreAuthorize("hasAuthority('MEMBER_PASSWORD_BUTTON')")
     @OperationLogRecord(module = "会员管理", action = "重置会员密码")
     @PutMapping("/{memberId}/password")
     public ApiResponse<Void> resetPassword(@PathVariable Long memberId,

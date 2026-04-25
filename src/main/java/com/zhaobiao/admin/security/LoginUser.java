@@ -1,6 +1,6 @@
 package com.zhaobiao.admin.security;
 
-import com.zhaobiao.admin.entity.Permission;
+import com.zhaobiao.admin.entity.Menu;
 import com.zhaobiao.admin.entity.Role;
 import com.zhaobiao.admin.entity.User;
 import com.zhaobiao.admin.entity.UserStatus;
@@ -54,9 +54,10 @@ public class LoginUser implements UserDetails {
                                 user.getRoles().stream().map(role -> new SimpleGrantedAuthority("ROLE_" + role.getCode()))
                         ),
                         user.getRoles().stream()
-                                .map(Role::getPermissions)
+                                .map(Role::getMenus)
                                 .flatMap(Collection::stream)
-                                .map(Permission::getCode)
+                                .filter(Menu::isEnabled)
+                                .map(Menu::getCode)
                                 .distinct()
                                 .map(SimpleGrantedAuthority::new)
                 )
