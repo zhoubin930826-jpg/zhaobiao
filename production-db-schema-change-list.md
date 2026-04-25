@@ -184,6 +184,24 @@ ALTER TABLE `portal_member_user`
 
 当前代码会在启动时通过初始化逻辑自动补齐，不需要手工改表结构。
 
+### 3.3 后台菜单路由对齐
+
+如果生产库已有旧菜单数据，需要把菜单路由同步到当前 `frontend/` 实际路由，否则后台侧边栏点击会进入 404。
+
+```sql
+UPDATE sys_menu SET route_path = '/dashboard/console', component = 'dashboard/console' WHERE code = 'DASHBOARD';
+UPDATE sys_menu SET route_path = '/profile/index', component = 'profile/index' WHERE code = 'PROFILE';
+UPDATE sys_menu SET route_path = '/system/user', component = 'sys/user' WHERE code = 'SYSTEM_ADMIN_USER';
+UPDATE sys_menu SET route_path = '/system/member', component = 'sys/member' WHERE code = 'SYSTEM_MEMBER_USER';
+UPDATE sys_menu SET route_path = '/system/business-type', component = 'sys/business-type' WHERE code = 'SYSTEM_BUSINESS_TYPE';
+UPDATE sys_menu SET route_path = '/tenders', component = 'sys/tender' WHERE code = 'SYSTEM_TENDER';
+UPDATE sys_menu SET visible = 0, enabled = 0 WHERE code IN ('SYSTEM_USER', 'SYSTEM_AUDIT_RECORD', 'USER_AUDIT_BUTTON', 'USER_ROLE_BUTTON');
+UPDATE sys_menu SET route_path = '/system/role', component = 'sys/role' WHERE code = 'SYSTEM_ROLE';
+UPDATE sys_menu SET route_path = '/system/permissions', component = 'sys/permissions' WHERE code = 'SYSTEM_PERMISSION';
+UPDATE sys_menu SET route_path = '/system/menu', component = 'sys/menu' WHERE code = 'SYSTEM_MENU';
+UPDATE sys_menu SET route_path = '/log', component = 'system/log' WHERE code = 'SYSTEM_OPERATION_LOG';
+```
+
 ## 4. 上线前必须处理的数据迁移事项
 
 ### 4.1 历史会员需要补类型关系
@@ -219,7 +237,8 @@ ALTER TABLE `portal_member_user`
 3. 再回填历史会员类型关系
 4. 再回填历史会员 `expires_at`
 5. 再回填历史招标 `business_type_id`
-6. 最后部署当前后端代码并启动校验
+6. 再同步后台菜单路由数据
+7. 最后部署当前后端代码并启动校验
 
 ## 6. 一句话结论
 
