@@ -59,8 +59,7 @@ public class SecurityConfig {
                         "/api/portal/auth/register",
                         "/swagger-ui.html",
                         "/swagger-ui/**",
-                        "/v3/api-docs/**",
-                        "/h2-console/**"
+                        "/v3/api-docs/**"
                 ).permitAll()
                 .anyRequest().authenticated();
 

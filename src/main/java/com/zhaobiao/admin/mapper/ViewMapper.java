@@ -19,6 +19,7 @@ import com.zhaobiao.admin.entity.User;
 import com.zhaobiao.admin.entity.UserAuditRecord;
 import org.springframework.stereotype.Component;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
@@ -116,6 +117,8 @@ public class ViewMapper {
         dto.setUnifiedSocialCreditCode(user.getUnifiedSocialCreditCode());
         dto.setCanDownloadFile(user.isCanDownloadFile());
         dto.setStatus(user.getStatus());
+        dto.setExpiresAt(user.getExpiresAt());
+        dto.setExpired(isExpired(user.getExpiresAt()));
         dto.setBusinessTypes(user.getBusinessTypes().stream()
                 .sorted(Comparator.comparing(BusinessType::getSortOrder).thenComparing(BusinessType::getId))
                 .map(this::toBusinessTypeOptionDto)
@@ -215,6 +218,10 @@ public class ViewMapper {
         dto.setDetail(operationLog.getDetail());
         dto.setCreatedAt(operationLog.getCreatedAt());
         return dto;
+    }
+
+    private boolean isExpired(LocalDateTime expiresAt) {
+        return expiresAt == null || !expiresAt.isAfter(LocalDateTime.now());
     }
 
     private void sortMenuTree(List<MenuDto> menus) {

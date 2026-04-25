@@ -1,10 +1,11 @@
 # 生产库表结构变更清单
 
-更新时间：2026-04-16
+更新时间：2026-04-25
 
 ## 1. 说明
 
 - 本清单聚焦本轮“封闭式会员制 + 类型管理 + 会员多类型 + 招标按类型隔离”涉及的生产库变更。
+- 2026-04-25 追加“会员账号过期时间”字段，历史会员默认补为当前时间 + 1 年。
 - 这份清单不重复列出此前已经处理过的 `sys_user` 字段可空调整。
 - 当前后端代码已在本地 Docker MySQL `zhaobiao_admin` 上实际启动验证通过。
 
@@ -108,13 +109,44 @@ ALTER TABLE `biz_tender`
 - 这样做是为了兼容历史数据迁移，避免生产库已有旧数据时直接加非空失败
 - 建议等历史招标全部回填类型后，再评估是否把该字段收紧为 `NOT NULL`
 
-### 2.4 会员主表本轮无新增字段
+### 2.4 会员主表增加账号过期时间
 
-当前 `portal_member_user` 本轮没有新增列，也没有删除列。
+修改表：`portal_member_user`
 
-本轮对会员类型的扩展，完全通过新增关联表实现：
+新增字段：
+
+- `expires_at datetime(6)`
+
+用途：
+
+- 管理员创建或修改会员时维护账号有效期
+- 会员登录前校验是否过期
+- 已登录会员继续访问门户接口时，后端通过每次 JWT 鉴权重新加载会员信息并校验过期时间
+
+建议生产库执行：
+
+```sql
+ALTER TABLE `portal_member_user`
+  ADD COLUMN `expires_at` datetime(6) DEFAULT NULL COMMENT '会员账号过期时间';
+
+UPDATE `portal_member_user`
+SET `expires_at` = DATE_ADD(NOW(6), INTERVAL 1 YEAR)
+WHERE `expires_at` IS NULL;
+
+ALTER TABLE `portal_member_user`
+  MODIFY COLUMN `expires_at` datetime(6) NOT NULL COMMENT '会员账号过期时间';
+```
+
+需要关注：
+
+- 历史会员默认先补当前时间 + 1 年。
+- 新增和修改会员接口已要求传 `expiresAt`。
+- 如果生产库已经存在 `expires_at` 字段，不要重复执行 `ADD COLUMN`，只执行空值回填和非空收紧。
+
+本轮对会员类型的扩展，仍然通过新增关联表实现：
 
 - 主表继续保留基础信息、下载权限、状态
+- 主表新增过期时间
 - 类型改为走 `portal_member_business_type_rel`
 
 ## 3. 需要同步的初始化数据
@@ -160,11 +192,13 @@ ALTER TABLE `biz_tender`
 
 - 当前代码要求会员必须绑定至少一个启用中的类型
 - 如果生产库已有会员，但没有补 `portal_member_business_type_rel`，这些会员将无法正常登录门户
+- 当前代码同时要求会员必须有未过期的 `expires_at`
 
 建议处理：
 
 - 上线前盘点历史会员
 - 为每个历史会员至少补一条类型关系
+- 为历史会员补 `expires_at = 当前时间 + 1 年`
 
 ### 4.2 历史招标需要补业务类型
 
@@ -183,15 +217,17 @@ ALTER TABLE `biz_tender`
 1. 先在生产库执行本轮表结构变更
 2. 再初始化 `biz_business_type` 基础数据
 3. 再回填历史会员类型关系
-4. 再回填历史招标 `business_type_id`
-5. 最后部署当前后端代码并启动校验
+4. 再回填历史会员 `expires_at`
+5. 再回填历史招标 `business_type_id`
+6. 最后部署当前后端代码并启动校验
 
 ## 6. 一句话结论
 
-本轮真正需要同步到生产库的核心表结构变化只有 3 项：
+本轮真正需要同步到生产库的核心表结构变化有 4 项：
 
 - 新增 `biz_business_type`
 - 新增 `portal_member_business_type_rel`
 - 给 `biz_tender` 增加 `business_type_id` 外键字段
+- 给 `portal_member_user` 增加 `expires_at` 账号过期时间字段
 
-另外，历史会员和历史招标的数据回填是这次上线能否平稳切换的关键。  
+另外，历史会员类型、历史会员过期时间、历史招标类型的数据回填是这次上线能否平稳切换的关键。

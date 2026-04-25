@@ -49,6 +49,9 @@ public class MemberUser extends BaseEntity {
     @Column(nullable = false, length = 32)
     private MemberUserStatus status;
 
+    @Column(name = "expires_at")
+    private LocalDateTime expiresAt;
+
     @Column
     private LocalDateTime lastLoginAt;
 
@@ -139,6 +142,14 @@ public class MemberUser extends BaseEntity {
 
     public void setStatus(MemberUserStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 
     public LocalDateTime getLastLoginAt() {

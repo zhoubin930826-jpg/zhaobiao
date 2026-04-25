@@ -10,7 +10,7 @@
 
 - 后端：Java 8、Spring Boot 2.7.18、Maven、Spring Security + JWT、Spring Data JPA、MySQL 8。
 - 接口文档：springdoc-openapi，Swagger UI 地址为 `http://localhost:8080/swagger-ui.html`。
-- 测试/预览数据库：测试使用内存 H2，`preview` profile 使用 `.preview/` 下的文件 H2。
+- 本地测试数据库：使用 Docker MySQL 8，默认测试库为 `zhaobiao_admin_test`。
 - 文件存储：默认本地目录 `.uploads/`，设置 `APP_FILE_TYPE=oss` 后使用 Aliyun OSS。
 - 管理后台：`frontend/`，Vue 2.6 + Vue CLI 3 + View Design/iView 风格模板，生产路径 `/ztbgl/`。
 - 公开门户：`front/`，Vue 3.2 + Vite 2，生产路径 `/ztbfb/`。
@@ -79,7 +79,9 @@ mvn spring-boot:run
 - `MYSQL_USER`，默认 `root`
 - `MYSQL_PASSWORD`，默认 `root`
 - `APP_JWT_SECRET`，必须配置，至少 32 个字符
-- `SPRING_PROFILES_ACTIVE=preview|prod`
+- `SPRING_PROFILES_ACTIVE=prod`
+- `MYSQL_TEST_DB`，测试默认 `zhaobiao_admin_test`
+- `MYSQL_CONTEXT_TEST_DB`，启动上下文测试默认 `zhaobiao_admin_context_test`
 - `APP_FILE_TYPE=local|oss`
 - 本地存储：`APP_FILE_STORAGE_PATH`、`APP_FILE_TEMP_PATH`
 - OSS 存储：`APP_FILE_OSS_BUCKET`、`APP_FILE_OSS_ENDPOINT`、`APP_FILE_OSS_ACCESS_KEY_ID`、`APP_FILE_OSS_ACCESS_KEY_SECRET`、`APP_FILE_OSS_KEY_PREFIX`
@@ -227,7 +229,6 @@ curl -I http://127.0.0.1:8080/v3/api-docs
 - `src/main/java/com/zhaobiao/admin`：后端源码。
 - `src/test/java/com/zhaobiao/admin`：后端集成测试。
 - `src/main/resources/application.yml`：默认后端配置。
-- `src/main/resources/application-preview.yml`：预览配置。
 - `frontend/`：管理后台。
 - `front/`：公开门户。
 - `sql/mysql8/data-initializer.sql`：MySQL 初始化数据脚本。
@@ -238,6 +239,6 @@ curl -I http://127.0.0.1:8080/v3/api-docs
 
 - 不要提交或粘贴真实密码、JWT secret、数据库凭据、OSS key。
 - `server-config.md` 被 Git 忽略，可能包含真实服务器信息，只在明确做生产/服务器操作时读取。
-- `target/`、`.uploads/`、`.preview/`、`.test-uploads/`、`frontend/dist/`、`front/dist/`、`node_modules/` 都是生成或本地目录，不应提交。
+- `target/`、`.uploads/`、`.test-uploads/`、`frontend/dist/`、`front/dist/`、`node_modules/` 都是生成或本地目录，不应提交。
 - 改数据库结构或生产初始化数据时，同步更新 `production-db-schema-change-list.md`。
 - 改权限、菜单、角色或管理能力时，同时改后端鉴权、种子数据、管理后台菜单/按钮和测试。

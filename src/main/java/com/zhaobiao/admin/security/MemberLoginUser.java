@@ -6,6 +6,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 
+import java.time.LocalDateTime;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -17,6 +18,7 @@ public class MemberLoginUser implements UserDetails {
     private final String username;
     private final String password;
     private final MemberUserStatus status;
+    private final LocalDateTime expiresAt;
     private final boolean canDownloadFile;
     private final List<Long> businessTypeIds;
     private final List<GrantedAuthority> authorities;
@@ -25,6 +27,7 @@ public class MemberLoginUser implements UserDetails {
                            String username,
                            String password,
                            MemberUserStatus status,
+                           LocalDateTime expiresAt,
                            boolean canDownloadFile,
                            List<Long> businessTypeIds,
                            List<GrantedAuthority> authorities) {
@@ -32,6 +35,7 @@ public class MemberLoginUser implements UserDetails {
         this.username = username;
         this.password = password;
         this.status = status;
+        this.expiresAt = expiresAt;
         this.canDownloadFile = canDownloadFile;
         this.businessTypeIds = businessTypeIds;
         this.authorities = authorities;
@@ -43,6 +47,7 @@ public class MemberLoginUser implements UserDetails {
                 user.getUsername(),
                 user.getPassword(),
                 user.getStatus(),
+                user.getExpiresAt(),
                 user.isCanDownloadFile(),
                 user.getBusinessTypes().stream()
                         .filter(item -> item != null && item.isEnabled())
@@ -59,6 +64,10 @@ public class MemberLoginUser implements UserDetails {
 
     public MemberUserStatus getStatus() {
         return status;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
     }
 
     public boolean isCanDownloadFile() {
@@ -86,7 +95,7 @@ public class MemberLoginUser implements UserDetails {
 
     @Override
     public boolean isAccountNonExpired() {
-        return true;
+        return expiresAt != null && expiresAt.isAfter(LocalDateTime.now());
     }
 
     @Override

@@ -12,6 +12,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
@@ -26,6 +29,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @AutoConfigureMockMvc
 @Import(DataInitializer.class)
 class AuthFlowIntegrationTests {
+
+    private static final DateTimeFormatter DATE_TIME_FORMATTER = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     @Autowired
     private MockMvc mockMvc;
@@ -106,14 +111,18 @@ class AuthFlowIntegrationTests {
         Long goodsTypeId = findBusinessTypeIdByCode(superAdminToken, "GOODS");
         assertNotNull(engineeringTypeId);
         assertNotNull(goodsTypeId);
+        String futureExpiresAt = formatDateTime(LocalDateTime.now().plusMonths(1));
+        String updatedExpiresAt = formatDateTime(LocalDateTime.now().plusMonths(2));
 
         MvcResult createResult = mockMvc.perform(post("/api/admin/members")
                         .header("Authorization", "Bearer " + superAdminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"phone\":\"139" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + engineeringTypeId + "],\"canDownloadFile\":false,\"status\":\"ENABLED\"}"))
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"139" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + engineeringTypeId + "],\"canDownloadFile\":false,\"status\":\"ENABLED\",\"expiresAt\":\"" + futureExpiresAt + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.username").value(username))
+                .andExpect(jsonPath("$.data.expiresAt").exists())
+                .andExpect(jsonPath("$.data.expired").value(false))
                 .andExpect(jsonPath("$.data.businessTypes", hasSize(1)))
                 .andExpect(jsonPath("$.data.businessTypes[0].code").value("ENGINEERING"))
                 .andReturn();
@@ -134,6 +143,7 @@ class AuthFlowIntegrationTests {
                 .andExpect(jsonPath("$.data.businessTypes", hasSize(1)))
                 .andExpect(jsonPath("$.data.businessTypes[0].code").value("ENGINEERING"))
                 .andExpect(jsonPath("$.data.canDownloadFile").value(false))
+                .andExpect(jsonPath("$.data.expired").value(false))
                 .andExpect(jsonPath("$.data.status").value("ENABLED"));
 
         mockMvc.perform(get("/api/auth/me")
@@ -144,7 +154,7 @@ class AuthFlowIntegrationTests {
         mockMvc.perform(put("/api/admin/members/{memberId}", memberId)
                         .header("Authorization", "Bearer " + superAdminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"phone\":\"137" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"updated-" + username + "@test.com\",\"companyName\":\"更新后的会员企业\",\"contactPerson\":\"王五\",\"unifiedSocialCreditCode\":\"91310000MA2K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"王五\",\"businessTypeIds\":[" + engineeringTypeId + "," + goodsTypeId + "]}"))
+                        .content("{\"phone\":\"137" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"updated-" + username + "@test.com\",\"companyName\":\"更新后的会员企业\",\"contactPerson\":\"王五\",\"unifiedSocialCreditCode\":\"91310000MA2K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"王五\",\"businessTypeIds\":[" + engineeringTypeId + "," + goodsTypeId + "],\"expiresAt\":\"" + updatedExpiresAt + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.businessTypes", hasSize(2)));
@@ -185,6 +195,66 @@ class AuthFlowIntegrationTests {
                         .content("{\"username\":\"" + username + "\",\"password\":\"654321\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void memberExpirationIsRequiredAndBlocksLoginAndPortalAccess() throws Exception {
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        String username = "expire" + uniqueTag;
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long engineeringTypeId = findBusinessTypeIdByCode(superAdminToken, "ENGINEERING");
+        assertNotNull(engineeringTypeId);
+        String futureExpiresAt = formatDateTime(LocalDateTime.now().plusDays(30));
+        String pastExpiresAt = formatDateTime(LocalDateTime.now().minusMinutes(1));
+
+        mockMvc.perform(post("/api/admin/members")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "missing\",\"phone\":\"136" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"missing-" + username + "@test.com\",\"companyName\":\"会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA3K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + engineeringTypeId + "],\"canDownloadFile\":false,\"status\":\"ENABLED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        MvcResult createResult = mockMvc.perform(post("/api/admin/members")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"135" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA4K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + engineeringTypeId + "],\"canDownloadFile\":false,\"status\":\"ENABLED\",\"expiresAt\":\"" + futureExpiresAt + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.expiresAt").exists())
+                .andExpect(jsonPath("$.data.expired").value(false))
+                .andReturn();
+
+        Long memberId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .asLong();
+        assertNotNull(memberId);
+
+        String memberToken = loginMember(username, "123456");
+        mockMvc.perform(get("/api/portal/auth/me")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.expired").value(false));
+
+        mockMvc.perform(put("/api/admin/members/{memberId}", memberId)
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"134" + uniqueTag.substring(uniqueTag.length() - 8) + "\",\"email\":\"expired-" + username + "@test.com\",\"companyName\":\"会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA5K" + uniqueTag.substring(uniqueTag.length() - 6) + "\",\"realName\":\"李四\",\"businessTypeIds\":[" + engineeringTypeId + "],\"expiresAt\":\"" + pastExpiresAt + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.expired").value(true));
+
+        mockMvc.perform(post("/api/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
+
+        mockMvc.perform(get("/api/portal/auth/me")
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
     }
 
     @Test
@@ -286,5 +356,9 @@ class AuthFlowIntegrationTests {
             }
         }
         return null;
+    }
+
+    private String formatDateTime(LocalDateTime dateTime) {
+        return dateTime.format(DATE_TIME_FORMATTER);
     }
 }
