@@ -234,8 +234,10 @@ public class TenderService {
         if (fileIds == null) {
             return java.util.Collections.emptyList();
         }
+        if (fileIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(400, "附件文件不能为空");
+        }
         Set<Long> set = fileIds.stream()
-                .filter(Objects::nonNull)
                 .collect(Collectors.toCollection(LinkedHashSet::new));
         return new ArrayList<>(set);
     }

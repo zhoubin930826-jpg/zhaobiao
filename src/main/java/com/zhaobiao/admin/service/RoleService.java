@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -93,8 +94,12 @@ public class RoleService {
     }
 
     private Set<Menu> loadMenus(List<Long> menuIds) {
-        List<Menu> menus = menuRepository.findAllById(menuIds);
-        if (menus.size() != menuIds.size()) {
+        if (menuIds == null || menuIds.isEmpty() || menuIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(400, "请至少分配一个菜单");
+        }
+        List<Long> normalizedMenuIds = menuIds.stream().distinct().collect(Collectors.toList());
+        List<Menu> menus = menuRepository.findAllById(normalizedMenuIds);
+        if (menus.size() != normalizedMenuIds.size()) {
             throw new BusinessException(400, "包含不存在的菜单");
         }
         return menus.stream().collect(Collectors.toCollection(LinkedHashSet::new));
