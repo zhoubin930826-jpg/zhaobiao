@@ -12,7 +12,7 @@
 
     <groupId>com.zhaobiao</groupId>
     <artifactId>zhaobiao-admin</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
+    <version>0.0.2-SNAPSHOT</version>
     <name>zhaobiao-admin</name>
     <description>Basic admin system for tender platform</description>
 

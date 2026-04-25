@@ -17,7 +17,7 @@ public class OpenApiConfig {
                 .info(new Info()
                         .title("招标系统后台接口文档")
                         .description("招标平台后端接口，包含管理员认证、会员认证、会员管理、招标管理、附件上传下载与门户公开接口")
-                        .version("v1.0.0"))
+                        .version("v1.0.1"))
                 .addSecurityItem(new SecurityRequirement().addList("bearerAuth"))
                 .components(new Components().addSecuritySchemes("bearerAuth",
                         new SecurityScheme()
