@@ -53,7 +53,7 @@
         </section>
         <section class="block">
           <h2>公告正文</h2>
-          <div class="body">{{ item.content }}</div>
+          <div class="body" v-html="item.content"></div>
         </section>
         <router-link to="/list" class="back">← 返回列表</router-link>
       </article>

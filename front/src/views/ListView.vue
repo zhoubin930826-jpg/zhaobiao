@@ -37,10 +37,33 @@
     <p v-else-if="!filtered.length" class="state state-empty">暂无符合条件的公告，可尝试调整筛选或关键词。</p>
     <div v-else class="list-stack">
       <p class="result-tip">
-        <span class="result-pill">为您找到 <strong>{{ filtered.length }}</strong> 条公告</span>
+        <span class="result-pill">为您找到 <strong>{{ total }}</strong> 条公告</span>
       </p>
       <div class="grid">
         <TenderCard v-for="item in filtered" :key="item.id" :item="item" />
+      </div>
+
+      <div class="pagination" aria-label="分页">
+        <button type="button" class="page-btn" :disabled="pageNum <= 1" @click="goToPage(pageNum - 1)">
+          上一页
+        </button>
+
+        <div class="page-numbers" role="group" aria-label="页码">
+          <button
+            v-for="p in visiblePages"
+            :key="p"
+            type="button"
+            class="page-number"
+            :class="{ active: p === pageNum }"
+            @click="goToPage(p)"
+          >
+            {{ p }}
+          </button>
+        </div>
+
+        <button type="button" class="page-btn" :disabled="pageNum >= totalPages" @click="goToPage(pageNum + 1)">
+          下一页
+        </button>
       </div>
     </div>
   </div>
@@ -84,17 +107,43 @@ const category = ref(route.query.category || '')
 const region = ref(route.query.region || '')
 const keyword = ref(route.query.q || '')
 
+const pageNum = ref(Number(route.query.pageNum) || 1)
+const pageSize = ref(Number(route.query.pageSize) || 10)
+const total = ref(0)
+const totalPages = ref(0)
+
+const visiblePages = computed(() => {
+  if (totalPages.value <= 1) return [1]
+  const pages = []
+  const start = Math.max(1, pageNum.value - 2)
+  const end = Math.min(totalPages.value, pageNum.value + 2)
+  for (let p = start; p <= end; p++) pages.push(p)
+  return pages
+})
+
+function buildQueryPatch() {
+  const q = {}
+  if (category.value) q.category = category.value
+  if (region.value) q.region = region.value
+  if (keyword.value.trim()) q.q = keyword.value.trim()
+  if (pageNum.value && pageNum.value !== 1) q.pageNum = String(pageNum.value)
+  if (pageSize.value && pageSize.value !== 10) q.pageSize = String(pageSize.value)
+  return q
+}
+
 async function loadList() {
   loading.value = true
   error.value = ''
   try {
     const res = await listPortalTenders({
-      pageNum: 1,
-      pageSize: 100,
+      pageNum: pageNum.value,
+      pageSize: pageSize.value,
       keyword: keyword.value || undefined,
       region: region.value || undefined
     })
     tenders.value = Array.isArray(res.list) ? res.list : []
+    total.value = typeof res.total === 'number' ? res.total : 0
+    totalPages.value = typeof res.totalPages === 'number' ? res.totalPages : 0
     const categorySet = new Set()
     tenders.value.forEach(item => {
       if (item.category) categorySet.add(item.category)
@@ -112,16 +161,30 @@ async function loadList() {
 }
 
 function syncQuery() {
-  const q = {}
-  if (category.value) q.category = category.value
-  if (region.value) q.region = region.value
-  if (keyword.value.trim()) q.q = keyword.value.trim()
-  router.replace({ query: q })
+  router.replace({ query: buildQueryPatch() })
 }
 
-watch([category, region, keyword], () => {
+function goToPage(n) {
+  const next = Math.max(1, Math.min(totalPages.value || 1, n))
+  if (next === pageNum.value) return
+  pageNum.value = next
   syncQuery()
   loadList()
+}
+
+watch([category, region, keyword], ([newCategory, newRegion, newKeyword], [oldCategory, oldRegion, oldKeyword]) => {
+  // 切类型：只更新 URL query（列表分页不受影响，由前端 filtered 过滤）
+  // 切地区/关键词：需要重置到第一页并重新请求
+  if (newRegion !== oldRegion || newKeyword !== oldKeyword) {
+    pageNum.value = 1
+    syncQuery()
+    loadList()
+    return
+  }
+
+  if (newCategory !== oldCategory) {
+    syncQuery()
+  }
 })
 
 const filtered = computed(() =>
@@ -132,10 +195,12 @@ function reset() {
   category.value = ''
   region.value = ''
   keyword.value = ''
+  pageNum.value = 1
 }
 
 onMounted(() => {
   if (isLoggedIn.value) {
+    syncQuery()
     loadList()
   }
 })
@@ -402,5 +467,53 @@ onMounted(() => {
   .reset {
     margin-top: 0.25rem;
   }
+}
+
+.pagination {
+  margin-top: 1.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.page-number {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: #fff;
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.page-number.active {
+  border-color: rgba(37, 99, 235, 0.65);
+  background: rgba(37, 99, 235, 0.08);
+  color: var(--color-primary-dark);
+}
+
+.page-btn {
+  min-width: 5.2rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  color: var(--text-muted);
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.page-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 </style>
