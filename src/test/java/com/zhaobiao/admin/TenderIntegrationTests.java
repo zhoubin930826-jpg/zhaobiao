@@ -371,10 +371,11 @@ class TenderIntegrationTests {
         String joinedTypeIds = Arrays.stream(businessTypeIds)
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
+        String expiresAt = LocalDateTime.now().plusYears(1).format(DATE_TIME_FORMATTER);
         mockMvc.perform(post("/api/admin/members")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"phone\":\"138" + phoneSeed + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"测试会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K" + creditSeed + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + joinedTypeIds + "],\"canDownloadFile\":false,\"status\":\"ENABLED\"}"))
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"138" + phoneSeed + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"测试会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K" + creditSeed + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + joinedTypeIds + "],\"canDownloadFile\":false,\"status\":\"ENABLED\",\"expiresAt\":\"" + expiresAt + "\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
         return loginMember(username, "123456");

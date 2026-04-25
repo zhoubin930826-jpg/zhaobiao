@@ -79,6 +79,7 @@ public class MemberAdminService {
         user.setRealName(request.getRealName());
         user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setStatus(request.getStatus() == null ? MemberUserStatus.ENABLED : request.getStatus());
+        user.setExpiresAt(request.getExpiresAt());
         user.setCanDownloadFile(Boolean.TRUE.equals(request.getCanDownloadFile()));
         user.setBusinessTypes(loadEnabledBusinessTypes(request.getBusinessTypeIds()));
         return viewMapper.toMemberUserDto(memberUserRepository.save(user));
@@ -100,6 +101,7 @@ public class MemberAdminService {
         user.setContactPerson(request.getContactPerson().trim());
         user.setUnifiedSocialCreditCode(request.getUnifiedSocialCreditCode().trim());
         user.setRealName(request.getRealName());
+        user.setExpiresAt(request.getExpiresAt());
         user.setBusinessTypes(loadEnabledBusinessTypes(request.getBusinessTypeIds()));
         return viewMapper.toMemberUserDto(memberUserRepository.save(user));
     }

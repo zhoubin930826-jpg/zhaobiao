@@ -49,6 +49,9 @@ public class PortalAuthService {
         if (user.getStatus() == MemberUserStatus.DISABLED) {
             throw new BusinessException(403, "账号已被禁用");
         }
+        if (isExpired(user.getExpiresAt())) {
+            throw new BusinessException(403, "账号已过期，请联系管理员");
+        }
         if (resolveActiveBusinessTypeIds(user).isEmpty()) {
             throw new BusinessException(403, "账号未分配可用业务类型，请联系管理员");
         }
@@ -125,6 +128,10 @@ public class PortalAuthService {
 
     private MemberUserDto toMemberDto(MemberUser user) {
         return viewMapper.toMemberUserDto(user);
+    }
+
+    private boolean isExpired(LocalDateTime expiresAt) {
+        return expiresAt == null || !expiresAt.isAfter(LocalDateTime.now());
     }
 
     private java.util.List<Long> resolveActiveBusinessTypeIds(MemberUser user) {

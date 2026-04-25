@@ -40,6 +40,12 @@ public class MemberUserDto {
     @Schema(description = "会员状态")
     private MemberUserStatus status;
 
+    @Schema(description = "会员过期时间")
+    private LocalDateTime expiresAt;
+
+    @Schema(description = "会员是否已过期")
+    private boolean expired;
+
     @Schema(description = "会员类型列表")
     private List<BusinessTypeOptionDto> businessTypes;
 
@@ -127,6 +133,22 @@ public class MemberUserDto {
 
     public void setStatus(MemberUserStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
+    }
+
+    public boolean isExpired() {
+        return expired;
+    }
+
+    public void setExpired(boolean expired) {
+        this.expired = expired;
     }
 
     public List<BusinessTypeOptionDto> getBusinessTypes() {

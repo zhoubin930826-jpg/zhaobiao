@@ -45,8 +45,5 @@ Write-Ok "Backend is ready."
 Write-Host "Profile: $profileLabel"
 Write-Host "URL: http://localhost:$port/"
 Write-Host "Swagger: http://localhost:$port/swagger-ui.html"
-if ($profileLabel -eq "preview") {
-    Write-Host "H2 Console: http://localhost:$port/h2-console"
-}
 Write-Host "PID: $($process.Id)"
 Write-Host "Log: $logFile"

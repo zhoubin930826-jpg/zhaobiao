@@ -1,13 +1,16 @@
 package com.zhaobiao.admin.dto.member;
 
+import com.fasterxml.jackson.annotation.JsonFormat;
 import com.zhaobiao.admin.entity.MemberUserStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Schema(description = "后台创建会员请求")
@@ -65,6 +68,11 @@ public class MemberCreateRequest {
 
     @Schema(description = "会员状态，默认 ENABLED", example = "ENABLED")
     private MemberUserStatus status;
+
+    @NotNull(message = "会员过期时间不能为空")
+    @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
+    @Schema(description = "会员过期时间", example = "2026-05-25 23:59:59")
+    private LocalDateTime expiresAt;
 
     public String getUsername() {
         return username;
@@ -160,5 +168,13 @@ public class MemberCreateRequest {
 
     public void setStatus(MemberUserStatus status) {
         this.status = status;
+    }
+
+    public LocalDateTime getExpiresAt() {
+        return expiresAt;
+    }
+
+    public void setExpiresAt(LocalDateTime expiresAt) {
+        this.expiresAt = expiresAt;
     }
 }
