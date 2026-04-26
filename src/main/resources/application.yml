@@ -41,6 +41,8 @@ app:
     oss-endpoint: ${APP_FILE_OSS_ENDPOINT:}
     oss-access-key-id: ${APP_FILE_OSS_ACCESS_KEY_ID:}
     oss-access-key-secret: ${APP_FILE_OSS_ACCESS_KEY_SECRET:}
+    oss-credential-mode: ${APP_FILE_OSS_CREDENTIAL_MODE:access-key}
+    oss-role-name: ${APP_FILE_OSS_ROLE_NAME:}
     oss-key-prefix: ${APP_FILE_OSS_KEY_PREFIX:zb/files}
 
 logging:

@@ -1,8 +1,9 @@
 package com.zhaobiao.admin.service;
 
 import com.aliyun.oss.OSS;
-import com.aliyun.oss.OSSClientBuilder;
 import com.aliyun.oss.OSSException;
+import com.aliyun.oss.common.auth.CredentialsProvider;
+import com.aliyun.oss.common.auth.EcsRamRoleCredentialsProvider;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.PutObjectRequest;
@@ -26,6 +27,7 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.Locale;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -34,8 +36,13 @@ import java.util.stream.Collectors;
 @ConditionalOnProperty(prefix = "app.file", name = "type", havingValue = "oss")
 public class OssFileStorageService extends AbstractFileStorageService implements FileStorageService {
 
+    private static final String CREDENTIAL_MODE_ACCESS_KEY = "access-key";
+
+    private static final String CREDENTIAL_MODE_ECS_RAM_ROLE = "ecs-ram-role";
+
     private final FileStorageProperties fileStorageProperties;
     private final TenderFileStorageRepository tenderFileStorageRepository;
+    private final OssClientFactory ossClientFactory;
 
     private OSS ossClient;
 
@@ -44,10 +51,12 @@ public class OssFileStorageService extends AbstractFileStorageService implements
     private String keyPrefix;
 
     public OssFileStorageService(FileStorageProperties fileStorageProperties,
-                                 TenderFileStorageRepository tenderFileStorageRepository) {
+                                 TenderFileStorageRepository tenderFileStorageRepository,
+                                 OssClientFactory ossClientFactory) {
         super(tenderFileStorageRepository);
         this.fileStorageProperties = fileStorageProperties;
         this.tenderFileStorageRepository = tenderFileStorageRepository;
+        this.ossClientFactory = ossClientFactory;
     }
 
     @PostConstruct
@@ -58,11 +67,23 @@ public class OssFileStorageService extends AbstractFileStorageService implements
         this.bucketName = requireText(fileStorageProperties.getOssBucket(), "必须配置 app.file.oss-bucket 或 APP_FILE_OSS_BUCKET");
         this.keyPrefix = normalizePrefix(fileStorageProperties.getOssKeyPrefix());
 
-        if (!StringUtils.hasText(accessKeyId) || !StringUtils.hasText(accessKeySecret)) {
-            throw new IllegalStateException("启用 OSS 存储时，必须配置 APP_FILE_OSS_ACCESS_KEY_ID 和 APP_FILE_OSS_ACCESS_KEY_SECRET");
+        String credentialMode = normalizeCredentialMode(fileStorageProperties.getOssCredentialMode());
+        if (CREDENTIAL_MODE_ECS_RAM_ROLE.equals(credentialMode)) {
+            String roleName = requireText(fileStorageProperties.getOssRoleName(), "启用 OSS 的 ECS RAM Role 凭证模式时，必须配置 APP_FILE_OSS_ROLE_NAME");
+            CredentialsProvider credentialsProvider = new EcsRamRoleCredentialsProvider(roleName);
+            this.ossClient = ossClientFactory.buildWithCredentialsProvider(endpoint, credentialsProvider);
+            return;
         }
 
-        this.ossClient = new OSSClientBuilder().build(endpoint, accessKeyId, accessKeySecret);
+        if (CREDENTIAL_MODE_ACCESS_KEY.equals(credentialMode)) {
+            if (!StringUtils.hasText(accessKeyId) || !StringUtils.hasText(accessKeySecret)) {
+                throw new IllegalStateException("启用 OSS 存储时，必须配置 APP_FILE_OSS_ACCESS_KEY_ID 和 APP_FILE_OSS_ACCESS_KEY_SECRET");
+            }
+            this.ossClient = ossClientFactory.buildWithAccessKey(endpoint, accessKeyId, accessKeySecret);
+            return;
+        }
+
+        throw new IllegalStateException("不支持的 OSS 凭证模式: " + fileStorageProperties.getOssCredentialMode());
     }
 
     @PreDestroy
@@ -220,5 +241,13 @@ public class OssFileStorageService extends AbstractFileStorageService implements
 
     private String normalize(String value) {
         return value == null ? null : value.trim();
+    }
+
+    private String normalizeCredentialMode(String credentialMode) {
+        String value = normalize(credentialMode);
+        if (!StringUtils.hasText(value)) {
+            return CREDENTIAL_MODE_ACCESS_KEY;
+        }
+        return value.toLowerCase(Locale.ROOT).replace('_', '-');
     }
 }
