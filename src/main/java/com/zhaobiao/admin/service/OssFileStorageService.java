@@ -3,7 +3,7 @@ package com.zhaobiao.admin.service;
 import com.aliyun.oss.OSS;
 import com.aliyun.oss.OSSException;
 import com.aliyun.oss.common.auth.CredentialsProvider;
-import com.aliyun.oss.common.auth.EcsRamRoleCredentialsProvider;
+import com.aliyun.oss.common.auth.InstanceProfileCredentialsProvider;
 import com.aliyun.oss.model.ObjectMetadata;
 import com.aliyun.oss.model.OSSObject;
 import com.aliyun.oss.model.PutObjectRequest;
@@ -70,7 +70,7 @@ public class OssFileStorageService extends AbstractFileStorageService implements
         String credentialMode = normalizeCredentialMode(fileStorageProperties.getOssCredentialMode());
         if (CREDENTIAL_MODE_ECS_RAM_ROLE.equals(credentialMode)) {
             String roleName = requireText(fileStorageProperties.getOssRoleName(), "启用 OSS 的 ECS RAM Role 凭证模式时，必须配置 APP_FILE_OSS_ROLE_NAME");
-            CredentialsProvider credentialsProvider = new EcsRamRoleCredentialsProvider(roleName);
+            CredentialsProvider credentialsProvider = new InstanceProfileCredentialsProvider(roleName);
             this.ossClient = ossClientFactory.buildWithCredentialsProvider(endpoint, credentialsProvider);
             return;
         }
