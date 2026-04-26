@@ -62,6 +62,12 @@
           <Badge v-else-if="row.status === 'DISABLED'" color="default" text="禁用" />
           <span v-else>{{ row.status }}</span>
         </template>
+        <template slot="expiresAt" slot-scope="{ row }">
+          <div>
+            <Badge v-if="row.expired" color="red" text="已过期" style="margin-right: 8px;" />
+            <span>{{ row.expiresAt || '—' }}</span>
+          </div>
+        </template>
         <template slot="download" slot-scope="{ row }">
           <Badge v-if="row.canDownloadFile" color="green" text="允许" />
           <Badge v-else color="default" text="不允许" />
@@ -168,6 +174,19 @@
             </Col>
           </Row>
           <Row :gutter="16">
+            <Col span="24">
+              <FormItem label="会员过期时间" prop="expiresAt">
+                <DatePicker
+                  v-model="formData.expiresAt"
+                  type="datetime"
+                  format="yyyy-MM-dd HH:mm:ss"
+                  placeholder="请选择会员过期时间"
+                  style="width: 100%;"
+                />
+              </FormItem>
+            </Col>
+          </Row>
+          <Row :gutter="16">
             <Col span="12">
               <FormItem label="会员状态" prop="status">
                 <RadioGroup v-model="formData.status">
@@ -236,6 +255,7 @@
                     password: '',
                     confirmPassword: '',
                     businessTypeIds: [],
+                    expiresAt: null,
                     canDownloadFile: false,
                     status: 'ENABLED'
                 },
@@ -295,7 +315,19 @@
                             trigger: 'blur'
                         }
                     ],
-                    businessTypeIds: [{ type: 'array', required: true, min: 1, message: '请至少选择一个会员类型', trigger: 'change' }]
+                    businessTypeIds: [{ type: 'array', required: true, min: 1, message: '请至少选择一个会员类型', trigger: 'change' }],
+                    expiresAt: [
+                        {
+                            validator: (rule, value, callback) => {
+                                if (!value) {
+                                    callback(new Error('请选择会员过期时间'));
+                                    return;
+                                }
+                                callback();
+                            },
+                            trigger: 'change'
+                        }
+                    ]
                 },
                 columns: [
                     { title: '用户名', key: 'username', minWidth: 120, show: true },
@@ -304,6 +336,7 @@
                     { title: '手机号', key: 'phone', minWidth: 130, show: true },
                     { title: '邮箱', key: 'email', minWidth: 180, show: true },
                     { title: '业务类型', slot: 'businessTypes', minWidth: 180, show: true },
+                    { title: '过期时间', slot: 'expiresAt', minWidth: 180, show: true },
                     { title: '下载权限', slot: 'download', minWidth: 100, show: true },
                     { title: '状态', slot: 'status', minWidth: 100, show: true },
                     { title: '操作', slot: 'action', minWidth: 280, align: 'center', fixed: 'right', show: true }
@@ -374,6 +407,7 @@
                     password: '',
                     confirmPassword: '',
                     businessTypeIds: [],
+                    expiresAt: null,
                     canDownloadFile: false,
                     status: 'ENABLED'
                 };
@@ -401,6 +435,7 @@
                         password: '',
                         confirmPassword: '',
                         businessTypeIds: Array.isArray(res.businessTypes) ? res.businessTypes.map(item => item.id) : [],
+                        expiresAt: this.parseBackendDateTime(res.expiresAt),
                         canDownloadFile: !!res.canDownloadFile,
                         status: res.status || 'ENABLED'
                     };
@@ -434,6 +469,7 @@
                             password: this.formData.password,
                             confirmPassword: this.formData.confirmPassword,
                             businessTypeIds: this.formData.businessTypeIds,
+                            expiresAt: this.formatDateTime(this.formData.expiresAt),
                             canDownloadFile: this.formData.canDownloadFile,
                             status: this.formData.status
                         })
@@ -444,7 +480,8 @@
                             contactPerson: this.formData.contactPerson,
                             unifiedSocialCreditCode: this.formData.unifiedSocialCreditCode,
                             realName: this.formData.realName,
-                            businessTypeIds: this.formData.businessTypeIds
+                            businessTypeIds: this.formData.businessTypeIds,
+                            expiresAt: this.formatDateTime(this.formData.expiresAt)
                     });
                     request.then(() => {
                         this.submitting = false;
@@ -460,6 +497,20 @@
             formatBusinessTypes (items) {
                 if (!Array.isArray(items) || !items.length) return '—';
                 return items.map(item => item.name).join('、');
+            },
+            parseBackendDateTime (value) {
+                if (!value) return null;
+                if (value instanceof Date) return value;
+                // 后端返回 LocalDateTime 通常是 `yyyy-MM-dd HH:mm:ss`，把空格替换成 `T` 以便浏览器解析
+                const parsed = new Date(String(value).replace(' ', 'T'));
+                return Number.isNaN(parsed.getTime()) ? null : parsed;
+            },
+            formatDateTime (value) {
+                if (!value) return '';
+                const date = value instanceof Date ? value : this.parseBackendDateTime(value);
+                if (!date) return '';
+                const pad = num => String(num).padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
             },
             toggleStatus (row) {
                 const status = row.status === 'ENABLED' ? 'DISABLED' : 'ENABLED';
