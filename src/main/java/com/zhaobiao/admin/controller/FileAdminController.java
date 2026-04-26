@@ -29,7 +29,7 @@ public class FileAdminController {
     }
 
     @Operation(summary = "上传招标附件")
-    @PreAuthorize("hasAuthority('tender:file:upload')")
+    @PreAuthorize("hasAuthority('TENDER_UPLOAD_BUTTON')")
     @OperationLogRecord(module = "招标管理", action = "上传招标附件")
     @PostMapping("/upload")
     public ApiResponse<List<FileUploadResponse>> upload(@RequestParam("files") MultipartFile[] files) {

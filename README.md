@@ -84,7 +84,8 @@ mvn spring-boot:run
 - `MYSQL_CONTEXT_TEST_DB`，启动上下文测试默认 `zhaobiao_admin_context_test`
 - `APP_FILE_TYPE=local|oss`
 - 本地存储：`APP_FILE_STORAGE_PATH`、`APP_FILE_TEMP_PATH`
-- OSS 存储：`APP_FILE_OSS_BUCKET`、`APP_FILE_OSS_ENDPOINT`、`APP_FILE_OSS_ACCESS_KEY_ID`、`APP_FILE_OSS_ACCESS_KEY_SECRET`、`APP_FILE_OSS_KEY_PREFIX`
+- OSS 存储：`APP_FILE_OSS_BUCKET`、`APP_FILE_OSS_ENDPOINT`、`APP_FILE_OSS_CREDENTIAL_MODE`、`APP_FILE_OSS_ROLE_NAME`、`APP_FILE_OSS_ACCESS_KEY_ID`、`APP_FILE_OSS_ACCESS_KEY_SECRET`、`APP_FILE_OSS_KEY_PREFIX`
+- OSS 凭证模式：`APP_FILE_OSS_CREDENTIAL_MODE=access-key` 使用长期 AK/SK；`APP_FILE_OSS_CREDENTIAL_MODE=ecs-ram-role` 使用 ECS 实例 RAM 角色，此时配置 `APP_FILE_OSS_ROLE_NAME`，不需要配置 AK/SK。
 
 生产环境额外要求：
 
@@ -113,7 +114,7 @@ mvn clean package -DskipTests
 生成的后端包为：
 
 ```text
-target/zhaobiao-admin-0.0.1-SNAPSHOT.jar
+target/zhaobiao-admin-0.0.3-SNAPSHOT.jar
 ```
 
 ## 前端运行

@@ -11,21 +11,18 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     @Query("select distinct u from User u " +
             "left join fetch u.roles r " +
-            "left join fetch r.permissions " +
             "left join fetch r.menus " +
             "where u.username = ?1")
     Optional<User> findDetailByUsername(String username);
 
     @Query("select distinct u from User u " +
             "left join fetch u.roles r " +
-            "left join fetch r.permissions " +
             "left join fetch r.menus " +
             "where u.id = ?1")
     Optional<User> findDetailById(Long id);
 
     @Query("select distinct u from User u " +
             "left join fetch u.roles r " +
-            "left join fetch r.permissions " +
             "left join fetch r.menus")
     List<User> findAllWithDetails();
 

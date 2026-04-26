@@ -15,6 +15,4 @@ public interface MenuRepository extends JpaRepository<Menu, Long> {
     boolean existsByParentId(Long parentId);
 
     Optional<Menu> findByCode(String code);
-
-    boolean existsByPermissionCode(String permissionCode);
 }

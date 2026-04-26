@@ -32,14 +32,14 @@ public class RoleController {
     }
 
     @Operation(summary = "查询角色列表")
-    @PreAuthorize("hasAuthority('role:view')")
+    @PreAuthorize("hasAuthority('SYSTEM_ROLE')")
     @GetMapping
     public ApiResponse<List<RoleDto>> listRoles() {
         return ApiResponse.success(roleService.listRoles());
     }
 
     @Operation(summary = "新增角色")
-    @PreAuthorize("hasAuthority('role:edit')")
+    @PreAuthorize("hasAuthority('ROLE_EDIT_BUTTON')")
     @OperationLogRecord(module = "角色管理", action = "新增角色")
     @PostMapping
     public ApiResponse<RoleDto> createRole(@Valid @RequestBody RoleRequest request) {
@@ -47,7 +47,7 @@ public class RoleController {
     }
 
     @Operation(summary = "修改角色")
-    @PreAuthorize("hasAuthority('role:edit')")
+    @PreAuthorize("hasAuthority('ROLE_EDIT_BUTTON')")
     @OperationLogRecord(module = "角色管理", action = "修改角色")
     @PutMapping("/{roleId}")
     public ApiResponse<RoleDto> updateRole(@PathVariable Long roleId, @Valid @RequestBody RoleRequest request) {
@@ -55,7 +55,7 @@ public class RoleController {
     }
 
     @Operation(summary = "删除角色")
-    @PreAuthorize("hasAuthority('role:edit')")
+    @PreAuthorize("hasAuthority('ROLE_EDIT_BUTTON')")
     @OperationLogRecord(module = "角色管理", action = "删除角色")
     @DeleteMapping("/{roleId}")
     public ApiResponse<Void> deleteRole(@PathVariable Long roleId) {

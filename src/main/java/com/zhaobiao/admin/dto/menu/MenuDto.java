@@ -41,7 +41,7 @@ public class MenuDto {
     @Schema(description = "是否启用")
     private Boolean enabled;
 
-    @Schema(description = "按钮权限编码")
+    @Schema(description = "已废弃，后端授权统一使用菜单编码 code")
     private String permissionCode;
 
     @Schema(description = "描述")
@@ -162,4 +162,3 @@ public class MenuDto {
         this.children = children;
     }
 }
-

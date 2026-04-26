@@ -4,32 +4,25 @@ import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.dto.menu.MenuDto;
 import com.zhaobiao.admin.dto.menu.MenuRequest;
 import com.zhaobiao.admin.entity.Menu;
-import com.zhaobiao.admin.entity.MenuType;
 import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.MenuRepository;
-import com.zhaobiao.admin.repository.PermissionRepository;
 import com.zhaobiao.admin.repository.RoleRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 public class MenuService {
 
     private final MenuRepository menuRepository;
-    private final PermissionRepository permissionRepository;
     private final RoleRepository roleRepository;
     private final ViewMapper viewMapper;
 
     public MenuService(MenuRepository menuRepository,
-                       PermissionRepository permissionRepository,
                        RoleRepository roleRepository,
                        ViewMapper viewMapper) {
         this.menuRepository = menuRepository;
-        this.permissionRepository = permissionRepository;
         this.roleRepository = roleRepository;
         this.viewMapper = viewMapper;
     }
@@ -77,7 +70,6 @@ public class MenuService {
 
     private void applyMenuChanges(Menu menu, MenuRequest request, boolean update) {
         validateParent(request.getParentId(), update ? menu.getId() : null);
-        validatePermissionCode(request);
 
         menu.setCode(request.getCode());
         menu.setName(request.getName());
@@ -89,7 +81,7 @@ public class MenuService {
         menu.setSortOrder(request.getSortOrder());
         menu.setVisible(Boolean.TRUE.equals(request.getVisible()));
         menu.setEnabled(Boolean.TRUE.equals(request.getEnabled()));
-        menu.setPermissionCode(request.getPermissionCode());
+        menu.setPermissionCode(null);
         menu.setDescription(request.getDescription());
     }
 
@@ -102,14 +94,4 @@ public class MenuService {
         }
         menuRepository.findById(parentId).orElseThrow(() -> new BusinessException(400, "父级菜单不存在"));
     }
-
-    private void validatePermissionCode(MenuRequest request) {
-        if (request.getType() == MenuType.BUTTON && !StringUtils.hasText(request.getPermissionCode())) {
-            throw new BusinessException(400, "按钮类型菜单必须绑定权限编码");
-        }
-        if (StringUtils.hasText(request.getPermissionCode()) && !permissionRepository.existsByCode(request.getPermissionCode())) {
-            throw new BusinessException(400, "绑定的权限编码不存在");
-        }
-    }
 }
-

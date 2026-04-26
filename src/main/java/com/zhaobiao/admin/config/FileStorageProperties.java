@@ -21,6 +21,10 @@ public class FileStorageProperties {
 
     private String ossAccessKeySecret;
 
+    private String ossCredentialMode = "access-key";
+
+    private String ossRoleName;
+
     private String ossKeyPrefix = "zb/files";
 
     public String getType() {
@@ -77,6 +81,22 @@ public class FileStorageProperties {
 
     public void setOssAccessKeySecret(String ossAccessKeySecret) {
         this.ossAccessKeySecret = ossAccessKeySecret;
+    }
+
+    public String getOssCredentialMode() {
+        return ossCredentialMode;
+    }
+
+    public void setOssCredentialMode(String ossCredentialMode) {
+        this.ossCredentialMode = ossCredentialMode;
+    }
+
+    public String getOssRoleName() {
+        return ossRoleName;
+    }
+
+    public void setOssRoleName(String ossRoleName) {
+        this.ossRoleName = ossRoleName;
     }
 
     public String getOssKeyPrefix() {

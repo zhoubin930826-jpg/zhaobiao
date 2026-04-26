@@ -33,7 +33,7 @@
 - 打包后的 JAR 文件名：
 
 ```text
-target/zhaobiao-admin-0.0.1-SNAPSHOT.jar
+target/zhaobiao-admin-0.0.3-SNAPSHOT.jar
 ```
 
 后端运行时会读取这些环境变量：
@@ -277,7 +277,7 @@ mvn clean package -DskipTests
 打包完成后，确认本地有这个文件：
 
 ```text
-target/zhaobiao-admin-0.0.1-SNAPSHOT.jar
+target/zhaobiao-admin-0.0.3-SNAPSHOT.jar
 ```
 
 ## 9. 上传后端 JAR 到服务器
@@ -292,13 +292,13 @@ sudo chown -R $USER:$USER /opt/zhaobiao
 然后在本地电脑上执行上传命令：
 
 ```bash
-scp target/zhaobiao-admin-0.0.1-SNAPSHOT.jar your_user@your_server_ip:/opt/zhaobiao/app/
+scp target/zhaobiao-admin-0.0.3-SNAPSHOT.jar your_user@your_server_ip:/opt/zhaobiao/app/
 ```
 
 示例：
 
 ```bash
-scp target/zhaobiao-admin-0.0.1-SNAPSHOT.jar ubuntu@123.123.123.123:/opt/zhaobiao/app/
+scp target/zhaobiao-admin-0.0.3-SNAPSHOT.jar ubuntu@123.123.123.123:/opt/zhaobiao/app/
 ```
 
 ## 10. 创建后端环境变量文件
@@ -338,7 +338,7 @@ cd /opt/zhaobiao/app
 set -a
 source app.env
 set +a
-nohup java -jar zhaobiao-admin-0.0.1-SNAPSHOT.jar > app.log 2>&1 &
+nohup java -jar zhaobiao-admin-0.0.3-SNAPSHOT.jar > app.log 2>&1 &
 ```
 
 查看日志：
@@ -408,7 +408,7 @@ Requires=docker.service
 Type=simple
 WorkingDirectory=/opt/zhaobiao/app
 EnvironmentFile=/opt/zhaobiao/app/app.env
-ExecStart=/usr/bin/java -jar /opt/zhaobiao/app/zhaobiao-admin-0.0.1-SNAPSHOT.jar
+ExecStart=/usr/bin/java -jar /opt/zhaobiao/app/zhaobiao-admin-0.0.3-SNAPSHOT.jar
 SuccessExitStatus=143
 Restart=always
 RestartSec=5

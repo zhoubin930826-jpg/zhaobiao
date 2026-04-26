@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -122,8 +123,12 @@ public class AdminAccountService {
     }
 
     private Set<Role> loadAdminRoles(List<Long> roleIds) {
-        List<Role> roles = roleRepository.findAllById(roleIds);
-        if (roles.size() != roleIds.size()) {
+        if (roleIds == null || roleIds.isEmpty() || roleIds.stream().anyMatch(Objects::isNull)) {
+            throw new BusinessException(400, "至少选择一个角色");
+        }
+        List<Long> normalizedRoleIds = roleIds.stream().distinct().collect(Collectors.toList());
+        List<Role> roles = roleRepository.findAllById(normalizedRoleIds);
+        if (roles.size() != normalizedRoleIds.size()) {
             throw new BusinessException(400, "包含不存在的角色");
         }
         if (roles.stream().anyMatch(role -> SystemConstants.NORMAL_USER_ROLE.equals(role.getCode()))) {

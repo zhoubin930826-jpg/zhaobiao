@@ -50,7 +50,7 @@ public class MenuRequest {
     private Boolean enabled;
 
     @Size(max = 64, message = "权限编码不能超过 64 位")
-    @Schema(description = "按钮权限编码", example = "user:view")
+    @Schema(description = "已废弃，后端授权统一使用菜单编码 code", example = "SYSTEM_USER")
     private String permissionCode;
 
     @Size(max = 255, message = "描述不能超过 255 位")
@@ -153,4 +153,3 @@ public class MenuRequest {
         this.description = description;
     }
 }
-

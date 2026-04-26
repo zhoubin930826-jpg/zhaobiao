@@ -14,11 +14,16 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
@@ -308,6 +313,86 @@ class AuthFlowIntegrationTests {
                 .andExpect(jsonPath("$.code").value(403));
     }
 
+    @Test
+    void roleAuthoritiesUseMenuCodesAndIgnoreSubmittedPermissionIds() throws Exception {
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long dashboardMenuId = findMenuIdByCode(superAdminToken, "DASHBOARD");
+        Long memberViewMenuId = findMenuIdByCode(superAdminToken, "SYSTEM_MEMBER_USER");
+        Long memberCreateButtonId = findMenuIdByCode(superAdminToken, "MEMBER_CREATE_BUTTON");
+        assertNotNull(dashboardMenuId);
+        assertNotNull(memberViewMenuId);
+        assertNotNull(memberCreateButtonId);
+
+        Long roleId = createRoleWithMenus(
+                superAdminToken,
+                "MENU_ONLY_" + System.currentTimeMillis(),
+                Arrays.asList(dashboardMenuId, memberViewMenuId, memberCreateButtonId),
+                Arrays.asList(-1L, -2L)
+        );
+
+        JsonNode role = findRoleById(superAdminToken, roleId);
+        assertNotNull(role);
+        assertTrue(hasTextValue(role.path("menuCodes"), "DASHBOARD"));
+        assertTrue(hasTextValue(role.path("menuCodes"), "SYSTEM_MEMBER_USER"));
+        assertTrue(hasTextValue(role.path("menuCodes"), "MEMBER_CREATE_BUTTON"));
+        assertFalse(role.path("permissionCodes").elements().hasNext());
+    }
+
+    @Test
+    void loginUserAuthoritiesUseMenuCodes() throws Exception {
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long dashboardMenuId = findMenuIdByCode(superAdminToken, "DASHBOARD");
+        Long memberViewMenuId = findMenuIdByCode(superAdminToken, "SYSTEM_MEMBER_USER");
+        Long memberCreateButtonId = findMenuIdByCode(superAdminToken, "MEMBER_CREATE_BUTTON");
+        assertNotNull(dashboardMenuId);
+        assertNotNull(memberViewMenuId);
+        assertNotNull(memberCreateButtonId);
+        Long roleId = createRoleWithMenus(
+                superAdminToken,
+                "MENU_AUTH_" + System.currentTimeMillis(),
+                Arrays.asList(dashboardMenuId, memberViewMenuId, memberCreateButtonId),
+                Collections.emptyList()
+        );
+
+        String username = "menuauth" + System.currentTimeMillis();
+        createAdminWithRole(superAdminToken, username, roleId);
+        String menuAdminToken = loginAdmin(username, "12345678");
+
+        MvcResult result = mockMvc.perform(get("/api/auth/me")
+                        .header("Authorization", "Bearer " + menuAdminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        JsonNode permissions = objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("permissions");
+        assertTrue(hasTextValue(permissions, "DASHBOARD"));
+        assertTrue(hasTextValue(permissions, "SYSTEM_MEMBER_USER"));
+        assertTrue(hasTextValue(permissions, "MEMBER_CREATE_BUTTON"));
+        assertFalse(hasTextValue(permissions, "member:create"));
+    }
+
+    @Test
+    void roleWithoutButtonMenuDoesNotReceiveButtonAuthority() throws Exception {
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long dashboardMenuId = findMenuIdByCode(superAdminToken, "DASHBOARD");
+        Long memberViewMenuId = findMenuIdByCode(superAdminToken, "SYSTEM_MEMBER_USER");
+        assertNotNull(dashboardMenuId);
+        assertNotNull(memberViewMenuId);
+
+        Long roleId = createRoleWithMenus(
+                superAdminToken,
+                "MENU_VIEW_ONLY_" + System.currentTimeMillis(),
+                Arrays.asList(dashboardMenuId, memberViewMenuId),
+                Collections.emptyList()
+        );
+
+        JsonNode role = findRoleById(superAdminToken, roleId);
+        assertNotNull(role);
+        assertTrue(hasTextValue(role.path("menuCodes"), "DASHBOARD"));
+        assertTrue(hasTextValue(role.path("menuCodes"), "SYSTEM_MEMBER_USER"));
+        assertFalse(hasTextValue(role.path("menuCodes"), "MEMBER_CREATE_BUTTON"));
+        assertFalse(role.path("permissionCodes").elements().hasNext());
+    }
+
     private String loginAdmin(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -328,6 +413,29 @@ class AuthFlowIntegrationTests {
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
     }
 
+    private Long createRoleWithMenus(String adminToken, String roleCode, List<Long> menuIds, List<Long> permissionIds) throws Exception {
+        MvcResult result = mockMvc.perform(post("/api/admin/roles")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"code\":\"" + roleCode + "\",\"name\":\"菜单授权测试角色\",\"description\":\"menu derived\",\"permissionIds\":" + toJsonArray(permissionIds) + ",\"menuIds\":" + toJsonArray(menuIds) + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
+    }
+
+    private Long createAdminWithRole(String adminToken, String username, Long roleId) throws Exception {
+        String phoneSuffix = username.substring(username.length() - 8);
+        MvcResult createResult = mockMvc.perform(post("/api/admin/admin-users")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"138" + phoneSuffix + "\",\"email\":\"" + username + "@zhaobiao.com\",\"realName\":\"菜单授权测试管理员\",\"password\":\"12345678\",\"confirmPassword\":\"12345678\",\"roleIds\":[" + roleId + "]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        return objectMapper.readTree(createResult.getResponse().getContentAsString()).path("data").path("id").asLong();
+    }
+
     private Long findRoleIdByCode(String adminToken, String roleCode) throws Exception {
         MvcResult roleListResult = mockMvc.perform(get("/api/admin/roles")
                         .header("Authorization", "Bearer " + adminToken))
@@ -338,6 +446,46 @@ class AuthFlowIntegrationTests {
         for (JsonNode role : roles) {
             if (roleCode.equals(role.path("code").asText())) {
                 return role.path("id").asLong();
+            }
+        }
+        return null;
+    }
+
+    private JsonNode findRoleById(String adminToken, Long roleId) throws Exception {
+        MvcResult roleListResult = mockMvc.perform(get("/api/admin/roles")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        JsonNode roles = objectMapper.readTree(roleListResult.getResponse().getContentAsString()).path("data");
+        for (JsonNode role : roles) {
+            if (role.path("id").asLong() == roleId) {
+                return role;
+            }
+        }
+        return null;
+    }
+
+    private Long findMenuIdByCode(String adminToken, String code) throws Exception {
+        MvcResult result = mockMvc.perform(get("/api/admin/menus")
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        return findMenuId(objectMapper.readTree(result.getResponse().getContentAsString()).path("data"), code);
+    }
+
+    private Long findMenuId(JsonNode menus, String code) {
+        if (menus == null || !menus.isArray()) {
+            return null;
+        }
+        for (JsonNode menu : menus) {
+            if (code.equals(menu.path("code").asText())) {
+                return menu.path("id").asLong();
+            }
+            Long childId = findMenuId(menu.path("children"), code);
+            if (childId != null) {
+                return childId;
             }
         }
         return null;
@@ -356,6 +504,22 @@ class AuthFlowIntegrationTests {
             }
         }
         return null;
+    }
+
+    private boolean hasTextValue(JsonNode values, String expected) {
+        if (values == null || !values.isArray()) {
+            return false;
+        }
+        for (JsonNode value : values) {
+            if (expected.equals(value.asText())) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String toJsonArray(List<Long> values) {
+        return values == null ? "[]" : values.toString();
     }
 
     private String formatDateTime(LocalDateTime dateTime) {
