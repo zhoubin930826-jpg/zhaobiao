@@ -8,7 +8,7 @@ const Setting = {
     // 是否使用 Mock 的数据，默认 开发环境为 true，生产环境为 false
     isMock: false,
     // 部署应用包时的基本 URL
-    apiBaseURL: env === 'development' ? '/api' : 'https://xiazhiyong.vip/api',
+    apiBaseURL: env === 'development' ? '/api' : 'https://junzhikezhizao.com/api',
     apiBaseFileURL: env === 'development' ? 'http://127.0.0.1:7001' : 'https://dev-image.zhiliandun.cn',
     // 生产环境若挂在 https://域名/ztbgl/ 下，须与 nginx location 一致
     publicPath: env === 'development' ? '/' : '/ztbgl/',

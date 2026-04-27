@@ -77,6 +77,21 @@
         <Tag v-if="row.builtIn" color="blue">是</Tag>
         <Tag v-else>否</Tag>
       </template>
+      <template slot-scope="{ row }" slot="menuCodes">
+        <div v-if="Array.isArray(row.menuCodes) && row.menuCodes.length">
+          <Tag
+            v-for="code in row.menuCodes.slice(0, 3)"
+            :key="code"
+            color="blue"
+          >
+            {{ code }}
+          </Tag>
+          <Tag v-if="row.menuCodes.length > 3">
+            +{{ row.menuCodes.length - 3 }}
+          </Tag>
+        </div>
+        <span v-else>—</span>
+      </template>
       <template slot-scope="{ row }" slot="action">
         <div @click.stop.prevent>
           <a type="text" @click="handleEdit(row)">编辑</a>
@@ -137,24 +152,7 @@
             placeholder="可选"
           />
         </FormItem>
-        <FormItem prop="permissionIds" label="权限">
-          <Select
-            v-model="roleForm.permissionIds"
-            multiple
-            filterable
-            placeholder="请选择权限（至少一项）"
-          >
-            <Option
-              v-for="p in permissionList"
-              :key="p.id"
-              :value="Number(p.id)"
-              :label="`${p.name} (${p.code})`"
-            >
-              {{ p.name }}（{{ p.code }}）
-            </Option>
-          </Select>
-        </FormItem>
-        <FormItem label="菜单">
+        <FormItem prop="menuIds" label="菜单授权">
           <div class="role-menu-tree-wrap">
             <Tree
               v-if="menuList.length"
@@ -162,11 +160,12 @@
               show-checkbox
               ref="menuTree"
               children-key="child"
+              @on-check-change="syncMenuSelection"
             />
             <span v-else class="role-menu-tree-empty">暂无菜单数据</span>
           </div>
           <div style="font-size: 12px; margin-top: 6px; color: #808695">
-            请勾选该角色可访问的菜单；按钮类菜单需与上方权限一致，否则保存会失败。
+            请勾选该角色可访问的菜单；后端会按已选菜单编码进行授权。
           </div>
         </FormItem>
       </Form>
@@ -186,8 +185,7 @@
         createRole,
         updateRole,
         deleteRole,
-        listMenus,
-        listPermissions
+        listMenus
     } from '@api/system';
 
     function menuDtoNodesToTree (menus, checkedSet) {
@@ -241,6 +239,13 @@
                         show: true
                     },
                     {
+                        title: '授权菜单',
+                        key: 'menuCodes',
+                        slot: 'menuCodes',
+                        minWidth: 260,
+                        show: true
+                    },
+                    {
                         title: '操作',
                         key: 'action',
                         slot: 'action',
@@ -270,17 +275,17 @@
                     name: '',
                     description: '',
                     builtIn: false,
-                    permissionIds: []
+                    menuIds: []
                 },
                 roleFormRules: {
                     code: [{ required: true, message: '请输入角色编码', trigger: 'blur' }],
                     name: [{ required: true, message: '请输入角色名称', trigger: 'blur' }],
-                    permissionIds: [
+                    menuIds: [
                         {
                             required: true,
                             type: 'array',
                             min: 1,
-                            message: '请至少选择一个权限',
+                            message: '请至少选择一个菜单',
                             trigger: 'change'
                         }
                     ]
@@ -288,8 +293,7 @@
                 menuRoots: [],
                 /** 弹窗内菜单树勾选状态（菜单接口晚返回时用于补渲染） */
                 modalMenuCheckedIds: [],
-                menuList: [],
-                permissionList: []
+                menuList: []
             };
         },
         computed: {
@@ -305,12 +309,11 @@
                         this.rebuildMenuTree(this.modalMenuCheckedIds);
                     }
                 });
-                listPermissions().then(res => {
-                    this.permissionList = Array.isArray(res) ? res : [];
-                });
             },
             rebuildMenuTree (checkedIds) {
-                const set = new Set(normalizeIdArray(checkedIds));
+                const normalized = normalizeIdArray(checkedIds);
+                this.roleForm.menuIds = normalized;
+                const set = new Set(normalized);
                 this.menuList = menuDtoNodesToTree(this.menuRoots, set);
             },
             getData () {
@@ -371,7 +374,7 @@
                     name: '',
                     description: '',
                     builtIn: false,
-                    permissionIds: []
+                    menuIds: []
                 };
                 this.rebuildMenuTree(this.modalMenuCheckedIds);
                 this.modal.show = true;
@@ -386,7 +389,7 @@
                     name: row.name || '',
                     description: row.description || '',
                     builtIn: !!row.builtIn,
-                    permissionIds: normalizeIdArray(row.permissionIds)
+                    menuIds: normalizeIdArray(row.menuIds)
                 };
                 this.rebuildMenuTree(this.modalMenuCheckedIds);
                 this.modal.show = true;
@@ -418,17 +421,20 @@
                 const nodes = tree.getCheckedNodes();
                 return normalizeIdArray(nodes.map(n => n.id));
             },
+            syncMenuSelection () {
+                this.roleForm.menuIds = this.collectMenuIds();
+                return this.roleForm.menuIds;
+            },
             buildPayload () {
-                const menuIds = this.collectMenuIds();
                 return {
                     code: (this.roleForm.code || '').trim(),
                     name: (this.roleForm.name || '').trim(),
                     description: (this.roleForm.description || '').trim() || undefined,
-                    permissionIds: normalizeIdArray(this.roleForm.permissionIds),
-                    menuIds
+                    menuIds: normalizeIdArray(this.roleForm.menuIds)
                 };
             },
             handleSubmit () {
+                this.syncMenuSelection();
                 this.$refs.roleForm.validate(valid => {
                     if (!valid) return;
                     const payload = this.buildPayload();
@@ -463,6 +469,7 @@
                 if (!visible) {
                     this.menuList = [];
                     this.modalMenuCheckedIds = [];
+                    this.roleForm.menuIds = [];
                 }
             }
         },

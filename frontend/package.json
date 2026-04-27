@@ -7,6 +7,7 @@
     "start": "npm run serve",
     "dev": "npm run serve",
     "build:prod": "vue-cli-service build",
+    "build:prod:junzhike": "vue-cli-service build --mode production",
     "build:test": "vue-cli-service build --mode development",
     "build:nomock": "vue-cli-service build --mode nomock",
     "build:travis": "vue-cli-service build --mode travis",
