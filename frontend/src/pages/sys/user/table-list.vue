@@ -152,10 +152,10 @@
         </Row>
         <Row :gutter="32">
           <Col span="24">
-            <FormItem label="手机号" prop="phone">
+            <FormItem label="联系方式" prop="phone">
               <Input
                 v-model="formData.phone"
-                placeholder="请输入手机号"
+                placeholder="请输入联系方式"
               />
             </FormItem>
           </Col>
@@ -293,9 +293,7 @@
                         { required: true, message: '请输入密码', trigger: 'blur' },
                         { min: 6, message: '密码长度至少6个字符', trigger: 'blur' }
                     ],
-                    phone: [
-                        { pattern: /^1[3-9]\d{9}$/, message: '请输入正确的手机号', trigger: 'blur' }
-                    ],
+                    phone: [],
                     email: [
                         { required: true, message: '请输入邮箱', trigger: 'blur' },
                         { type: 'email', message: '请输入正确的邮箱', trigger: 'blur' }
@@ -321,7 +319,7 @@
                         show: true
                     },
                     {
-                        title: '手机号',
+                        title: '联系方式',
                         key: 'phone',
                         minWidth: 120,
                         show: true

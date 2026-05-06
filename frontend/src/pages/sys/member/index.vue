@@ -116,8 +116,8 @@
               </FormItem>
             </Col>
             <Col span="12">
-              <FormItem label="手机号" prop="phone">
-                <Input v-model="formData.phone" placeholder="请输入手机号" />
+              <FormItem label="联系方式" prop="phone">
+                <Input v-model="formData.phone" placeholder="请输入联系方式" />
               </FormItem>
             </Col>
           </Row>
@@ -142,6 +142,60 @@
             <Col span="12">
               <FormItem label="联系人" prop="contactPerson">
                 <Input v-model="formData.contactPerson" placeholder="请输入联系人" />
+              </FormItem>
+            </Col>
+          </Row>
+          <Row :gutter="16">
+            <Col span="24">
+              <FormItem label="业绩描述" prop="performanceDesc">
+                <Input type="textarea" v-model="formData.performanceDesc" :autosize="{ minRows: 3, maxRows: 6 }" placeholder="请输入业绩描述（选填）" />
+              </FormItem>
+            </Col>
+          </Row>
+          <Row :gutter="16">
+            <Col span="12">
+              <FormItem label="营业执照上传">
+                <Upload
+                  type="drag"
+                  :before-upload="handleBeforeUploadBusinessLicense"
+                  :show-upload-list="false"
+                >
+                  <div style="padding: 12px 0">
+                    <Icon type="ios-cloud-upload" size="20" style="color: #2d8cf0"></Icon>
+                    <p>拖拽或点击上传营业执照（单个文件）</p>
+                  </div>
+                </Upload>
+                <div class="ivu-mt-8" v-if="businessLicense">
+                  <div class="attachment-item">
+                    <a @click.prevent="previewAttachment(businessLicense)">{{ businessLicense.fileName }}</a>
+                    <Icon type="md-close" class="attachment-remove" @click="removeBusinessLicense" />
+                  </div>
+                </div>
+              </FormItem>
+            </Col>
+            <Col span="12">
+              <FormItem label="附件">
+                <Upload
+                  multiple
+                  type="drag"
+                  :before-upload="handleBeforeUploadAttachments"
+                  :show-upload-list="false"
+                >
+                  <div style="padding: 12px 0">
+                    <Icon type="ios-cloud-upload" size="20" style="color: #2d8cf0"></Icon>
+                    <p>点击或拖拽上传附件（可多选）</p>
+                  </div>
+                </Upload>
+                <div class="ivu-mt-8" v-if="attachments.length">
+                  <div
+                    v-for="item in attachments"
+                    :key="item.fileId"
+                    class="attachment-item"
+                  >
+                    <a @click.prevent="previewAttachment(item)">{{ item.fileName || (`文件#${item.fileId}`) }}</a>
+                    <Icon type="md-close" class="attachment-remove" @click="removeAttachment(item.fileId)" />
+                  </div>
+                </div>
               </FormItem>
             </Col>
           </Row>
@@ -221,7 +275,8 @@
         listBusinessTypeOptions,
         updateMemberStatus,
         updateMemberDownloadAccess,
-        resetMemberPassword
+        resetMemberPassword,
+        uploadTenderFiles
     } from '@api/system';
 
     export default {
@@ -257,16 +312,21 @@
                     businessTypeIds: [],
                     expiresAt: null,
                     canDownloadFile: false,
-                    status: 'ENABLED'
+                    status: 'ENABLED',
+                    performanceDesc: '',
+                    businessLicenseFileId: null,
+                    attachmentFileIds: []
                 },
+                // local files for preview/remove
+                attachments: [],
+                businessLicense: null,
                 formRules: {
                     username: [
                         { required: true, message: '请输入用户名', trigger: 'blur' },
                         { min: 4, max: 64, message: '用户名长度需在4-64位之间', trigger: 'blur' }
                     ],
                     phone: [
-                        { required: true, message: '请输入手机号', trigger: 'blur' },
-                        { pattern: /^1\d{10}$/, message: '手机号格式不正确', trigger: 'blur' }
+                        { required: true, message: '请输入联系方式', trigger: 'blur' }
                     ],
                     email: [
                         { required: true, message: '请输入邮箱', trigger: 'blur' },
@@ -333,7 +393,7 @@
                     { title: '用户名', key: 'username', minWidth: 120, show: true },
                     { title: '公司名称', key: 'companyName', minWidth: 180, show: true },
                     { title: '联系人', key: 'contactPerson', minWidth: 120, show: true },
-                    { title: '手机号', key: 'phone', minWidth: 130, show: true },
+                    { title: '联系方式', key: 'phone', minWidth: 130, show: true },
                     { title: '邮箱', key: 'email', minWidth: 180, show: true },
                     { title: '业务类型', slot: 'businessTypes', minWidth: 180, show: true },
                     { title: '过期时间', slot: 'expiresAt', minWidth: 180, show: true },
@@ -409,12 +469,17 @@
                     businessTypeIds: [],
                     expiresAt: null,
                     canDownloadFile: false,
-                    status: 'ENABLED'
+                    status: 'ENABLED',
+                    performanceDesc: '',
+                    businessLicenseFileId: null,
+                    attachmentFileIds: []
                 };
                 this.modal = {
                     show: true,
                     type: 'add'
                 };
+                this.attachments = [];
+                this.businessLicense = null;
                 this.$nextTick(() => {
                     if (this.$refs.memberForm) {
                         this.$refs.memberForm.resetFields();
@@ -437,12 +502,19 @@
                         businessTypeIds: Array.isArray(res.businessTypes) ? res.businessTypes.map(item => item.id) : [],
                         expiresAt: this.parseBackendDateTime(res.expiresAt),
                         canDownloadFile: !!res.canDownloadFile,
-                        status: res.status || 'ENABLED'
+                        status: res.status || 'ENABLED',
+                        performanceDesc: res.performanceDesc || '',
+                        businessLicenseFileId: res.businessLicenseFileId || null,
+                        attachmentFileIds: Array.isArray(res.attachments) ? res.attachments.map(item => item.fileId) : []
                     };
                     this.modal = {
                         show: true,
                         type: 'edit'
                     };
+                    this.businessLicense = res.businessLicense ? { fileId: res.businessLicense.fileId, fileName: res.businessLicense.fileName, localUrl: '' } : (res.businessLicenseFileId ? { fileId: res.businessLicenseFileId, fileName: res.businessLicenseFileName || '营业执照', localUrl: '' } : null);
+                    this.attachments = Array.isArray(res.attachments)
+                        ? res.attachments.map(item => ({ fileId: item.fileId, fileName: item.fileName, localUrl: '' }))
+                        : [];
                     this.$nextTick(() => {
                         if (this.$refs.memberForm) {
                             this.$refs.memberForm.clearValidate();
@@ -468,6 +540,9 @@
                             realName: this.formData.realName,
                             password: this.formData.password,
                             confirmPassword: this.formData.confirmPassword,
+                            performanceDesc: this.formData.performanceDesc,
+                            businessLicenseFileId: this.formData.businessLicenseFileId,
+                            attachmentFileIds: this.formData.attachmentFileIds,
                             businessTypeIds: this.formData.businessTypeIds,
                             expiresAt: this.formatDateTime(this.formData.expiresAt),
                             canDownloadFile: this.formData.canDownloadFile,
@@ -480,6 +555,9 @@
                             contactPerson: this.formData.contactPerson,
                             unifiedSocialCreditCode: this.formData.unifiedSocialCreditCode,
                             realName: this.formData.realName,
+                            performanceDesc: this.formData.performanceDesc,
+                            businessLicenseFileId: this.formData.businessLicenseFileId,
+                            attachmentFileIds: this.formData.attachmentFileIds,
                             businessTypeIds: this.formData.businessTypeIds,
                             expiresAt: this.formatDateTime(this.formData.expiresAt)
                     });
@@ -493,6 +571,69 @@
                         this.submitting = false;
                     });
                 });
+            },
+            // 文件上传：营业执照（单个）
+            handleBeforeUploadBusinessLicense (file) {
+                uploadTenderFiles([file]).then(res => {
+                    const files = Array.isArray(res) ? res : [];
+                    if (!files.length) return;
+                    const item = files[0];
+                    if (!item || item.fileId == null) return;
+                    this.formData.businessLicenseFileId = item.fileId;
+                    this.businessLicense = {
+                        fileId: item.fileId,
+                        fileName: item.fileName,
+                        localUrl: window.URL.createObjectURL(file)
+                    };
+                    this.$Message.success('营业执照上传成功');
+                }).catch(err => {
+                    const msg = this.apiErrorMessage(err);
+                    if (msg) this.$Message.error(msg);
+                });
+                return false;
+            },
+            // 文件上传：附件（多文件）
+            handleBeforeUploadAttachments (file) {
+                uploadTenderFiles([file]).then(res => {
+                    const files = Array.isArray(res) ? res : [];
+                    files.forEach(item => {
+                        if (!item || item.fileId == null) return;
+                        if (this.formData.attachmentFileIds.includes(item.fileId)) return;
+                        this.formData.attachmentFileIds.push(item.fileId);
+                        this.attachments.push({
+                            fileId: item.fileId,
+                            fileName: item.fileName,
+                            localUrl: window.URL.createObjectURL(file)
+                        });
+                    });
+                    this.$Message.success('附件上传成功');
+                }).catch(err => {
+                    const msg = this.apiErrorMessage(err);
+                    if (msg) this.$Message.error(msg);
+                });
+                return false;
+            },
+            previewAttachment (item) {
+                if (item && item.localUrl) {
+                    window.open(item.localUrl, '_blank');
+                    return;
+                }
+                this.$Message.info('当前仅支持预览本次新增上传的附件/营业执照');
+            },
+            removeAttachment (fileId) {
+                const removed = this.attachments.find(item => item.fileId === fileId);
+                if (removed && removed.localUrl) {
+                    window.URL.revokeObjectURL(removed.localUrl);
+                }
+                this.formData.attachmentFileIds = this.formData.attachmentFileIds.filter(id => id !== fileId);
+                this.attachments = this.attachments.filter(item => item.fileId !== fileId);
+            },
+            removeBusinessLicense () {
+                if (this.businessLicense && this.businessLicense.localUrl) {
+                    window.URL.revokeObjectURL(this.businessLicense.localUrl);
+                }
+                this.formData.businessLicenseFileId = null;
+                this.businessLicense = null;
             },
             formatBusinessTypes (items) {
                 if (!Array.isArray(items) || !items.length) return '—';

@@ -40,7 +40,12 @@
         <span class="result-pill">为您找到 <strong>{{ total }}</strong> 条公告</span>
       </p>
       <div class="grid">
-        <TenderCard v-for="item in filtered" :key="item.id" :item="item" />
+        <TenderCard v-for="item in displayed" :key="item.id" :item="item" />
+      </div>
+      <div class="more-actions" v-if="filtered.length > defaultShowCount">
+        <button type="button" class="more-btn" @click="toggleShowMore">
+          {{ showAll ? '收起' : '查看更多' }}
+        </button>
       </div>
 
       <div class="pagination" aria-label="分页">
@@ -191,11 +196,21 @@ const filtered = computed(() =>
   tenders.value.filter(item => !category.value || item.category === category.value)
 )
 
+// 默认只展示几条，点击“查看更多”显示全部 / 收起
+const defaultShowCount = 3
+const showAll = ref(false)
+const displayed = computed(() => (showAll.value ? filtered.value : filtered.value.slice(0, defaultShowCount)))
+
+function toggleShowMore() {
+  showAll.value = !showAll.value
+}
+
 function reset() {
   category.value = ''
   region.value = ''
   keyword.value = ''
   pageNum.value = 1
+  showAll.value = false
 }
 
 onMounted(() => {
@@ -467,6 +482,22 @@ onMounted(() => {
   .reset {
     margin-top: 0.25rem;
   }
+}
+
+.more-actions {
+  margin-top: 0.9rem;
+  display: flex;
+  justify-content: center;
+}
+
+.more-btn {
+  padding: 0.5rem 1rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: linear-gradient(180deg, #ffffff 0%, #f1f5f9 100%);
+  color: var(--color-primary);
+  font-weight: 600;
+  cursor: pointer;
 }
 
 .pagination {

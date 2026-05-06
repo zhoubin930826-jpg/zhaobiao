@@ -4,13 +4,13 @@ import { isLoggedIn } from '@/auth'
 const routes = [
   {
     path: '/',
-    name: 'home',
-    component: () => import('@/views/LoginView.vue'),
-    meta: { title: '登录', bare: true }
+    redirect: '/list'
   },
   {
     path: '/login',
-    redirect: to => ({ path: '/', query: to.query })
+    name: 'login',
+    component: () => import('@/views/LoginView.vue'),
+    meta: { title: '登录', bare: true }
   },
   {
     path: '/list',
@@ -35,13 +35,15 @@ const router = createRouter({
 })
 
 router.beforeEach(to => {
-  if (to.path === '/' && isLoggedIn()) {
+  // 已登录时访问登录页 -> 重定向到目标或列表页
+  if (to.path === '/login' && isLoggedIn()) {
     const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : ''
     if (redirect && redirect.startsWith('/')) return redirect
     return '/list'
   }
+  // 需要鉴权的页面而未登录 -> 跳转到登录页并带上 redirect
   if (to.meta.requiresAuth && !isLoggedIn()) {
-    return { path: '/', query: { redirect: to.fullPath } }
+    return { path: '/login', query: { redirect: to.fullPath } }
   }
   return true
 })

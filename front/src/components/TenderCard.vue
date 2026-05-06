@@ -16,7 +16,7 @@
       </div>
       <div>
         <dt>预算</dt>
-        <dd>{{ item.budget }}</dd>
+        <dd>{{ formatBudget(item.budget) }}</dd>
       </div>
       <div>
         <dt>发布</dt>
@@ -33,7 +33,7 @@
 
 <script setup>
 import { computed } from 'vue'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatBudget } from '@/utils/format'
 import { useAuth } from '@/auth'
 
 const props = defineProps({

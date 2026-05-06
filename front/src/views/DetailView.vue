@@ -25,7 +25,7 @@
           </div>
           <div>
             <dt>预算金额</dt>
-            <dd>{{ item.budget }}</dd>
+            <dd>{{ formatBudget(item.budget) }}</dd>
           </div>
           <div>
             <dt>发布时间</dt>
@@ -65,7 +65,7 @@
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
 import { downloadPortalAttachment, getPortalTenderDetail } from '@/api/portal'
-import { formatDate } from '@/utils/format'
+import { formatDate, formatBudget } from '@/utils/format'
 
 const route = useRoute()
 const loading = ref(false)

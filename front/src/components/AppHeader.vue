@@ -23,7 +23,7 @@
 import { useRoute, useRouter } from 'vue-router'
 import { useAuth, logout } from '@/auth'
 
-const logoUrl = `${import.meta.env.BASE_URL}logo.svg`
+const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
 
 const route = useRoute()
 const router = useRouter()

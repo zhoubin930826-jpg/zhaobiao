@@ -16,8 +16,8 @@
           <FormItem label="真实姓名" prop="realName">
             <Input v-model="data.realName" placeholder="真实姓名" />
           </FormItem>
-          <FormItem label="手机号" prop="phone">
-            <Input v-model="data.phone" placeholder="手机号" />
+          <FormItem label="联系方式" prop="phone">
+            <Input v-model="data.phone" placeholder="联系方式" />
           </FormItem>
           <FormItem label="邮箱" prop="email">
             <Input v-model="data.email" placeholder="邮箱" />
