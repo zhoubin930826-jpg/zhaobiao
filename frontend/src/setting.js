@@ -21,9 +21,8 @@ const Setting = {
     // 文件服务请求地址
     apiBaseFileURL: env === 'development' ? 'http://127.0.0.1:7001' : 'https://image.zhiliandun.cn',
     // 接口请求地址
-    // 招标后台 OpenAPI，见 https://xiazhiyong.vip/swagger-ui/index.html（上下文路径 /api）
-    // 开发环境走 vue.config.js 代理到该域名，避免浏览器跨域
-    apiBaseURL: env === 'development' ? '/api' : 'https://xiazhiyong.vip/api',
+    // 生产环境走同源 /api，由 nginx 反向代理到后端，避免跨域和域名漂移
+    apiBaseURL: '/api',
     // 接口请求返回错误时，弹窗的持续时间，单位：秒
     modalDuration: 3,
     // 接口请求返回错误时，弹窗的类型，可选值为 Message 或 Notice
