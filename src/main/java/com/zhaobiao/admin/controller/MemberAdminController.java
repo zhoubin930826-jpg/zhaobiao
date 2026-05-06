@@ -1,6 +1,7 @@
 package com.zhaobiao.admin.controller;
 
 import com.zhaobiao.admin.common.ApiResponse;
+import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.dto.member.MemberCreateRequest;
 import com.zhaobiao.admin.dto.member.MemberDownloadAccessUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberPasswordResetRequest;
@@ -8,6 +9,7 @@ import com.zhaobiao.admin.dto.member.MemberStatusUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.logging.OperationLogRecord;
+import com.zhaobiao.admin.service.FileStorageService;
 import com.zhaobiao.admin.service.MemberAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -18,9 +20,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 import javax.validation.Valid;
+import java.util.Arrays;
 import java.util.List;
 
 @Tag(name = "管理员-会员管理")
@@ -30,9 +35,12 @@ import java.util.List;
 public class MemberAdminController {
 
     private final MemberAdminService memberAdminService;
+    private final FileStorageService fileStorageService;
 
-    public MemberAdminController(MemberAdminService memberAdminService) {
+    public MemberAdminController(MemberAdminService memberAdminService,
+                                 FileStorageService fileStorageService) {
         this.memberAdminService = memberAdminService;
+        this.fileStorageService = fileStorageService;
     }
 
     @Operation(summary = "查询会员列表")
@@ -55,6 +63,14 @@ public class MemberAdminController {
     @PostMapping
     public ApiResponse<MemberUserDto> create(@Valid @RequestBody MemberCreateRequest request) {
         return ApiResponse.success(memberAdminService.createMember(request));
+    }
+
+    @Operation(summary = "上传会员资料文件")
+    @PreAuthorize("hasAnyAuthority('MEMBER_CREATE_BUTTON', 'MEMBER_EDIT_BUTTON')")
+    @OperationLogRecord(module = "会员管理", action = "上传会员资料文件")
+    @PostMapping("/profile-files")
+    public ApiResponse<List<FileUploadResponse>> uploadProfileFiles(@RequestParam("files") MultipartFile[] files) {
+        return ApiResponse.success(fileStorageService.store(Arrays.asList(files)));
     }
 
     @Operation(summary = "修改会员信息")

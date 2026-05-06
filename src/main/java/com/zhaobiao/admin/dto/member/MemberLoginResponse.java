@@ -14,6 +14,9 @@ public class MemberLoginResponse {
     @Schema(description = "过期秒数")
     private long expireSeconds;
 
+    @Schema(description = "是否需要完善会员资料")
+    private boolean profileCompletionRequired;
+
     @Schema(description = "会员信息")
     private MemberUserDto user;
 
@@ -41,6 +44,14 @@ public class MemberLoginResponse {
         this.expireSeconds = expireSeconds;
     }
 
+    public boolean isProfileCompletionRequired() {
+        return profileCompletionRequired;
+    }
+
+    public void setProfileCompletionRequired(boolean profileCompletionRequired) {
+        this.profileCompletionRequired = profileCompletionRequired;
+    }
+
     public MemberUserDto getUser() {
         return user;
     }
@@ -49,4 +60,3 @@ public class MemberLoginResponse {
         this.user = user;
     }
 }
-

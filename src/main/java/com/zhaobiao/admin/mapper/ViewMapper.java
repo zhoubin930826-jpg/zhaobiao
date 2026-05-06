@@ -15,6 +15,7 @@ import com.zhaobiao.admin.entity.MemberUser;
 import com.zhaobiao.admin.entity.OperationLog;
 import com.zhaobiao.admin.entity.Permission;
 import com.zhaobiao.admin.entity.Role;
+import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.entity.User;
 import com.zhaobiao.admin.entity.UserAuditRecord;
 import org.springframework.stereotype.Component;
@@ -124,9 +125,32 @@ public class ViewMapper {
                 .sorted(Comparator.comparing(BusinessType::getSortOrder).thenComparing(BusinessType::getId))
                 .map(this::toBusinessTypeOptionDto)
                 .collect(Collectors.toList()));
+        dto.setFirstLoginAt(user.getFirstLoginAt());
         dto.setLastLoginAt(user.getLastLoginAt());
+        applyBusinessLicense(dto, user.getBusinessLicenseFile());
+        applyThreeYearPerformance(dto, user.getThreeYearPerformanceFile());
         dto.setCreatedAt(user.getCreatedAt());
         return dto;
+    }
+
+    private void applyBusinessLicense(MemberUserDto dto, TenderFileStorage fileStorage) {
+        if (fileStorage == null) {
+            return;
+        }
+        dto.setBusinessLicenseFileId(fileStorage.getId());
+        dto.setBusinessLicenseFileName(fileStorage.getOriginalName());
+        dto.setBusinessLicenseContentType(fileStorage.getContentType());
+        dto.setBusinessLicenseFileSize(fileStorage.getFileSize());
+    }
+
+    private void applyThreeYearPerformance(MemberUserDto dto, TenderFileStorage fileStorage) {
+        if (fileStorage == null) {
+            return;
+        }
+        dto.setThreeYearPerformanceFileId(fileStorage.getId());
+        dto.setThreeYearPerformanceFileName(fileStorage.getOriginalName());
+        dto.setThreeYearPerformanceContentType(fileStorage.getContentType());
+        dto.setThreeYearPerformanceFileSize(fileStorage.getFileSize());
     }
 
     public RoleDto toRoleDto(Role role) {

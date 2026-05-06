@@ -4,6 +4,7 @@ import com.zhaobiao.admin.entity.MemberUser;
 import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import java.util.List;
 import java.util.Optional;
@@ -32,4 +33,8 @@ public interface MemberUserRepository extends JpaRepository<MemberUser, Long> {
     boolean existsByUnifiedSocialCreditCodeAndIdNot(String unifiedSocialCreditCode, Long id);
 
     boolean existsByBusinessTypes_Id(Long businessTypeId);
+
+    @Query("select count(mu) from MemberUser mu " +
+            "where mu.businessLicenseFile.id = :fileId or mu.threeYearPerformanceFile.id = :fileId")
+    long countProfileFileReferences(@Param("fileId") Long fileId);
 }

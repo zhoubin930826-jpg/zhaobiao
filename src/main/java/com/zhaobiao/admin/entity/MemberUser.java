@@ -8,6 +8,7 @@ import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
 import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
+import javax.persistence.ManyToOne;
 import javax.persistence.OrderBy;
 import javax.persistence.Table;
 import java.time.LocalDateTime;
@@ -54,6 +55,17 @@ public class MemberUser extends BaseEntity {
 
     @Column
     private LocalDateTime lastLoginAt;
+
+    @Column(name = "first_login_at")
+    private LocalDateTime firstLoginAt;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "business_license_file_id")
+    private TenderFileStorage businessLicenseFile;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "three_year_performance_file_id")
+    private TenderFileStorage threeYearPerformanceFile;
 
     @ManyToMany(fetch = FetchType.LAZY)
     @JoinTable(
@@ -158,6 +170,30 @@ public class MemberUser extends BaseEntity {
 
     public void setLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public LocalDateTime getFirstLoginAt() {
+        return firstLoginAt;
+    }
+
+    public void setFirstLoginAt(LocalDateTime firstLoginAt) {
+        this.firstLoginAt = firstLoginAt;
+    }
+
+    public TenderFileStorage getBusinessLicenseFile() {
+        return businessLicenseFile;
+    }
+
+    public void setBusinessLicenseFile(TenderFileStorage businessLicenseFile) {
+        this.businessLicenseFile = businessLicenseFile;
+    }
+
+    public TenderFileStorage getThreeYearPerformanceFile() {
+        return threeYearPerformanceFile;
+    }
+
+    public void setThreeYearPerformanceFile(TenderFileStorage threeYearPerformanceFile) {
+        this.threeYearPerformanceFile = threeYearPerformanceFile;
     }
 
     public Set<BusinessType> getBusinessTypes() {

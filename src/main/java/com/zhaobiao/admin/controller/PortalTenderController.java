@@ -18,6 +18,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @Tag(name = "门户-招标公告")
 @RestController
 @RequestMapping("/api/portal/tenders")
@@ -27,6 +29,12 @@ public class PortalTenderController {
 
     public PortalTenderController(PortalTenderService portalTenderService) {
         this.portalTenderService = portalTenderService;
+    }
+
+    @Operation(summary = "查询门户最新公开招标")
+    @GetMapping("/latest")
+    public ApiResponse<List<TenderListItemDto>> latest() {
+        return ApiResponse.success(portalTenderService.listLatestTenders());
     }
 
     @Operation(summary = "分页查询门户招标列表")
@@ -41,7 +49,6 @@ public class PortalTenderController {
     }
 
     @Operation(summary = "查询门户招标详情")
-    @PreAuthorize("hasRole('MEMBER')")
     @GetMapping("/{tenderId}")
     public ApiResponse<TenderDetailDto> detail(@PathVariable Long tenderId,
                                                @AuthenticationPrincipal MemberLoginUser loginUser) {

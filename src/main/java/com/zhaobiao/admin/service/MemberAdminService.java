@@ -10,9 +10,11 @@ import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.entity.BusinessType;
 import com.zhaobiao.admin.entity.MemberUser;
 import com.zhaobiao.admin.entity.MemberUserStatus;
+import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.BusinessTypeRepository;
 import com.zhaobiao.admin.repository.MemberUserRepository;
+import com.zhaobiao.admin.repository.TenderFileStorageRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,17 +31,20 @@ public class MemberAdminService {
 
     private final MemberUserRepository memberUserRepository;
     private final BusinessTypeRepository businessTypeRepository;
+    private final TenderFileStorageRepository tenderFileStorageRepository;
     private final PasswordEncoder passwordEncoder;
     private final PortalAuthService portalAuthService;
     private final ViewMapper viewMapper;
 
     public MemberAdminService(MemberUserRepository memberUserRepository,
                               BusinessTypeRepository businessTypeRepository,
+                              TenderFileStorageRepository tenderFileStorageRepository,
                               PasswordEncoder passwordEncoder,
                               PortalAuthService portalAuthService,
                               ViewMapper viewMapper) {
         this.memberUserRepository = memberUserRepository;
         this.businessTypeRepository = businessTypeRepository;
+        this.tenderFileStorageRepository = tenderFileStorageRepository;
         this.passwordEncoder = passwordEncoder;
         this.portalAuthService = portalAuthService;
         this.viewMapper = viewMapper;
@@ -82,6 +87,8 @@ public class MemberAdminService {
         user.setExpiresAt(request.getExpiresAt());
         user.setCanDownloadFile(Boolean.TRUE.equals(request.getCanDownloadFile()));
         user.setBusinessTypes(loadEnabledBusinessTypes(request.getBusinessTypeIds()));
+        user.setBusinessLicenseFile(loadProfileFile(request.getBusinessLicenseFileId()));
+        user.setThreeYearPerformanceFile(loadProfileFile(request.getThreeYearPerformanceFileId()));
         return viewMapper.toMemberUserDto(memberUserRepository.save(user));
     }
 
@@ -103,6 +110,12 @@ public class MemberAdminService {
         user.setRealName(request.getRealName());
         user.setExpiresAt(request.getExpiresAt());
         user.setBusinessTypes(loadEnabledBusinessTypes(request.getBusinessTypeIds()));
+        if (request.getBusinessLicenseFileId() != null) {
+            user.setBusinessLicenseFile(loadProfileFile(request.getBusinessLicenseFileId()));
+        }
+        if (request.getThreeYearPerformanceFileId() != null) {
+            user.setThreeYearPerformanceFile(loadProfileFile(request.getThreeYearPerformanceFileId()));
+        }
         return viewMapper.toMemberUserDto(memberUserRepository.save(user));
     }
 
@@ -160,5 +173,13 @@ public class MemberAdminService {
         if (password == null || !password.equals(confirmPassword)) {
             throw new BusinessException(400, "两次输入的密码不一致");
         }
+    }
+
+    private TenderFileStorage loadProfileFile(Long fileId) {
+        if (fileId == null) {
+            return null;
+        }
+        return tenderFileStorageRepository.findById(fileId)
+                .orElseThrow(() -> new BusinessException(400, "资料文件不存在"));
     }
 }

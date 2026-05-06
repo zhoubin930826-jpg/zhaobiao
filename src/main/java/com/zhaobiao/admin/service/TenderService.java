@@ -14,6 +14,7 @@ import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.entity.TenderStatus;
 import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.BusinessTypeRepository;
+import com.zhaobiao.admin.repository.MemberUserRepository;
 import com.zhaobiao.admin.repository.TenderAttachmentRepository;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
 import com.zhaobiao.admin.repository.TenderRepository;
@@ -45,6 +46,7 @@ public class TenderService {
     private final TenderFileStorageRepository tenderFileStorageRepository;
     private final FileStorageService fileStorageService;
     private final BusinessTypeRepository businessTypeRepository;
+    private final MemberUserRepository memberUserRepository;
     private final ViewMapper viewMapper;
 
     public TenderService(TenderRepository tenderRepository,
@@ -52,12 +54,14 @@ public class TenderService {
                          TenderFileStorageRepository tenderFileStorageRepository,
                          FileStorageService fileStorageService,
                          BusinessTypeRepository businessTypeRepository,
+                         MemberUserRepository memberUserRepository,
                          ViewMapper viewMapper) {
         this.tenderRepository = tenderRepository;
         this.tenderAttachmentRepository = tenderAttachmentRepository;
         this.tenderFileStorageRepository = tenderFileStorageRepository;
         this.fileStorageService = fileStorageService;
         this.businessTypeRepository = businessTypeRepository;
+        this.memberUserRepository = memberUserRepository;
         this.viewMapper = viewMapper;
     }
 
@@ -223,7 +227,8 @@ public class TenderService {
     private void cleanupUnreferencedFiles(List<TenderAttachment> attachments) {
         for (TenderAttachment attachment : attachments) {
             TenderFileStorage fileStorage = attachment.getFileStorage();
-            if (tenderAttachmentRepository.countByFileStorage_Id(fileStorage.getId()) == 0) {
+            if (tenderAttachmentRepository.countByFileStorage_Id(fileStorage.getId()) == 0
+                    && memberUserRepository.countProfileFileReferences(fileStorage.getId()) == 0) {
                 fileStorageService.deleteStoredFile(fileStorage);
                 tenderFileStorageRepository.delete(fileStorage);
             }

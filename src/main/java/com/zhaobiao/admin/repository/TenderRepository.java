@@ -10,6 +10,7 @@ import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 public interface TenderRepository extends JpaRepository<Tender, Long> {
@@ -64,6 +65,19 @@ public interface TenderRepository extends JpaRepository<Tender, Long> {
                                           @Param("status") TenderStatus status,
                                           @Param("now") LocalDateTime now,
                                           @Param("businessTypeIds") Collection<Long> businessTypeIds);
+
+    @Query("select t from Tender t join fetch t.businessType bt " +
+            "where t.status = :status and t.publishAt <= :now " +
+            "order by t.publishAt desc, t.id desc")
+    List<Tender> findPublicLatest(@Param("status") TenderStatus status,
+                                  @Param("now") LocalDateTime now,
+                                  org.springframework.data.domain.Pageable pageable);
+
+    @Query("select t from Tender t join fetch t.businessType bt " +
+            "where t.id = :id and t.status = :status and t.publishAt <= :now")
+    Optional<Tender> findPublicAccessible(@Param("id") Long id,
+                                          @Param("status") TenderStatus status,
+                                          @Param("now") LocalDateTime now);
 
     boolean existsByBusinessType_Id(Long businessTypeId);
 }

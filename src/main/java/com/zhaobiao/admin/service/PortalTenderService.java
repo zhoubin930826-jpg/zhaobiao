@@ -77,12 +77,20 @@ public class PortalTenderService {
     }
 
     @Transactional(readOnly = true)
+    public List<TenderListItemDto> listLatestTenders() {
+        Pageable pageable = PageRequest.of(0, 3);
+        return tenderRepository.findPublicLatest(TenderStatus.PUBLISHED, LocalDateTime.now(), pageable)
+                .stream()
+                .map(this::toListItemDto)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public TenderDetailDto getTenderDetail(Long tenderId, MemberLoginUser loginUser) {
-        Tender tender = tenderRepository.findPortalAccessible(
+        Tender tender = tenderRepository.findPublicAccessible(
                         tenderId,
                         TenderStatus.PUBLISHED,
-                        LocalDateTime.now(),
-                        getAccessibleBusinessTypeIds(loginUser))
+                        LocalDateTime.now())
                 .orElseThrow(() -> new BusinessException(404, "招标不存在"));
         List<TenderAttachment> attachments = tenderAttachmentRepository.findDetailsByTenderId(tenderId);
         TenderDetailDto dto = new TenderDetailDto();
@@ -102,7 +110,7 @@ public class PortalTenderService {
         dto.setStatus(tender.getStatus());
         dto.setSummary(extractSummary(tender.getContent()));
         dto.setAttachments(attachments.stream().map(this::toAttachmentDto).collect(Collectors.toList()));
-        dto.setCanDownload(loginUser.isCanDownloadFile());
+        dto.setCanDownload(canDownload(loginUser, tender));
         return dto;
     }
 
@@ -110,15 +118,17 @@ public class PortalTenderService {
     public ResponseEntity<Resource> downloadAttachment(Long tenderId,
                                                        Long attachmentId,
                                                        MemberLoginUser loginUser) {
+        Tender tender = tenderRepository.findPublicAccessible(
+                        tenderId,
+                        TenderStatus.PUBLISHED,
+                        LocalDateTime.now())
+                .orElseThrow(() -> new BusinessException(404, "招标不存在"));
+        if (!memberCanAccessTender(loginUser, tender)) {
+            throw new BusinessException(403, "当前账号暂无附件下载权限");
+        }
         if (!loginUser.isCanDownloadFile()) {
             throw new BusinessException(403, "当前账号暂无附件下载权限");
         }
-        tenderRepository.findPortalAccessible(
-                        tenderId,
-                        TenderStatus.PUBLISHED,
-                        LocalDateTime.now(),
-                        getAccessibleBusinessTypeIds(loginUser))
-                .orElseThrow(() -> new BusinessException(404, "招标不存在"));
         TenderAttachment attachment = tenderAttachmentRepository.findDetailByIdAndTenderId(attachmentId, tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标附件不存在"));
         TenderFileStorage fileStorage = attachment.getFileStorage();
@@ -208,5 +218,16 @@ public class PortalTenderService {
             throw new BusinessException(403, "账号未分配可用业务类型，请联系管理员");
         }
         return loginUser.getBusinessTypeIds();
+    }
+
+    private boolean canDownload(MemberLoginUser loginUser, Tender tender) {
+        return loginUser != null && loginUser.isCanDownloadFile() && memberCanAccessTender(loginUser, tender);
+    }
+
+    private boolean memberCanAccessTender(MemberLoginUser loginUser, Tender tender) {
+        if (loginUser == null || tender == null || tender.getBusinessType() == null) {
+            return false;
+        }
+        return getAccessibleBusinessTypeIds(loginUser).contains(tender.getBusinessType().getId());
     }
 }

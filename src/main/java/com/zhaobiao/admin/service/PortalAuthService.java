@@ -4,17 +4,21 @@ import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.config.JwtProperties;
 import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
+import com.zhaobiao.admin.dto.member.MemberProfileUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.entity.BusinessType;
 import com.zhaobiao.admin.entity.MemberUser;
 import com.zhaobiao.admin.entity.MemberUserStatus;
+import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.MemberUserRepository;
+import com.zhaobiao.admin.repository.TenderFileStorageRepository;
 import com.zhaobiao.admin.security.JwtTokenProvider;
 import com.zhaobiao.admin.security.MemberLoginUser;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 
@@ -26,17 +30,20 @@ public class PortalAuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final JwtProperties jwtProperties;
     private final ViewMapper viewMapper;
+    private final TenderFileStorageRepository tenderFileStorageRepository;
 
     public PortalAuthService(MemberUserRepository memberUserRepository,
                              PasswordEncoder passwordEncoder,
                              JwtTokenProvider jwtTokenProvider,
                              JwtProperties jwtProperties,
-                             ViewMapper viewMapper) {
+                             ViewMapper viewMapper,
+                             TenderFileStorageRepository tenderFileStorageRepository) {
         this.memberUserRepository = memberUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.jwtProperties = jwtProperties;
         this.viewMapper = viewMapper;
+        this.tenderFileStorageRepository = tenderFileStorageRepository;
     }
 
     @Transactional
@@ -55,13 +62,19 @@ public class PortalAuthService {
         if (resolveActiveBusinessTypeIds(user).isEmpty()) {
             throw new BusinessException(403, "账号未分配可用业务类型，请联系管理员");
         }
-        user.setLastLoginAt(LocalDateTime.now());
+        boolean firstLogin = user.getFirstLoginAt() == null;
+        LocalDateTime now = LocalDateTime.now();
+        if (firstLogin) {
+            user.setFirstLoginAt(now);
+        }
+        user.setLastLoginAt(now);
         memberUserRepository.save(user);
 
         MemberLoginResponse response = new MemberLoginResponse();
         response.setToken(jwtTokenProvider.generateToken(MemberLoginUser.from(user)));
         response.setTokenType("Bearer");
         response.setExpireSeconds(jwtProperties.getExpireSeconds());
+        response.setProfileCompletionRequired(firstLogin);
         response.setUser(toMemberDto(user));
         return response;
     }
@@ -73,11 +86,43 @@ public class PortalAuthService {
         return viewMapper.toMemberUserDto(user);
     }
 
+    @Transactional
+    public MemberUserDto updateCurrentMember(MemberLoginUser loginUser, MemberProfileUpdateRequest request) {
+        MemberUser user = memberUserRepository.findDetailById(loginUser.getUserId())
+                .orElseThrow(() -> new BusinessException(404, "会员不存在"));
+        ensureMemberUnique(
+                null,
+                request.getPhone(),
+                request.getEmail(),
+                request.getUnifiedSocialCreditCode(),
+                user.getId()
+        );
+        applyRequiredTextIfPresent(request.getPhone(), user::setPhone, "手机号不能为空");
+        applyRequiredTextIfPresent(request.getEmail(), user::setEmail, "邮箱不能为空");
+        applyRequiredTextIfPresent(request.getCompanyName(), user::setCompanyName, "公司名称不能为空");
+        applyRequiredTextIfPresent(request.getContactPerson(), user::setContactPerson, "联系人不能为空");
+        applyRequiredTextIfPresent(request.getUnifiedSocialCreditCode(), user::setUnifiedSocialCreditCode, "统一社会信用代码不能为空");
+        if (request.getRealName() != null) {
+            user.setRealName(StringUtils.hasText(request.getRealName()) ? request.getRealName().trim() : null);
+        }
+        if (request.getBusinessLicenseFileId() != null) {
+            user.setBusinessLicenseFile(loadProfileFile(request.getBusinessLicenseFileId()));
+        }
+        if (request.getThreeYearPerformanceFileId() != null) {
+            user.setThreeYearPerformanceFile(loadProfileFile(request.getThreeYearPerformanceFileId()));
+        }
+        return viewMapper.toMemberUserDto(memberUserRepository.save(user));
+    }
+
     public void ensureMemberUnique(String username,
                                    String phone,
                                    String email,
                                    String unifiedSocialCreditCode,
                                    Long currentUserId) {
+        username = normalizeForUnique(username);
+        phone = normalizeForUnique(phone);
+        email = normalizeForUnique(email);
+        unifiedSocialCreditCode = normalizeForUnique(unifiedSocialCreditCode);
         if (username != null && memberUserRepository.existsByUsername(username)
                 && !isCurrentUserUsername(currentUserId, username)) {
             throw new BusinessException(400, "用户名已存在");
@@ -140,5 +185,26 @@ public class PortalAuthService {
                 .map(BusinessType::getId)
                 .sorted()
                 .collect(java.util.stream.Collectors.toList());
+    }
+
+    private TenderFileStorage loadProfileFile(Long fileId) {
+        return tenderFileStorageRepository.findById(fileId)
+                .orElseThrow(() -> new BusinessException(400, "资料文件不存在"));
+    }
+
+    private void applyRequiredTextIfPresent(String value,
+                                            java.util.function.Consumer<String> consumer,
+                                            String blankMessage) {
+        if (value == null) {
+            return;
+        }
+        if (!StringUtils.hasText(value)) {
+            throw new BusinessException(400, blankMessage);
+        }
+        consumer.accept(value.trim());
+    }
+
+    private String normalizeForUnique(String value) {
+        return value == null ? null : value.trim();
     }
 }

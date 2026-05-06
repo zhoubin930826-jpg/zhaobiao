@@ -26,6 +26,8 @@ import java.util.stream.Collectors;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -50,6 +52,94 @@ class TenderIntegrationTests {
 
     @Autowired
     private TenderFileStorageRepository tenderFileStorageRepository;
+
+    @Test
+    void anonymousCanViewLatestThreeAndPublicDetailButCannotDownloadAttachments() throws Exception {
+        String adminToken = loginAdmin("admin", "adminqwert");
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        Long engineeringTypeId = findBusinessTypeIdByCode(adminToken, "ENGINEERING");
+        Long goodsTypeId = findBusinessTypeIdByCode(adminToken, "GOODS");
+        assertNotNull(engineeringTypeId);
+        assertNotNull(goodsTypeId);
+
+        Long fileId = uploadFile(adminToken, "公开附件-" + uniqueTag + ".txt", "public file content");
+        Long oldestTenderId = createTender(adminToken,
+                "公开最新三条-" + uniqueTag + "-1",
+                "浙江",
+                engineeringTypeId,
+                LocalDateTime.now().minusSeconds(4),
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(5),
+                "PUBLIC-" + uniqueTag + "-1",
+                fileId);
+        Long secondTenderId = createTender(adminToken,
+                "公开最新三条-" + uniqueTag + "-2",
+                "浙江",
+                goodsTypeId,
+                LocalDateTime.now().minusSeconds(3),
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(5),
+                "PUBLIC-" + uniqueTag + "-2",
+                fileId);
+        Long thirdTenderId = createTender(adminToken,
+                "公开最新三条-" + uniqueTag + "-3",
+                "浙江",
+                goodsTypeId,
+                LocalDateTime.now().minusSeconds(2),
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(5),
+                "PUBLIC-" + uniqueTag + "-3",
+                fileId);
+        Long newestTenderId = createTender(adminToken,
+                "公开最新三条-" + uniqueTag + "-4",
+                "浙江",
+                engineeringTypeId,
+                LocalDateTime.now().minusSeconds(1),
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(5),
+                "PUBLIC-" + uniqueTag + "-4",
+                fileId);
+        createTender(adminToken,
+                "公开最新三条-" + uniqueTag + "-future",
+                "浙江",
+                engineeringTypeId,
+                LocalDateTime.now().plusDays(1),
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(5),
+                "PUBLIC-" + uniqueTag + "-future",
+                fileId);
+        createTender(adminToken,
+                "公开最新三条-" + uniqueTag + "-closed",
+                "浙江",
+                engineeringTypeId,
+                LocalDateTime.now().minusMinutes(30),
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(5),
+                "PUBLIC-" + uniqueTag + "-closed",
+                fileId,
+                "CLOSED");
+
+        mockMvc.perform(get("/api/portal/tenders/latest"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data", hasSize(3)))
+                .andExpect(jsonPath("$.data[0].id").value(newestTenderId))
+                .andExpect(jsonPath("$.data[1].id").value(thirdTenderId))
+                .andExpect(jsonPath("$.data[2].id").value(secondTenderId));
+
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}", oldestTenderId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(oldestTenderId))
+                .andExpect(jsonPath("$.data.canDownload").value(false))
+                .andExpect(jsonPath("$.data.attachments", hasSize(1)));
+
+        Long attachmentId = findAttachmentId(adminToken, oldestTenderId);
+        assertNotNull(attachmentId);
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", oldestTenderId, attachmentId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+    }
 
     @Test
     void adminCanUploadCreateTendersAndPortalListIsPagedInDescendingOrderForMultiTypeMember() throws Exception {
@@ -189,7 +279,9 @@ class TenderIntegrationTests {
         mockMvc.perform(get("/api/portal/tenders/{tenderId}", goodsTenderId)
                         .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(404));
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(goodsTenderId))
+                .andExpect(jsonPath("$.data.canDownload").value(false));
 
         mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId)
                         .header("Authorization", "Bearer " + memberToken))
@@ -223,6 +315,13 @@ class TenderIntegrationTests {
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
                 .andExpect(content().string("downloadable content"));
 
+        Long goodsAttachmentId = findAttachmentId(adminToken, goodsTenderId);
+        assertNotNull(goodsAttachmentId);
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", goodsTenderId, goodsAttachmentId)
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
+
         mockMvc.perform(put("/api/admin/members/{memberId}/status", memberId)
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -232,6 +331,12 @@ class TenderIntegrationTests {
                 .andExpect(jsonPath("$.data.status").value("DISABLED"));
 
         mockMvc.perform(get("/api/portal/tenders/{tenderId}", tenderId)
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.canDownload").value(false));
+
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId)
                         .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
@@ -257,6 +362,36 @@ class TenderIntegrationTests {
         TenderFileStorage storage = tenderFileStorageRepository.findById(firstFileId).orElseThrow(AssertionError::new);
         assertEquals(firstFileName, storage.getOriginalName());
         assertEquals(sha256(content), storage.getContentHash());
+    }
+
+    @Test
+    void deletingTenderAttachmentDoesNotDeleteFileReferencedByMemberProfile() throws Exception {
+        String adminToken = loginAdmin("admin", "adminqwert");
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        Long engineeringTypeId = findBusinessTypeIdByCode(adminToken, "ENGINEERING");
+        assertNotNull(engineeringTypeId);
+
+        Long sharedFileId = uploadFile(adminToken, "会员资料共用-" + uniqueTag + ".txt", "shared profile file");
+        Long tenderId = createTender(adminToken,
+                "会员资料共用项目-" + uniqueTag,
+                "浙江",
+                engineeringTypeId,
+                LocalDateTime.now().minusHours(2),
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(1),
+                "SHARED-" + uniqueTag,
+                sharedFileId);
+        Long attachmentId = findAttachmentId(adminToken, tenderId);
+        assertNotNull(attachmentId);
+
+        createMember(adminToken, "profilefile" + uniqueTag, uniqueTag, sharedFileId, null, engineeringTypeId);
+
+        mockMvc.perform(delete("/api/admin/tenders/{tenderId}/attachments/{attachmentId}", tenderId, attachmentId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertTrue(tenderFileStorageRepository.findById(sharedFileId).isPresent());
     }
 
     private String loginAdmin(String username, String password) throws Exception {
@@ -366,19 +501,51 @@ class TenderIntegrationTests {
                                         String username,
                                         String uniqueTag,
                                         Long... businessTypeIds) throws Exception {
+        createMember(adminToken, username, uniqueTag, null, null, businessTypeIds);
+        return loginMember(username, "123456");
+    }
+
+    private Long createMember(String adminToken,
+                              String username,
+                              String uniqueTag,
+                              Long businessLicenseFileId,
+                              Long threeYearPerformanceFileId,
+                              Long... businessTypeIds) throws Exception {
         String phoneSeed = uniqueTag.substring(Math.max(0, uniqueTag.length() - 8));
         String creditSeed = uniqueTag.substring(Math.max(0, uniqueTag.length() - 6));
         String joinedTypeIds = Arrays.stream(businessTypeIds)
                 .map(String::valueOf)
                 .collect(Collectors.joining(","));
         String expiresAt = LocalDateTime.now().plusYears(1).format(DATE_TIME_FORMATTER);
-        mockMvc.perform(post("/api/admin/members")
+        StringBuilder requestBody = new StringBuilder();
+        requestBody.append("{\"username\":\"").append(username).append("\",")
+                .append("\"phone\":\"138").append(phoneSeed).append("\",")
+                .append("\"email\":\"").append(username).append("@test.com\",")
+                .append("\"companyName\":\"测试会员企业\",")
+                .append("\"contactPerson\":\"李四\",")
+                .append("\"unifiedSocialCreditCode\":\"91310000MA1K").append(creditSeed).append("\",")
+                .append("\"realName\":\"李四\",")
+                .append("\"password\":\"123456\",")
+                .append("\"confirmPassword\":\"123456\",")
+                .append("\"businessTypeIds\":[").append(joinedTypeIds).append("],")
+                .append("\"canDownloadFile\":false,")
+                .append("\"status\":\"ENABLED\",")
+                .append("\"expiresAt\":\"").append(expiresAt).append("\"");
+        if (businessLicenseFileId != null) {
+            requestBody.append(",\"businessLicenseFileId\":").append(businessLicenseFileId);
+        }
+        if (threeYearPerformanceFileId != null) {
+            requestBody.append(",\"threeYearPerformanceFileId\":").append(threeYearPerformanceFileId);
+        }
+        requestBody.append("}");
+        MvcResult result = mockMvc.perform(post("/api/admin/members")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"phone\":\"138" + phoneSeed + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"测试会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K" + creditSeed + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + joinedTypeIds + "],\"canDownloadFile\":false,\"status\":\"ENABLED\",\"expiresAt\":\"" + expiresAt + "\"}"))
+                        .content(requestBody.toString()))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(0));
-        return loginMember(username, "123456");
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
     }
 
     private Long findMemberIdByUsername(String adminToken, String username) throws Exception {

@@ -49,8 +49,35 @@ public class MemberUserDto {
     @Schema(description = "会员类型列表")
     private List<BusinessTypeOptionDto> businessTypes;
 
+    @Schema(description = "首次登录时间")
+    private LocalDateTime firstLoginAt;
+
     @Schema(description = "最后登录时间")
     private LocalDateTime lastLoginAt;
+
+    @Schema(description = "营业执照文件ID")
+    private Long businessLicenseFileId;
+
+    @Schema(description = "营业执照文件名")
+    private String businessLicenseFileName;
+
+    @Schema(description = "营业执照文件类型")
+    private String businessLicenseContentType;
+
+    @Schema(description = "营业执照文件大小，单位字节")
+    private Long businessLicenseFileSize;
+
+    @Schema(description = "三年内业绩文件ID")
+    private Long threeYearPerformanceFileId;
+
+    @Schema(description = "三年内业绩文件名")
+    private String threeYearPerformanceFileName;
+
+    @Schema(description = "三年内业绩文件类型")
+    private String threeYearPerformanceContentType;
+
+    @Schema(description = "三年内业绩文件大小，单位字节")
+    private Long threeYearPerformanceFileSize;
 
     @Schema(description = "创建时间")
     private LocalDateTime createdAt;
@@ -159,12 +186,84 @@ public class MemberUserDto {
         this.businessTypes = businessTypes;
     }
 
+    public LocalDateTime getFirstLoginAt() {
+        return firstLoginAt;
+    }
+
+    public void setFirstLoginAt(LocalDateTime firstLoginAt) {
+        this.firstLoginAt = firstLoginAt;
+    }
+
     public LocalDateTime getLastLoginAt() {
         return lastLoginAt;
     }
 
     public void setLastLoginAt(LocalDateTime lastLoginAt) {
         this.lastLoginAt = lastLoginAt;
+    }
+
+    public Long getBusinessLicenseFileId() {
+        return businessLicenseFileId;
+    }
+
+    public void setBusinessLicenseFileId(Long businessLicenseFileId) {
+        this.businessLicenseFileId = businessLicenseFileId;
+    }
+
+    public String getBusinessLicenseFileName() {
+        return businessLicenseFileName;
+    }
+
+    public void setBusinessLicenseFileName(String businessLicenseFileName) {
+        this.businessLicenseFileName = businessLicenseFileName;
+    }
+
+    public String getBusinessLicenseContentType() {
+        return businessLicenseContentType;
+    }
+
+    public void setBusinessLicenseContentType(String businessLicenseContentType) {
+        this.businessLicenseContentType = businessLicenseContentType;
+    }
+
+    public Long getBusinessLicenseFileSize() {
+        return businessLicenseFileSize;
+    }
+
+    public void setBusinessLicenseFileSize(Long businessLicenseFileSize) {
+        this.businessLicenseFileSize = businessLicenseFileSize;
+    }
+
+    public Long getThreeYearPerformanceFileId() {
+        return threeYearPerformanceFileId;
+    }
+
+    public void setThreeYearPerformanceFileId(Long threeYearPerformanceFileId) {
+        this.threeYearPerformanceFileId = threeYearPerformanceFileId;
+    }
+
+    public String getThreeYearPerformanceFileName() {
+        return threeYearPerformanceFileName;
+    }
+
+    public void setThreeYearPerformanceFileName(String threeYearPerformanceFileName) {
+        this.threeYearPerformanceFileName = threeYearPerformanceFileName;
+    }
+
+    public String getThreeYearPerformanceContentType() {
+        return threeYearPerformanceContentType;
+    }
+
+    public void setThreeYearPerformanceContentType(String threeYearPerformanceContentType) {
+        this.threeYearPerformanceContentType = threeYearPerformanceContentType;
+    }
+
+    public Long getThreeYearPerformanceFileSize() {
+        return threeYearPerformanceFileSize;
+    }
+
+    public void setThreeYearPerformanceFileSize(Long threeYearPerformanceFileSize) {
+        this.threeYearPerformanceFileSize = threeYearPerformanceFileSize;
     }
 
     public LocalDateTime getCreatedAt() {

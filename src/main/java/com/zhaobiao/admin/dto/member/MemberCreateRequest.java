@@ -74,6 +74,12 @@ public class MemberCreateRequest {
     @Schema(description = "会员过期时间", example = "2026-05-25 23:59:59")
     private LocalDateTime expiresAt;
 
+    @Schema(description = "营业执照文件ID")
+    private Long businessLicenseFileId;
+
+    @Schema(description = "三年内业绩文件ID")
+    private Long threeYearPerformanceFileId;
+
     public String getUsername() {
         return username;
     }
@@ -176,5 +182,21 @@ public class MemberCreateRequest {
 
     public void setExpiresAt(LocalDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public Long getBusinessLicenseFileId() {
+        return businessLicenseFileId;
+    }
+
+    public void setBusinessLicenseFileId(Long businessLicenseFileId) {
+        this.businessLicenseFileId = businessLicenseFileId;
+    }
+
+    public Long getThreeYearPerformanceFileId() {
+        return threeYearPerformanceFileId;
+    }
+
+    public void setThreeYearPerformanceFileId(Long threeYearPerformanceFileId) {
+        this.threeYearPerformanceFileId = threeYearPerformanceFileId;
     }
 }

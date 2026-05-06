@@ -9,9 +9,11 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.context.annotation.Import;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
@@ -22,9 +24,11 @@ import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.not;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -200,6 +204,82 @@ class AuthFlowIntegrationTests {
                         .content("{\"username\":\"" + username + "\",\"password\":\"654321\"}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void memberFirstLoginIsRecordedAndProfileFilesCanBeManagedByAdminAndMember() throws Exception {
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        String username = "profile" + uniqueTag;
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long engineeringTypeId = findBusinessTypeIdByCode(superAdminToken, "ENGINEERING");
+        assertNotNull(engineeringTypeId);
+        String phoneSeed = uniqueTag.substring(uniqueTag.length() - 8);
+        String creditSeed = uniqueTag.substring(uniqueTag.length() - 6);
+        String futureExpiresAt = formatDateTime(LocalDateTime.now().plusMonths(1));
+
+        Long licenseFileId = uploadAdminMemberProfileFile(superAdminToken, "营业执照-" + uniqueTag + ".pdf", "license");
+        MvcResult createResult = mockMvc.perform(post("/api/admin/members")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"139" + phoneSeed + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"会员资料企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MF1K" + creditSeed + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + engineeringTypeId + "],\"canDownloadFile\":false,\"status\":\"ENABLED\",\"expiresAt\":\"" + futureExpiresAt + "\",\"businessLicenseFileId\":" + licenseFileId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.firstLoginAt").doesNotExist())
+                .andExpect(jsonPath("$.data.businessLicenseFileId").value(licenseFileId))
+                .andExpect(jsonPath("$.data.businessLicenseFileName").value("营业执照-" + uniqueTag + ".pdf"))
+                .andReturn();
+        Long memberId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .asLong();
+
+        MvcResult firstLogin = mockMvc.perform(post("/api/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.profileCompletionRequired").value(true))
+                .andExpect(jsonPath("$.data.user.firstLoginAt").exists())
+                .andExpect(jsonPath("$.data.user.businessLicenseFileId").value(licenseFileId))
+                .andReturn();
+        JsonNode firstLoginData = objectMapper.readTree(firstLogin.getResponse().getContentAsString()).path("data");
+        String memberToken = firstLoginData.path("token").asText();
+        String firstLoginAt = firstLoginData.path("user").path("firstLoginAt").asText();
+
+        MvcResult secondLogin = mockMvc.perform(post("/api/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"123456\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.profileCompletionRequired").value(false))
+                .andReturn();
+        String secondFirstLoginAt = objectMapper.readTree(secondLogin.getResponse().getContentAsString())
+                .path("data")
+                .path("user")
+                .path("firstLoginAt")
+                .asText();
+        assertEquals(firstLoginAt, secondFirstLoginAt);
+
+        Long performanceFileId = uploadPortalMemberProfileFile(memberToken, "三年业绩-" + uniqueTag + ".pdf", "performance");
+        mockMvc.perform(put("/api/portal/auth/profile")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"132" + phoneSeed + "\",\"email\":\"profile-updated-" + username + "@test.com\",\"companyName\":\"会员资料企业更新\",\"contactPerson\":\"王五\",\"unifiedSocialCreditCode\":\"91310000MF2K" + creditSeed + "\",\"realName\":\"王五\",\"threeYearPerformanceFileId\":" + performanceFileId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.businessLicenseFileId").value(licenseFileId))
+                .andExpect(jsonPath("$.data.threeYearPerformanceFileId").value(performanceFileId))
+                .andExpect(jsonPath("$.data.threeYearPerformanceFileName").value("三年业绩-" + uniqueTag + ".pdf"));
+
+        Long newLicenseFileId = uploadAdminMemberProfileFile(superAdminToken, "新营业执照-" + uniqueTag + ".pdf", "new license");
+        mockMvc.perform(put("/api/admin/members/{memberId}", memberId)
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"131" + phoneSeed + "\",\"email\":\"admin-updated-" + username + "@test.com\",\"companyName\":\"管理员更新会员资料企业\",\"contactPerson\":\"赵六\",\"unifiedSocialCreditCode\":\"91310000MF3K" + creditSeed + "\",\"realName\":\"赵六\",\"businessTypeIds\":[" + engineeringTypeId + "],\"expiresAt\":\"" + futureExpiresAt + "\",\"businessLicenseFileId\":" + newLicenseFileId + "}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.businessLicenseFileId").value(newLicenseFileId))
+                .andExpect(jsonPath("$.data.threeYearPerformanceFileId").value(performanceFileId));
     }
 
     @Test
@@ -434,6 +514,38 @@ class AuthFlowIntegrationTests {
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
         return objectMapper.readTree(createResult.getResponse().getContentAsString()).path("data").path("id").asLong();
+    }
+
+    private Long uploadAdminMemberProfileFile(String adminToken, String fileName, String content) throws Exception {
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "files",
+                fileName,
+                MediaType.APPLICATION_PDF_VALUE,
+                content.getBytes(StandardCharsets.UTF_8)
+        );
+        MvcResult result = mockMvc.perform(multipart("/api/admin/members/profile-files")
+                        .file(multipartFile)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path(0).path("fileId").asLong();
+    }
+
+    private Long uploadPortalMemberProfileFile(String memberToken, String fileName, String content) throws Exception {
+        MockMultipartFile multipartFile = new MockMultipartFile(
+                "files",
+                fileName,
+                MediaType.APPLICATION_PDF_VALUE,
+                content.getBytes(StandardCharsets.UTF_8)
+        );
+        MvcResult result = mockMvc.perform(multipart("/api/portal/auth/profile/files")
+                        .file(multipartFile)
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path(0).path("fileId").asLong();
     }
 
     private Long findRoleIdByCode(String adminToken, String roleCode) throws Exception {
