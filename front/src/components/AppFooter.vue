@@ -2,6 +2,9 @@
   <footer class="footer">
     <div class="inner">
       <p class="muted">© {{ year }} 招投标信息公示</p>
+      <p class="icp">
+        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备2026020834号-1</a>
+      </p>
     </div>
   </footer>
 </template>
@@ -34,5 +37,22 @@ const year = new Date().getFullYear()
 .muted {
   font-size: 0.8rem;
   opacity: 0.85;
+}
+
+.icp {
+  font-size: 0.78rem;
+  color: #64748b;
+  opacity: 0.9;
+}
+
+.icp a {
+  color: inherit;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(100, 116, 139, 0.65);
+}
+
+.icp a:hover {
+  color: #1d4ed8;
+  border-bottom-color: rgba(29, 78, 216, 0.65);
 }
 </style>

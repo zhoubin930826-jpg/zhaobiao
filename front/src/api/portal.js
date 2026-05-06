@@ -80,6 +80,38 @@ export async function getPortalProfile() {
   return request('/portal/auth/me')
 }
 
+export async function updatePortalProfile(data) {
+  return request('/portal/auth/me', {
+    method: 'PUT',
+    data
+  })
+}
+
+export async function uploadPortalFiles(files) {
+  const list = Array.isArray(files) ? files : []
+  if (!list.length) return []
+  const formData = new FormData()
+  list.forEach(file => formData.append('files', file))
+
+  const headers = {}
+  const token = readToken()
+  if (token) headers.Authorization = `Bearer ${token}`
+
+  const response = await fetch(new URL(`${API_BASE_URL}/portal/files/upload`, window.location.origin).toString(), {
+    method: 'POST',
+    headers,
+    body: formData
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload.message || `上传失败(${response.status})`)
+  }
+  if (payload && (payload.code === 0 || payload.code === 200 || payload.code === undefined)) {
+    return Array.isArray(payload.data) ? payload.data : []
+  }
+  throw new Error(payload.message || '上传失败')
+}
+
 export async function listPortalTenders(params) {
   const page = await request('/portal/tenders', { params })
   const list = Array.isArray(page.list) ? page.list.map(mapTenderListItem) : []

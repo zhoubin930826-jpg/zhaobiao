@@ -23,6 +23,12 @@ const routes = [
     name: 'detail',
     component: () => import('@/views/DetailView.vue'),
     meta: { title: '公告详情', requiresAuth: true }
+  },
+  {
+    path: '/setting',
+    name: 'setting',
+    component: () => import('@/views/SettingView.vue'),
+    meta: { title: '账户设置', requiresAuth: true }
   }
 ]
 
