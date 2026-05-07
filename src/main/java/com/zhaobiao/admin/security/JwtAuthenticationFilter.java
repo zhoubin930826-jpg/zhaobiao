@@ -1,5 +1,6 @@
 package com.zhaobiao.admin.security;
 
+import com.zhaobiao.admin.common.BusinessException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -38,9 +39,15 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 && SecurityContextHolder.getContext().getAuthentication() == null) {
             String username = jwtTokenProvider.getUsername(token);
             TokenUserType userType = jwtTokenProvider.getUserType(token);
-            UserDetails userDetails = userType == TokenUserType.MEMBER
-                    ? memberUserDetailsService.loadUserByUsername(username)
-                    : adminUserDetailsService.loadUserByUsername(username);
+            UserDetails userDetails;
+            try {
+                userDetails = userType == TokenUserType.MEMBER
+                        ? memberUserDetailsService.loadUserByUsername(username)
+                        : adminUserDetailsService.loadUserByUsername(username);
+            } catch (BusinessException ex) {
+                filterChain.doFilter(request, response);
+                return;
+            }
             if (!userDetails.isEnabled()
                     || !userDetails.isAccountNonLocked()
                     || !userDetails.isAccountNonExpired()

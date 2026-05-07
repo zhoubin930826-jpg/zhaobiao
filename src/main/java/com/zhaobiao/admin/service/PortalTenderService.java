@@ -14,6 +14,7 @@ import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.TenderAttachmentRepository;
 import com.zhaobiao.admin.repository.TenderRepository;
 import com.zhaobiao.admin.security.MemberLoginUser;
+import com.zhaobiao.admin.util.FileThumbnailUrlBuilder;
 import org.springframework.core.io.Resource;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -167,12 +168,16 @@ public class PortalTenderService {
     }
 
     private TenderAttachmentDto toAttachmentDto(TenderAttachment attachment) {
+        TenderFileStorage fileStorage = attachment.getFileStorage();
         TenderAttachmentDto dto = new TenderAttachmentDto();
         dto.setAttachmentId(attachment.getId());
-        dto.setFileId(attachment.getFileStorage().getId());
-        dto.setFileName(attachment.getFileStorage().getOriginalName());
-        dto.setContentType(attachment.getFileStorage().getContentType());
-        dto.setFileSize(attachment.getFileStorage().getFileSize());
+        dto.setFileId(fileStorage.getId());
+        dto.setFileName(fileStorage.getOriginalName());
+        dto.setContentType(fileStorage.getContentType());
+        dto.setFileSize(fileStorage.getFileSize());
+        dto.setThumbnailUrl(FileThumbnailUrlBuilder.build(fileStorage.getId()));
+        dto.setThumbnailContentType(fileStorage.getThumbnailContentType());
+        dto.setThumbnailStatus(fileStorage.getThumbnailStatus());
         return dto;
     }
 

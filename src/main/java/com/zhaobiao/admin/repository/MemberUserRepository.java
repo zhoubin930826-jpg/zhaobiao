@@ -11,26 +11,26 @@ import java.util.Optional;
 
 public interface MemberUserRepository extends JpaRepository<MemberUser, Long> {
 
-    Optional<MemberUser> findByUsername(String username);
+    Optional<MemberUser> findByUsernameAndDeletedFalse(String username);
 
     @EntityGraph(attributePaths = "businessTypes")
-    Optional<MemberUser> findDetailByUsername(String username);
+    Optional<MemberUser> findDetailByUsernameAndDeletedFalse(String username);
 
     @EntityGraph(attributePaths = "businessTypes")
-    Optional<MemberUser> findDetailById(Long id);
+    Optional<MemberUser> findDetailByIdAndDeletedFalse(Long id);
 
-    @Query("select distinct mu from MemberUser mu left join fetch mu.businessTypes")
-    List<MemberUser> findAllWithDetails();
+    @Query("select distinct mu from MemberUser mu left join fetch mu.businessTypes where mu.deleted = false")
+    List<MemberUser> findAllActiveWithDetails();
 
-    boolean existsByUsername(String username);
+    boolean existsByUsernameAndDeletedFalse(String username);
 
-    boolean existsByPhone(String phone);
+    boolean existsByPhoneAndDeletedFalse(String phone);
 
-    boolean existsByEmail(String email);
+    boolean existsByEmailAndDeletedFalse(String email);
 
-    boolean existsByUnifiedSocialCreditCode(String unifiedSocialCreditCode);
+    boolean existsByUnifiedSocialCreditCodeAndDeletedFalse(String unifiedSocialCreditCode);
 
-    boolean existsByUnifiedSocialCreditCodeAndIdNot(String unifiedSocialCreditCode, Long id);
+    boolean existsByUnifiedSocialCreditCodeAndIdNotAndDeletedFalse(String unifiedSocialCreditCode, Long id);
 
     boolean existsByBusinessTypes_Id(Long businessTypeId);
 

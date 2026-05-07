@@ -19,6 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -52,7 +53,7 @@ public class MemberAdminService {
 
     @Transactional(readOnly = true)
     public List<MemberUserDto> listMembers() {
-        return memberUserRepository.findAllWithDetails().stream()
+        return memberUserRepository.findAllActiveWithDetails().stream()
                 .sorted(Comparator.comparing(MemberUser::getCreatedAt).reversed())
                 .map(viewMapper::toMemberUserDto)
                 .collect(Collectors.toList());
@@ -141,8 +142,16 @@ public class MemberAdminService {
         memberUserRepository.save(user);
     }
 
+    @Transactional
+    public void deleteMember(Long memberId) {
+        MemberUser user = getMember(memberId);
+        user.setDeleted(true);
+        user.setDeletedAt(LocalDateTime.now());
+        memberUserRepository.save(user);
+    }
+
     private MemberUser getMember(Long memberId) {
-        return memberUserRepository.findDetailById(memberId)
+        return memberUserRepository.findDetailByIdAndDeletedFalse(memberId)
                 .orElseThrow(() -> new BusinessException(404, "会员不存在"));
     }
 

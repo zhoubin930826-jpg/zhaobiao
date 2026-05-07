@@ -19,13 +19,13 @@ import java.util.Set;
 @Table(name = "portal_member_user")
 public class MemberUser extends BaseEntity {
 
-    @Column(nullable = false, unique = true, length = 64)
+    @Column(nullable = false, length = 64)
     private String username;
 
-    @Column(nullable = false, unique = true, length = 32)
+    @Column(nullable = false, length = 32)
     private String phone;
 
-    @Column(nullable = false, unique = true, length = 128)
+    @Column(nullable = false, length = 128)
     private String email;
 
     @Column(nullable = false, length = 255)
@@ -40,7 +40,7 @@ public class MemberUser extends BaseEntity {
     @Column(nullable = false, length = 64)
     private String contactPerson;
 
-    @Column(nullable = false, unique = true, length = 32)
+    @Column(nullable = false, length = 32)
     private String unifiedSocialCreditCode;
 
     @Column(nullable = false)
@@ -58,6 +58,12 @@ public class MemberUser extends BaseEntity {
 
     @Column(name = "first_login_at")
     private LocalDateTime firstLoginAt;
+
+    @Column(nullable = false)
+    private boolean deleted;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "business_license_file_id")
@@ -178,6 +184,22 @@ public class MemberUser extends BaseEntity {
 
     public void setFirstLoginAt(LocalDateTime firstLoginAt) {
         this.firstLoginAt = firstLoginAt;
+    }
+
+    public boolean isDeleted() {
+        return deleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        this.deleted = deleted;
+    }
+
+    public LocalDateTime getDeletedAt() {
+        return deletedAt;
+    }
+
+    public void setDeletedAt(LocalDateTime deletedAt) {
+        this.deletedAt = deletedAt;
     }
 
     public TenderFileStorage getBusinessLicenseFile() {

@@ -1,5 +1,6 @@
 package com.zhaobiao.admin.dto.tender;
 
+import com.zhaobiao.admin.entity.FileThumbnailStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "招标附件信息")
@@ -19,6 +20,15 @@ public class TenderAttachmentDto {
 
     @Schema(description = "文件大小")
     private long fileSize;
+
+    @Schema(description = "缩略图地址")
+    private String thumbnailUrl;
+
+    @Schema(description = "缩略图类型")
+    private String thumbnailContentType;
+
+    @Schema(description = "缩略图状态")
+    private FileThumbnailStatus thumbnailStatus;
 
     public Long getAttachmentId() {
         return attachmentId;
@@ -58,5 +68,29 @@ public class TenderAttachmentDto {
 
     public void setFileSize(long fileSize) {
         this.fileSize = fileSize;
+    }
+
+    public String getThumbnailUrl() {
+        return thumbnailUrl;
+    }
+
+    public void setThumbnailUrl(String thumbnailUrl) {
+        this.thumbnailUrl = thumbnailUrl;
+    }
+
+    public String getThumbnailContentType() {
+        return thumbnailContentType;
+    }
+
+    public void setThumbnailContentType(String thumbnailContentType) {
+        this.thumbnailContentType = thumbnailContentType;
+    }
+
+    public FileThumbnailStatus getThumbnailStatus() {
+        return thumbnailStatus;
+    }
+
+    public void setThumbnailStatus(FileThumbnailStatus thumbnailStatus) {
+        this.thumbnailStatus = thumbnailStatus;
     }
 }

@@ -25,7 +25,8 @@ class OssFileStorageServiceCredentialTests {
         OssFileStorageService service = new OssFileStorageService(
                 properties,
                 mock(TenderFileStorageRepository.class),
-                factory);
+                factory,
+                new FileThumbnailGenerator());
 
         service.init();
         service.destroy();
@@ -45,7 +46,8 @@ class OssFileStorageServiceCredentialTests {
         OssFileStorageService service = new OssFileStorageService(
                 properties,
                 mock(TenderFileStorageRepository.class),
-                new CapturingOssClientFactory());
+                new CapturingOssClientFactory(),
+                new FileThumbnailGenerator());
 
         IllegalStateException exception = assertThrows(IllegalStateException.class, service::init);
         assertEquals("启用 OSS 的 ECS RAM Role 凭证模式时，必须配置 APP_FILE_OSS_ROLE_NAME", exception.getMessage());
@@ -62,7 +64,8 @@ class OssFileStorageServiceCredentialTests {
         OssFileStorageService service = new OssFileStorageService(
                 properties,
                 mock(TenderFileStorageRepository.class),
-                factory);
+                factory,
+                new FileThumbnailGenerator());
 
         service.init();
 

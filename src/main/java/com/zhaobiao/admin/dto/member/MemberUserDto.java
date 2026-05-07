@@ -1,6 +1,7 @@
 package com.zhaobiao.admin.dto.member;
 
 import com.zhaobiao.admin.entity.MemberUserStatus;
+import com.zhaobiao.admin.entity.FileThumbnailStatus;
 import com.zhaobiao.admin.dto.business.BusinessTypeOptionDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -67,6 +68,15 @@ public class MemberUserDto {
     @Schema(description = "营业执照文件大小，单位字节")
     private Long businessLicenseFileSize;
 
+    @Schema(description = "营业执照缩略图地址")
+    private String businessLicenseThumbnailUrl;
+
+    @Schema(description = "营业执照缩略图类型")
+    private String businessLicenseThumbnailContentType;
+
+    @Schema(description = "营业执照缩略图状态")
+    private FileThumbnailStatus businessLicenseThumbnailStatus;
+
     @Schema(description = "三年内业绩文件ID")
     private Long threeYearPerformanceFileId;
 
@@ -78,6 +88,15 @@ public class MemberUserDto {
 
     @Schema(description = "三年内业绩文件大小，单位字节")
     private Long threeYearPerformanceFileSize;
+
+    @Schema(description = "三年内业绩缩略图地址")
+    private String threeYearPerformanceThumbnailUrl;
+
+    @Schema(description = "三年内业绩缩略图类型")
+    private String threeYearPerformanceThumbnailContentType;
+
+    @Schema(description = "三年内业绩缩略图状态")
+    private FileThumbnailStatus threeYearPerformanceThumbnailStatus;
 
     @Schema(description = "创建时间")
     private LocalDateTime createdAt;
@@ -234,6 +253,30 @@ public class MemberUserDto {
         this.businessLicenseFileSize = businessLicenseFileSize;
     }
 
+    public String getBusinessLicenseThumbnailUrl() {
+        return businessLicenseThumbnailUrl;
+    }
+
+    public void setBusinessLicenseThumbnailUrl(String businessLicenseThumbnailUrl) {
+        this.businessLicenseThumbnailUrl = businessLicenseThumbnailUrl;
+    }
+
+    public String getBusinessLicenseThumbnailContentType() {
+        return businessLicenseThumbnailContentType;
+    }
+
+    public void setBusinessLicenseThumbnailContentType(String businessLicenseThumbnailContentType) {
+        this.businessLicenseThumbnailContentType = businessLicenseThumbnailContentType;
+    }
+
+    public FileThumbnailStatus getBusinessLicenseThumbnailStatus() {
+        return businessLicenseThumbnailStatus;
+    }
+
+    public void setBusinessLicenseThumbnailStatus(FileThumbnailStatus businessLicenseThumbnailStatus) {
+        this.businessLicenseThumbnailStatus = businessLicenseThumbnailStatus;
+    }
+
     public Long getThreeYearPerformanceFileId() {
         return threeYearPerformanceFileId;
     }
@@ -264,6 +307,30 @@ public class MemberUserDto {
 
     public void setThreeYearPerformanceFileSize(Long threeYearPerformanceFileSize) {
         this.threeYearPerformanceFileSize = threeYearPerformanceFileSize;
+    }
+
+    public String getThreeYearPerformanceThumbnailUrl() {
+        return threeYearPerformanceThumbnailUrl;
+    }
+
+    public void setThreeYearPerformanceThumbnailUrl(String threeYearPerformanceThumbnailUrl) {
+        this.threeYearPerformanceThumbnailUrl = threeYearPerformanceThumbnailUrl;
+    }
+
+    public String getThreeYearPerformanceThumbnailContentType() {
+        return threeYearPerformanceThumbnailContentType;
+    }
+
+    public void setThreeYearPerformanceThumbnailContentType(String threeYearPerformanceThumbnailContentType) {
+        this.threeYearPerformanceThumbnailContentType = threeYearPerformanceThumbnailContentType;
+    }
+
+    public FileThumbnailStatus getThreeYearPerformanceThumbnailStatus() {
+        return threeYearPerformanceThumbnailStatus;
+    }
+
+    public void setThreeYearPerformanceThumbnailStatus(FileThumbnailStatus threeYearPerformanceThumbnailStatus) {
+        this.threeYearPerformanceThumbnailStatus = threeYearPerformanceThumbnailStatus;
     }
 
     public LocalDateTime getCreatedAt() {

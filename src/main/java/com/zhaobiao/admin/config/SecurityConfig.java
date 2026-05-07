@@ -59,6 +59,7 @@ public class SecurityConfig {
                         "/api/portal/auth/register",
                         "/api/portal/tenders/latest",
                         "/api/portal/tenders/*",
+                        "/api/files/*/thumbnail",
                         "/swagger-ui.html",
                         "/swagger-ui/**",
                         "/v3/api-docs/**"

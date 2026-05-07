@@ -23,6 +23,8 @@ import org.springframework.web.multipart.MultipartFile;
 
 import javax.annotation.PostConstruct;
 import javax.annotation.PreDestroy;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.LocalDate;
@@ -43,6 +45,7 @@ public class OssFileStorageService extends AbstractFileStorageService implements
     private final FileStorageProperties fileStorageProperties;
     private final TenderFileStorageRepository tenderFileStorageRepository;
     private final OssClientFactory ossClientFactory;
+    private final FileThumbnailGenerator fileThumbnailGenerator;
 
     private OSS ossClient;
 
@@ -52,11 +55,13 @@ public class OssFileStorageService extends AbstractFileStorageService implements
 
     public OssFileStorageService(FileStorageProperties fileStorageProperties,
                                  TenderFileStorageRepository tenderFileStorageRepository,
-                                 OssClientFactory ossClientFactory) {
+                                 OssClientFactory ossClientFactory,
+                                 FileThumbnailGenerator fileThumbnailGenerator) {
         super(tenderFileStorageRepository);
         this.fileStorageProperties = fileStorageProperties;
         this.tenderFileStorageRepository = tenderFileStorageRepository;
         this.ossClientFactory = ossClientFactory;
+        this.fileThumbnailGenerator = fileThumbnailGenerator;
     }
 
     @PostConstruct
@@ -106,9 +111,11 @@ public class OssFileStorageService extends AbstractFileStorageService implements
         }
 
         String originalName = sanitizeOriginalName(file.getOriginalFilename());
-        String contentHash = calculateContentHash(file);
+        byte[] content = readFileBytes(file);
+        String contentHash = calculateContentHash(content);
         TenderFileStorage existing = tenderFileStorageRepository.findByContentHash(contentHash).orElse(null);
         if (existing != null) {
+            ensureThumbnailFromBytes(existing, content);
             return toUploadResponse(existing);
         }
 
@@ -116,8 +123,12 @@ public class OssFileStorageService extends AbstractFileStorageService implements
         String storageName = UUID.randomUUID().toString().replace("-", "") + extension;
         String dateDir = LocalDate.now().format(DateTimeFormatter.BASIC_ISO_DATE);
         String objectKey = buildObjectKey(dateDir, storageName);
+        String thumbnailObjectKey = buildObjectKey(dateDir, "thumbnails/" + stripExtension(storageName) + ".jpg");
+        FileThumbnailPayload thumbnail = fileThumbnailGenerator.generate(originalName, file.getContentType(), content);
 
-        try (InputStream inputStream = file.getInputStream()) {
+        boolean originalUploaded = false;
+        boolean thumbnailUploaded = false;
+        try (InputStream inputStream = new ByteArrayInputStream(content)) {
             ObjectMetadata metadata = new ObjectMetadata();
             metadata.setContentLength(file.getSize());
             if (StringUtils.hasText(file.getContentType())) {
@@ -126,6 +137,9 @@ public class OssFileStorageService extends AbstractFileStorageService implements
 
             PutObjectRequest request = new PutObjectRequest(bucketName, objectKey, inputStream, metadata);
             ossClient.putObject(request);
+            originalUploaded = true;
+            putThumbnailObject(thumbnailObjectKey, thumbnail);
+            thumbnailUploaded = true;
 
             TenderFileStorage storage = new TenderFileStorage();
             storage.setOriginalName(originalName);
@@ -134,11 +148,17 @@ public class OssFileStorageService extends AbstractFileStorageService implements
             storage.setStoragePath(objectKey);
             storage.setContentType(file.getContentType());
             storage.setFileSize(file.getSize());
-            storage = saveStorage(storage, objectKey, contentHash);
+            applyThumbnail(storage, thumbnailObjectKey, thumbnail);
+            storage = saveStorage(storage, objectKey, thumbnailObjectKey, contentHash, content);
             return toUploadResponse(storage);
+        } catch (BusinessException ex) {
+            cleanupUploadedObjects(originalUploaded, objectKey, thumbnailUploaded, thumbnailObjectKey);
+            throw ex;
         } catch (IOException ex) {
+            cleanupUploadedObjects(originalUploaded, objectKey, thumbnailUploaded, thumbnailObjectKey);
             throw new BusinessException(500, "读取上传文件失败");
         } catch (OSSException ex) {
+            cleanupUploadedObjects(originalUploaded, objectKey, thumbnailUploaded, thumbnailObjectKey);
             throw new BusinessException(500, "上传文件到 OSS 失败");
         }
     }
@@ -158,37 +178,155 @@ public class OssFileStorageService extends AbstractFileStorageService implements
     }
 
     @Override
+    @Transactional
+    public FileThumbnailResource loadThumbnail(TenderFileStorage storage) {
+        TenderFileStorage current = storage;
+        if (!StringUtils.hasText(current.getThumbnailPath())) {
+            current = ensureThumbnailFromOriginal(current);
+        }
+        try {
+            OSSObject object = ossClient.getObject(bucketName, current.getThumbnailPath());
+            long contentLength = current.getThumbnailSize() == null ? -1 : current.getThumbnailSize();
+            return new FileThumbnailResource(new InputStreamResource(object.getObjectContent()), current.getThumbnailContentType(), contentLength);
+        } catch (OSSException ex) {
+            if (!"NoSuchKey".equalsIgnoreCase(ex.getErrorCode())) {
+                throw new BusinessException(500, "读取 OSS 附件缩略图失败");
+            }
+            current = ensureThumbnailFromOriginal(current);
+            try {
+                OSSObject object = ossClient.getObject(bucketName, current.getThumbnailPath());
+                long contentLength = current.getThumbnailSize() == null ? -1 : current.getThumbnailSize();
+                return new FileThumbnailResource(new InputStreamResource(object.getObjectContent()), current.getThumbnailContentType(), contentLength);
+            } catch (OSSException retryEx) {
+                if ("NoSuchKey".equalsIgnoreCase(retryEx.getErrorCode())) {
+                    throw new BusinessException(404, "附件缩略图不存在或不可读取");
+                }
+                throw new BusinessException(500, "读取 OSS 附件缩略图失败");
+            }
+        }
+    }
+
+    @Override
     public void deleteStoredFile(TenderFileStorage storage) {
         try {
             ossClient.deleteObject(bucketName, storage.getStoragePath());
+            if (StringUtils.hasText(storage.getThumbnailPath())) {
+                ossClient.deleteObject(bucketName, storage.getThumbnailPath());
+            }
         } catch (OSSException ex) {
             throw new BusinessException(500, "删除 OSS 附件文件失败");
         }
     }
 
-    private FileUploadResponse toUploadResponse(TenderFileStorage storage) {
-        FileUploadResponse response = new FileUploadResponse();
-        response.setFileId(storage.getId());
-        response.setFileName(storage.getOriginalName());
-        response.setContentType(storage.getContentType());
-        response.setFileSize(storage.getFileSize());
-        return response;
-    }
-
-    private TenderFileStorage saveStorage(TenderFileStorage storage, String objectKey, String contentHash) {
+    private TenderFileStorage saveStorage(TenderFileStorage storage,
+                                          String objectKey,
+                                          String thumbnailObjectKey,
+                                          String contentHash,
+                                          byte[] content) {
         try {
             return tenderFileStorageRepository.saveAndFlush(storage);
         } catch (DataIntegrityViolationException ex) {
             deleteQuietly(objectKey);
+            deleteQuietly(thumbnailObjectKey);
             TenderFileStorage existing = tenderFileStorageRepository.findByContentHash(contentHash).orElse(null);
             if (existing != null) {
-                return existing;
+                return ensureThumbnailFromBytes(existing, content);
             }
             throw new BusinessException(500, "保存文件记录失败");
         } catch (RuntimeException ex) {
             deleteQuietly(objectKey);
+            deleteQuietly(thumbnailObjectKey);
             throw ex;
         }
+    }
+
+    private TenderFileStorage ensureThumbnailFromOriginal(TenderFileStorage storage) {
+        return ensureThumbnailFromBytes(storage, readOssObject(storage.getStoragePath()));
+    }
+
+    private TenderFileStorage ensureThumbnailFromBytes(TenderFileStorage storage, byte[] content) {
+        if (StringUtils.hasText(storage.getThumbnailPath()) && ossObjectExists(storage.getThumbnailPath())) {
+            return storage;
+        }
+        FileThumbnailPayload thumbnail = fileThumbnailGenerator.generate(
+                storage.getOriginalName(),
+                storage.getContentType(),
+                content
+        );
+        String thumbnailObjectKey = buildThumbnailObjectKey(storage);
+        putThumbnailObject(thumbnailObjectKey, thumbnail);
+        applyThumbnail(storage, thumbnailObjectKey, thumbnail);
+        return tenderFileStorageRepository.saveAndFlush(storage);
+    }
+
+    private void putThumbnailObject(String objectKey, FileThumbnailPayload thumbnail) {
+        ObjectMetadata metadata = new ObjectMetadata();
+        metadata.setContentLength(thumbnail.getContent().length);
+        metadata.setContentType(thumbnail.getContentType());
+        try (InputStream inputStream = new ByteArrayInputStream(thumbnail.getContent())) {
+            ossClient.putObject(new PutObjectRequest(bucketName, objectKey, inputStream, metadata));
+        } catch (IOException ex) {
+            throw new BusinessException(500, "读取附件缩略图失败");
+        } catch (OSSException ex) {
+            throw new BusinessException(500, "上传附件缩略图到 OSS 失败");
+        }
+    }
+
+    private byte[] readOssObject(String objectKey) {
+        try {
+            OSSObject object = ossClient.getObject(bucketName, objectKey);
+            try (InputStream inputStream = object.getObjectContent()) {
+                return toByteArray(inputStream);
+            }
+        } catch (OSSException ex) {
+            if ("NoSuchKey".equalsIgnoreCase(ex.getErrorCode())) {
+                throw new BusinessException(404, "附件文件不存在或不可读取");
+            }
+            throw new BusinessException(500, "读取 OSS 附件文件失败");
+        } catch (IOException ex) {
+            throw new BusinessException(500, "读取 OSS 附件文件失败");
+        }
+    }
+
+    private boolean ossObjectExists(String objectKey) {
+        try {
+            return ossClient.doesObjectExist(bucketName, objectKey);
+        } catch (OSSException ex) {
+            return false;
+        }
+    }
+
+    private byte[] readFileBytes(MultipartFile file) {
+        try {
+            return file.getBytes();
+        } catch (IOException ex) {
+            throw new BusinessException(500, "读取上传文件失败");
+        }
+    }
+
+    private byte[] toByteArray(InputStream inputStream) throws IOException {
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        byte[] buffer = new byte[8192];
+        int read;
+        while ((read = inputStream.read(buffer)) != -1) {
+            output.write(buffer, 0, read);
+        }
+        return output.toByteArray();
+    }
+
+    private String buildThumbnailObjectKey(TenderFileStorage storage) {
+        String storagePath = storage.getStoragePath();
+        int index = storagePath.lastIndexOf('/');
+        String directory = index < 0 ? "" : storagePath.substring(0, index + 1);
+        return directory + "thumbnails/" + stripExtension(storage.getStorageName()) + ".jpg";
+    }
+
+    private String stripExtension(String fileName) {
+        int index = fileName.lastIndexOf('.');
+        if (index <= 0) {
+            return fileName;
+        }
+        return fileName.substring(0, index);
     }
 
     private void deleteQuietly(String objectKey) {
@@ -196,6 +334,18 @@ public class OssFileStorageService extends AbstractFileStorageService implements
             ossClient.deleteObject(bucketName, objectKey);
         } catch (Exception ignored) {
             // 文件记录保存失败时优先返回主错误，忽略清理失败
+        }
+    }
+
+    private void cleanupUploadedObjects(boolean originalUploaded,
+                                        String objectKey,
+                                        boolean thumbnailUploaded,
+                                        String thumbnailObjectKey) {
+        if (originalUploaded) {
+            deleteQuietly(objectKey);
+        }
+        if (thumbnailUploaded) {
+            deleteQuietly(thumbnailObjectKey);
         }
     }
 

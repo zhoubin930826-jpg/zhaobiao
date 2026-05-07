@@ -14,6 +14,7 @@ import com.zhaobiao.admin.service.MemberAdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -108,5 +109,14 @@ public class MemberAdminController {
                                            @Valid @RequestBody MemberPasswordResetRequest request) {
         memberAdminService.resetPassword(memberId, request);
         return ApiResponse.success("重置密码成功", null);
+    }
+
+    @Operation(summary = "删除会员")
+    @PreAuthorize("hasAuthority('MEMBER_DELETE_BUTTON')")
+    @OperationLogRecord(module = "会员管理", action = "删除会员")
+    @DeleteMapping("/{memberId}")
+    public ApiResponse<Void> delete(@PathVariable Long memberId) {
+        memberAdminService.deleteMember(memberId);
+        return ApiResponse.success("删除会员成功", null);
     }
 }

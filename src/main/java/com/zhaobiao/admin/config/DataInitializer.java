@@ -94,6 +94,8 @@ public class DataInitializer implements ApplicationRunner {
                 "", "", "", 20, false, true, "会员状态按钮");
         upsertMenu("MEMBER_PASSWORD_BUTTON", "会员重置密码按钮", MenuType.BUTTON, memberUserManage.getId(),
                 "", "", "", 30, false, true, "会员重置密码按钮");
+        upsertMenu("MEMBER_DELETE_BUTTON", "删除会员按钮", MenuType.BUTTON, memberUserManage.getId(),
+                "", "", "", 40, false, true, "删除会员按钮");
         upsertMenu("BUSINESS_TYPE_CREATE_BUTTON", "新增类型按钮", MenuType.BUTTON, businessTypeManage.getId(),
                 "", "", "", 10, false, true, "新增类型按钮");
         upsertMenu("BUSINESS_TYPE_EDIT_BUTTON", "编辑类型按钮", MenuType.BUTTON, businessTypeManage.getId(),
@@ -139,7 +141,7 @@ public class DataInitializer implements ApplicationRunner {
                 "系统管理员",
                 "负责会员、招标、角色、菜单和日志管理",
                 true,
-                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_MEMBER_USER", "SYSTEM_BUSINESS_TYPE", "SYSTEM_TENDER", "SYSTEM_ROLE", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "MEMBER_CREATE_BUTTON", "MEMBER_EDIT_BUTTON", "MEMBER_DOWNLOAD_BUTTON", "MEMBER_STATUS_BUTTON", "MEMBER_PASSWORD_BUTTON", "BUSINESS_TYPE_CREATE_BUTTON", "BUSINESS_TYPE_EDIT_BUTTON", "BUSINESS_TYPE_STATUS_BUTTON", "BUSINESS_TYPE_DELETE_BUTTON", "TENDER_CREATE_BUTTON", "TENDER_EDIT_BUTTON", "TENDER_DELETE_BUTTON", "TENDER_UPLOAD_BUTTON", "ROLE_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
+                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_MEMBER_USER", "SYSTEM_BUSINESS_TYPE", "SYSTEM_TENDER", "SYSTEM_ROLE", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "MEMBER_CREATE_BUTTON", "MEMBER_EDIT_BUTTON", "MEMBER_DOWNLOAD_BUTTON", "MEMBER_STATUS_BUTTON", "MEMBER_PASSWORD_BUTTON", "MEMBER_DELETE_BUTTON", "BUSINESS_TYPE_CREATE_BUTTON", "BUSINESS_TYPE_EDIT_BUTTON", "BUSINESS_TYPE_STATUS_BUTTON", "BUSINESS_TYPE_DELETE_BUTTON", "TENDER_CREATE_BUTTON", "TENDER_EDIT_BUTTON", "TENDER_DELETE_BUTTON", "TENDER_UPLOAD_BUTTON", "ROLE_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
         );
 
         upsertRole(

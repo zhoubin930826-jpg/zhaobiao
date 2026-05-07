@@ -24,6 +24,7 @@ import static org.hamcrest.Matchers.greaterThanOrEqualTo;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -169,6 +170,50 @@ class FullApiIntegrationTests {
         assertMemberPortalOperationsWork(memberToken, tenderId, attachmentId, "expiration download content " + tag);
         String renewedToken = loginMember(username, password);
         assertMemberPortalOperationsWork(renewedToken, tenderId, attachmentId, "expiration download content " + tag);
+    }
+
+    @Test
+    void softDeletedMemberDisappearsCannotLoginAndUsernameCanBeReused() throws Exception {
+        String adminToken = loginAdmin("admin", "adminqwert");
+        String tag = uniqueTag();
+        Long engineeringTypeId = findBusinessTypeIdByCode(adminToken, "ENGINEERING");
+        assertNotNull(engineeringTypeId);
+
+        String username = "deletemember" + tag;
+        String password = "123456";
+        Long memberId = createMember(adminToken, username, tag, engineeringTypeId, true, LocalDateTime.now().plusDays(7), password);
+        String memberToken = loginMember(username, password);
+
+        mockMvc.perform(delete("/api/admin/members/{memberId}", memberId)
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(get("/api/admin/members")
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data[?(@.id==" + memberId + ")]").isEmpty());
+
+        mockMvc.perform(get("/api/admin/members/{memberId}", memberId)
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(404));
+
+        mockMvc.perform(post("/api/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(get("/api/portal/auth/me")
+                        .header("Authorization", bearer(memberToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+
+        Long recreatedId = createMember(adminToken, username, tag, engineeringTypeId, false, LocalDateTime.now().plusDays(30), password);
+        assertNotEquals(memberId, recreatedId);
+        loginMember(username, password);
     }
 
     private void exercisePermissionMenuAndRoleApis(String adminToken, String tag) throws Exception {

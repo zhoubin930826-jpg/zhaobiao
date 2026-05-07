@@ -18,6 +18,7 @@ import com.zhaobiao.admin.entity.Role;
 import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.entity.User;
 import com.zhaobiao.admin.entity.UserAuditRecord;
+import com.zhaobiao.admin.util.FileThumbnailUrlBuilder;
 import org.springframework.stereotype.Component;
 
 import java.time.LocalDateTime;
@@ -141,6 +142,9 @@ public class ViewMapper {
         dto.setBusinessLicenseFileName(fileStorage.getOriginalName());
         dto.setBusinessLicenseContentType(fileStorage.getContentType());
         dto.setBusinessLicenseFileSize(fileStorage.getFileSize());
+        dto.setBusinessLicenseThumbnailUrl(FileThumbnailUrlBuilder.build(fileStorage.getId()));
+        dto.setBusinessLicenseThumbnailContentType(fileStorage.getThumbnailContentType());
+        dto.setBusinessLicenseThumbnailStatus(fileStorage.getThumbnailStatus());
     }
 
     private void applyThreeYearPerformance(MemberUserDto dto, TenderFileStorage fileStorage) {
@@ -151,6 +155,9 @@ public class ViewMapper {
         dto.setThreeYearPerformanceFileName(fileStorage.getOriginalName());
         dto.setThreeYearPerformanceContentType(fileStorage.getContentType());
         dto.setThreeYearPerformanceFileSize(fileStorage.getFileSize());
+        dto.setThreeYearPerformanceThumbnailUrl(FileThumbnailUrlBuilder.build(fileStorage.getId()));
+        dto.setThreeYearPerformanceThumbnailContentType(fileStorage.getThumbnailContentType());
+        dto.setThreeYearPerformanceThumbnailStatus(fileStorage.getThumbnailStatus());
     }
 
     public RoleDto toRoleDto(Role role) {

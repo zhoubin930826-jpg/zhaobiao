@@ -48,7 +48,7 @@ public class PortalAuthService {
 
     @Transactional
     public MemberLoginResponse login(MemberLoginRequest request) {
-        MemberUser user = memberUserRepository.findDetailByUsername(request.getUsername())
+        MemberUser user = memberUserRepository.findDetailByUsernameAndDeletedFalse(request.getUsername())
                 .orElseThrow(() -> new BusinessException(400, "用户名或密码错误"));
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BusinessException(400, "用户名或密码错误");
@@ -81,14 +81,14 @@ public class PortalAuthService {
 
     @Transactional(readOnly = true)
     public MemberUserDto currentMember(MemberLoginUser loginUser) {
-        MemberUser user = memberUserRepository.findDetailById(loginUser.getUserId())
+        MemberUser user = memberUserRepository.findDetailByIdAndDeletedFalse(loginUser.getUserId())
                 .orElseThrow(() -> new BusinessException(404, "会员不存在"));
         return viewMapper.toMemberUserDto(user);
     }
 
     @Transactional
     public MemberUserDto updateCurrentMember(MemberLoginUser loginUser, MemberProfileUpdateRequest request) {
-        MemberUser user = memberUserRepository.findDetailById(loginUser.getUserId())
+        MemberUser user = memberUserRepository.findDetailByIdAndDeletedFalse(loginUser.getUserId())
                 .orElseThrow(() -> new BusinessException(404, "会员不存在"));
         ensureMemberUnique(
                 null,
@@ -123,44 +123,44 @@ public class PortalAuthService {
         phone = normalizeForUnique(phone);
         email = normalizeForUnique(email);
         unifiedSocialCreditCode = normalizeForUnique(unifiedSocialCreditCode);
-        if (username != null && memberUserRepository.existsByUsername(username)
+        if (username != null && memberUserRepository.existsByUsernameAndDeletedFalse(username)
                 && !isCurrentUserUsername(currentUserId, username)) {
             throw new BusinessException(400, "用户名已存在");
         }
-        if (phone != null && memberUserRepository.existsByPhone(phone)
+        if (phone != null && memberUserRepository.existsByPhoneAndDeletedFalse(phone)
                 && !isCurrentUserPhone(currentUserId, phone)) {
             throw new BusinessException(400, "手机号已存在");
         }
-        if (email != null && memberUserRepository.existsByEmail(email)
+        if (email != null && memberUserRepository.existsByEmailAndDeletedFalse(email)
                 && !isCurrentUserEmail(currentUserId, email)) {
             throw new BusinessException(400, "邮箱已存在");
         }
-        if (unifiedSocialCreditCode != null && memberUserRepository.existsByUnifiedSocialCreditCode(unifiedSocialCreditCode)
+        if (unifiedSocialCreditCode != null && memberUserRepository.existsByUnifiedSocialCreditCodeAndDeletedFalse(unifiedSocialCreditCode)
                 && !isCurrentUserCreditCode(currentUserId, unifiedSocialCreditCode)) {
             throw new BusinessException(400, "统一社会信用代码已存在");
         }
     }
 
     private boolean isCurrentUserUsername(Long currentUserId, String username) {
-        return currentUserId != null && memberUserRepository.findById(currentUserId)
+        return currentUserId != null && memberUserRepository.findDetailByIdAndDeletedFalse(currentUserId)
                 .map(item -> username.equals(item.getUsername()))
                 .orElse(false);
     }
 
     private boolean isCurrentUserPhone(Long currentUserId, String phone) {
-        return currentUserId != null && memberUserRepository.findById(currentUserId)
+        return currentUserId != null && memberUserRepository.findDetailByIdAndDeletedFalse(currentUserId)
                 .map(item -> phone.equals(item.getPhone()))
                 .orElse(false);
     }
 
     private boolean isCurrentUserEmail(Long currentUserId, String email) {
-        return currentUserId != null && memberUserRepository.findById(currentUserId)
+        return currentUserId != null && memberUserRepository.findDetailByIdAndDeletedFalse(currentUserId)
                 .map(item -> email.equals(item.getEmail()))
                 .orElse(false);
     }
 
     private boolean isCurrentUserCreditCode(Long currentUserId, String unifiedSocialCreditCode) {
-        return currentUserId != null && memberUserRepository.findById(currentUserId)
+        return currentUserId != null && memberUserRepository.findDetailByIdAndDeletedFalse(currentUserId)
                 .map(item -> unifiedSocialCreditCode.equals(item.getUnifiedSocialCreditCode()))
                 .orElse(false);
     }

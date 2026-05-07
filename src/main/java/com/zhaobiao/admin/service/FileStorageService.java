@@ -13,5 +13,7 @@ public interface FileStorageService {
 
     Resource loadAsResource(TenderFileStorage storage);
 
+    FileThumbnailResource loadThumbnail(TenderFileStorage storage);
+
     void deleteStoredFile(TenderFileStorage storage);
 }
