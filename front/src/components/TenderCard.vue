@@ -34,7 +34,6 @@
 <script setup>
 import { computed } from 'vue'
 import { formatDate, formatBudget } from '@/utils/format'
-import { useAuth } from '@/auth'
 
 const props = defineProps({
   item: {
@@ -43,16 +42,11 @@ const props = defineProps({
   }
 })
 
-const { isLoggedIn } = useAuth()
-
 const detailRoute = computed(() => {
-  if (isLoggedIn.value) {
-    return { name: 'detail', params: { id: props.item.id } }
-  }
-    return { path: '/', query: { redirect: `/detail/${props.item.id}` } }
+  return { name: 'detail', params: { id: props.item.id } }
 })
 
-const detailLinkText = computed(() => (isLoggedIn.value ? '查看详情' : '登录后查看详情'))
+const detailLinkText = computed(() => '查看详情')
 </script>
 
 <style scoped>

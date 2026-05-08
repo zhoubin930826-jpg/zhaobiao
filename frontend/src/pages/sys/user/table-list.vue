@@ -81,6 +81,12 @@
         <Badge v-else-if="row.status === 'DISABLED'" color="default" text="禁用" />
         <span v-else>{{ row.status }}</span>
       </template>
+      <template slot-scope="{ row }" slot="lastLoginAt">
+        {{ formatDisplayDate(row.lastLoginAt) }}
+      </template>
+      <template slot-scope="{ row }" slot="createdAt">
+        {{ formatDisplayDate(row.createdAt) }}
+      </template>
       <template slot-scope="{ row }" slot="roleNames">
         {{ (row.roleNames || []).join('、') || '—' }}
       </template>
@@ -207,10 +213,10 @@
               </span>
             </FormItem>
             <FormItem label="创建时间">
-              <span>{{ formData.createdAt }}</span>
+              <span>{{ formatDisplayDate(formData.createdAt) }}</span>
             </FormItem>
             <FormItem label="最后登录">
-              <span>{{ formData.lastLoginAt || '—' }}</span>
+              <span>{{ formatDisplayDate(formData.lastLoginAt) }}</span>
             </FormItem>
             <FormItem label="当前角色">
               <span>{{ (formData.roleNames || []).join('、') || '—' }}</span>
@@ -333,12 +339,14 @@
                     {
                         title: '最后登录',
                         key: 'lastLoginAt',
+                        slot: 'lastLoginAt',
                         minWidth: 160,
                         show: true
                     },
                     {
                         title: '创建时间',
                         key: 'createdAt',
+                        slot: 'createdAt',
                         minWidth: 180,
                         show: true
                     },
@@ -421,6 +429,20 @@
             }
         },
         methods: {
+            parseBackendDateTime (value) {
+                if (!value) return null;
+                if (value instanceof Date) return value;
+                // 后端通常返回 yyyy-MM-dd HH:mm:ss，将空格替换为 T 便于解析
+                const parsed = new Date(String(value).replace(' ', 'T'));
+                return Number.isNaN(parsed.getTime()) ? null : parsed;
+            },
+            formatDisplayDate (value) {
+                if (!value) return '—';
+                const date = value instanceof Date ? value : this.parseBackendDateTime(value);
+                if (!date) return '—';
+                const pad = num => String(num).padStart(2, '0');
+                return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())} ${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
+            },
             getData () {
                 if (this.loading) return;
                 this.loading = true;

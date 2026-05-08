@@ -1,4 +1,6 @@
 import request from '@/plugins/request';
+import Setting from '@/setting';
+import util from '@/libs/util';
 
 /* ========== 用户管理（管理员）========== */
 
@@ -114,6 +116,13 @@ export function resetMemberPassword (memberId, data) {
     });
 }
 
+export function deleteMember (memberId) {
+    return request({
+        url: `/admin/members/${memberId}`,
+        method: 'delete'
+    });
+}
+
 export function listBusinessTypeOptions () {
     return request({
         url: '/admin/business-types/options',
@@ -211,6 +220,72 @@ export function uploadTenderFiles (files) {
             'Content-Type': 'multipart/form-data'
         }
     });
+}
+
+export function uploadMemberProfileFiles (files) {
+    const formData = new FormData();
+    files.forEach(file => formData.append('files', file));
+    return request({
+        url: '/admin/members/profile-files',
+        method: 'post',
+        data: formData,
+        timeout: 120000,
+        headers: {
+            'Content-Type': 'multipart/form-data'
+        }
+    });
+}
+
+function extractFilename (contentDisposition) {
+    if (!contentDisposition) return '';
+    const utf8Match = contentDisposition.match(/filename\\*=UTF-8''([^;]+)/i);
+    if (utf8Match && utf8Match[1]) {
+        return decodeURIComponent(utf8Match[1]);
+    }
+    const plainMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+    return plainMatch && plainMatch[1] ? plainMatch[1] : '';
+}
+
+function buildApiUrl (path) {
+    const base = (Setting.apiBaseURL || '').replace(/\/+$/, '');
+    const cleanedPath = String(path || '').replace(/^\/+/, '');
+    return `${base}/${cleanedPath}`;
+}
+
+/** 管理员查看会员资料文件（返回 blob、objectUrl、文件名与类型） */
+export async function fetchMemberProfileFile (fileId, fallbackFilename = '文件') {
+    if (fileId === undefined || fileId === null) {
+        throw new Error('文件不存在或已被移除');
+    }
+    const url = new URL(buildApiUrl(`/admin/members/profile-files/${fileId}/download`), window.location.origin);
+    const headers = {};
+    const token = util.cookies.get('token');
+    if (token) headers.Authorization = `Bearer ${token}`;
+
+    const response = await fetch(url.toString(), { method: 'GET', headers });
+    if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        const message =
+            payload.message ||
+            (response.status === 401
+                ? '请登录后查看文件'
+                : response.status === 403
+                    ? '当前账号暂无查看权限'
+                    : `查看失败(${response.status})`);
+        const error = new Error(message);
+        error.code = payload.code || response.status;
+        error.status = response.status;
+        throw error;
+    }
+
+    const blob = await response.blob();
+    const filename =
+        extractFilename(response.headers.get('content-disposition')) ||
+        fallbackFilename ||
+        `文件-${fileId}`;
+    const contentType = response.headers.get('content-type') || '';
+    const objectUrl = window.URL.createObjectURL(blob);
+    return { blob, objectUrl, filename, contentType };
 }
 
 export function auditUser () {

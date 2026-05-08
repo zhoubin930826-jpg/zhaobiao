@@ -40,12 +40,17 @@ async function request(path, options = {}) {
 
   const payload = await response.json().catch(() => ({}))
   if (!response.ok) {
-    throw new Error(payload.message || `请求失败(${response.status})`)
+    const error = new Error(payload.message || `请求失败(${response.status})`)
+    error.code = payload.code || response.status
+    error.status = response.status
+    throw error
   }
   if (payload && (payload.code === 0 || payload.code === 200 || payload.code === undefined)) {
     return payload.data !== undefined ? payload.data : payload
   }
-  throw new Error(payload.message || '请求失败')
+  const error = new Error(payload.message || '请求失败')
+  error.code = payload.code
+  throw error
 }
 
 function mapStatus(status) {
@@ -81,7 +86,7 @@ export async function getPortalProfile() {
 }
 
 export async function updatePortalProfile(data) {
-  return request('/portal/auth/me', {
+  return request('/portal/auth/profile', {
     method: 'PUT',
     data
   })
@@ -97,7 +102,7 @@ export async function uploadPortalFiles(files) {
   const token = readToken()
   if (token) headers.Authorization = `Bearer ${token}`
 
-  const response = await fetch(new URL(`${API_BASE_URL}/portal/files/upload`, window.location.origin).toString(), {
+  const response = await fetch(new URL(`${API_BASE_URL}/portal/auth/profile/files`, window.location.origin).toString(), {
     method: 'POST',
     headers,
     body: formData
@@ -116,6 +121,12 @@ export async function listPortalTenders(params) {
   const page = await request('/portal/tenders', { params })
   const list = Array.isArray(page.list) ? page.list.map(mapTenderListItem) : []
   return { ...page, list }
+}
+
+export async function listLatestPortalTenders() {
+  const list = await request('/portal/tenders/latest', { withAuth: false })
+  const items = Array.isArray(list) ? list.map(mapTenderListItem) : []
+  return { list: items, total: items.length }
 }
 
 export async function getPortalTenderDetail(tenderId) {
@@ -145,6 +156,10 @@ export function buildAttachmentDownloadUrl(tenderId, attachmentId) {
   return `${API_BASE_URL}/portal/tenders/${tenderId}/attachments/${attachmentId}/download`
 }
 
+export function buildProfileFileDownloadUrl(fileId) {
+  return `${API_BASE_URL}/portal/auth/profile/files/${fileId}/download`
+}
+
 function extractFilename(contentDisposition) {
   if (!contentDisposition) return ''
   const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i)
@@ -166,7 +181,17 @@ export async function downloadPortalAttachment(tenderId, attachmentId, fallbackF
   const response = await fetch(url.toString(), { method: 'GET', headers })
   if (!response.ok) {
     const payload = await response.json().catch(() => ({}))
-    throw new Error(payload.message || `下载失败(${response.status})`)
+    const message =
+      payload.message ||
+      (response.status === 401
+        ? '请登录后下载附件'
+        : response.status === 403
+          ? '当前账号暂无附件下载权限'
+          : `下载失败(${response.status})`)
+    const error = new Error(message)
+    error.code = payload.code || response.status
+    error.status = response.status
+    throw error
   }
 
   const blob = await response.blob()
@@ -175,6 +200,74 @@ export async function downloadPortalAttachment(tenderId, attachmentId, fallbackF
     fallbackFilename ||
     `attachment-${attachmentId}`
   const objectUrl = window.URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = objectUrl
+  link.download = filename
+  link.style.display = 'none'
+  document.body.appendChild(link)
+  link.click()
+  document.body.removeChild(link)
+  window.URL.revokeObjectURL(objectUrl)
+}
+
+// 资料文件查看与下载
+export async function fetchPortalProfileFile(fileId, fallbackFilename = '文件') {
+  if (fileId === undefined || fileId === null) {
+    throw new Error('文件不存在或已被移除')
+  }
+
+  const url = new URL(buildProfileFileDownloadUrl(fileId), window.location.origin)
+  const headers = {}
+  const token = readToken()
+  if (token) {
+    headers.Authorization = `Bearer ${token}`
+  }
+
+  const response = await fetch(url.toString(), { method: 'GET', headers })
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}))
+    const message =
+      payload.message ||
+      (response.status === 401
+        ? '请登录后查看文件'
+        : response.status === 403
+          ? '当前账号暂无查看权限'
+          : `查看失败(${response.status})`)
+    const error = new Error(message)
+    error.code = payload.code || response.status
+    error.status = response.status
+    throw error
+  }
+
+  const blob = await response.blob()
+  const filename =
+    extractFilename(response.headers.get('content-disposition')) ||
+    fallbackFilename ||
+    `文件-${fileId}`
+  const contentType = response.headers.get('content-type') || ''
+  const objectUrl = window.URL.createObjectURL(blob)
+
+  return { blob, objectUrl, filename, contentType }
+}
+
+export async function viewPortalProfileFile(fileId, fallbackFilename = '文件') {
+  const { objectUrl, filename, contentType } = await fetchPortalProfileFile(fileId, fallbackFilename)
+  const canPreview = contentType.startsWith('image/') || contentType === 'application/pdf'
+
+  if (canPreview) {
+    const win = window.open(objectUrl, '_blank')
+    if (!win) {
+      const link = document.createElement('a')
+      link.href = objectUrl
+      link.download = filename
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+    }
+    return
+  }
+
   const link = document.createElement('a')
   link.href = objectUrl
   link.download = filename

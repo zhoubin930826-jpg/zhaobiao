@@ -22,7 +22,7 @@
             <button type="button" class="menu-item menu-item-btn" @click="onLogout">退出登录</button>
           </div>
         </div>
-        <router-link v-else to="/" class="btn-login">登录</router-link>
+        <router-link v-else to="/login" class="btn-login">登录</router-link>
       </div>
     </div>
   </header>
@@ -93,7 +93,7 @@ function onLogout() {
   closeMenu()
   logout()
   if (route.meta.requiresAuth) {
-    router.replace({ path: '/' })
+    router.replace({ path: '/list' })
   }
 }
 </script>

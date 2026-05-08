@@ -20,8 +20,8 @@
             <input v-model.trim="form.realName" type="text" placeholder="请输入真实姓名" />
           </label>
           <label class="field">
-            <span class="field-label">手机号</span>
-            <input v-model.trim="form.phone" type="text" placeholder="请输入手机号" />
+            <span class="field-label">联系方式</span>
+            <input v-model.trim="form.phone" type="text" placeholder="请输入联系方式" />
           </label>
           <label class="field">
             <span class="field-label">邮箱</span>
@@ -40,14 +40,6 @@
             <input v-model.trim="form.unifiedSocialCreditCode" type="text" placeholder="请输入统一社会信用代码" />
           </label>
         </div>
-        <label class="field">
-          <span class="field-label">业绩描述</span>
-          <textarea
-            v-model.trim="form.performanceDesc"
-            rows="4"
-            placeholder="请输入业绩描述（选填）"
-          />
-        </label>
         <div class="upload-grid">
           <div class="upload-block">
             <div class="upload-head">
@@ -55,23 +47,33 @@
               <input type="file" class="file-input" @change="onBusinessLicenseSelect" :disabled="uploading" />
             </div>
             <div v-if="businessLicense" class="attachment-item">
-              <span>{{ businessLicense.fileName || `文件#${businessLicense.fileId}` }}</span>
-              <button type="button" class="link-btn" @click="removeBusinessLicense">移除</button>
+              <div class="attachment-meta">
+                <span class="file-name">{{ businessLicense.fileName || `文件#${businessLicense.fileId}` }}</span>
+                <small v-if="businessLicense.fileSize" class="file-size">{{ formatSize(businessLicense.fileSize) }}</small>
+              </div>
+              <div class="attachment-actions">
+                <button type="button" class="link-btn" @click="viewBusinessLicense">查看</button>
+                <button type="button" class="link-btn" @click="removeBusinessLicense">移除</button>
+              </div>
             </div>
             <p v-else class="upload-empty">未上传营业执照</p>
           </div>
           <div class="upload-block">
             <div class="upload-head">
-              <span class="field-label">附件</span>
-              <input type="file" class="file-input" multiple @change="onAttachmentsSelect" :disabled="uploading" />
+              <span class="field-label">近三年业绩证明</span>
+              <input type="file" class="file-input" @change="onPerformanceSelect" :disabled="uploading" />
             </div>
-            <div v-if="attachments.length" class="attachment-list">
-              <div v-for="item in attachments" :key="item.fileId" class="attachment-item">
-                <span>{{ item.fileName || `文件#${item.fileId}` }}</span>
-                <button type="button" class="link-btn" @click="removeAttachment(item.fileId)">移除</button>
+            <div v-if="performanceFile" class="attachment-item">
+              <div class="attachment-meta">
+                <span class="file-name">{{ performanceFile.fileName || `文件#${performanceFile.fileId}` }}</span>
+                <small v-if="performanceFile.fileSize" class="file-size">{{ formatSize(performanceFile.fileSize) }}</small>
+              </div>
+              <div class="attachment-actions">
+                <button type="button" class="link-btn" @click="viewPerformanceFile">查看</button>
+                <button type="button" class="link-btn" @click="removePerformanceFile">移除</button>
               </div>
             </div>
-            <p v-else class="upload-empty">未上传附件</p>
+            <p v-else class="upload-empty">未上传近三年业绩证明</p>
           </div>
         </div>
         <p v-if="uploadError" class="tips tips-error">{{ uploadError }}</p>
@@ -85,6 +87,10 @@
             <span class="field-label">业务类型</span>
             <strong>{{ profileState.businessTypesText }}</strong>
           </div>
+          <div class="readonly-item">
+            <span class="field-label">首次登录时间</span>
+            <strong>{{ profileState.firstLoginAt || '-' }}</strong>
+          </div>
         </div>
 
         <p v-if="submitError" class="tips tips-error">{{ submitError }}</p>
@@ -95,12 +101,25 @@
         </div>
       </form>
     </section>
+
+    <div v-if="viewer.open" class="preview-mask" @click.self="closeViewer">
+      <div class="preview-dialog">
+        <header class="preview-header">
+          <span class="preview-title">{{ viewer.title }}</span>
+          <button type="button" class="preview-close" @click="closeViewer">关闭</button>
+        </header>
+        <div class="preview-body">
+          <img v-if="viewer.type.startsWith('image/')" :src="viewer.src" alt="文件预览" />
+          <iframe v-else :src="viewer.src" frameborder="0"></iframe>
+        </div>
+      </div>
+    </div>
   </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue'
-import { getPortalProfile, updatePortalProfile, uploadPortalFiles } from '@/api/portal'
+import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
+import { fetchPortalProfileFile, getPortalProfile, updatePortalProfile, uploadPortalFiles } from '@/api/portal'
 import { authState } from '@/auth'
 
 const loading = ref(false)
@@ -117,16 +136,29 @@ const form = reactive({
   email: '',
   companyName: '',
   contactPerson: '',
-  unifiedSocialCreditCode: '',
-  performanceDesc: ''
+  unifiedSocialCreditCode: ''
 })
 const businessLicense = ref(null)
-const attachments = ref([])
+const performanceFile = ref(null)
 const profileState = reactive({
   expiresAt: '',
-  businessTypesText: '-'
+  businessTypesText: '-',
+  firstLoginAt: ''
+})
+const viewer = reactive({
+  open: false,
+  src: '',
+  title: '',
+  type: ''
 })
 const displayName = computed(() => form.realName || form.username || '')
+const formatSize = size => {
+  if (!size || isNaN(size)) return ''
+  if (size < 1024) return `${size} B`
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`
+  if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`
+  return `${(size / 1024 / 1024 / 1024).toFixed(1)} GB`
+}
 
 function fillForm(profile) {
   form.username = profile.username || ''
@@ -136,17 +168,27 @@ function fillForm(profile) {
   form.companyName = profile.companyName || ''
   form.contactPerson = profile.contactPerson || ''
   form.unifiedSocialCreditCode = profile.unifiedSocialCreditCode || ''
-  form.performanceDesc = profile.performanceDesc || ''
-  businessLicense.value = profile.businessLicense
-    ? { fileId: profile.businessLicense.fileId, fileName: profile.businessLicense.fileName || '营业执照' }
-    : (profile.businessLicenseFileId ? { fileId: profile.businessLicenseFileId, fileName: profile.businessLicenseFileName || '营业执照' } : null)
-  attachments.value = Array.isArray(profile.attachments)
-    ? profile.attachments.map(item => ({ fileId: item.fileId, fileName: item.fileName || `文件#${item.fileId}` }))
-    : []
+  businessLicense.value = profile.businessLicenseFileId
+    ? {
+        fileId: profile.businessLicenseFileId,
+        fileName: profile.businessLicenseFileName || '营业执照',
+        contentType: profile.businessLicenseContentType,
+        fileSize: profile.businessLicenseFileSize
+      }
+    : null
+  performanceFile.value = profile.threeYearPerformanceFileId
+    ? {
+        fileId: profile.threeYearPerformanceFileId,
+        fileName: profile.threeYearPerformanceFileName || '近三年业绩证明',
+        contentType: profile.threeYearPerformanceContentType,
+        fileSize: profile.threeYearPerformanceFileSize
+      }
+    : null
   profileState.expiresAt = profile.expiresAt || ''
   profileState.businessTypesText = Array.isArray(profile.businessTypes) && profile.businessTypes.length
     ? profile.businessTypes.map(item => item.name).filter(Boolean).join('、')
     : '-'
+  profileState.firstLoginAt = profile.firstLoginAt || ''
 }
 
 async function onBusinessLicenseSelect(event) {
@@ -170,35 +212,80 @@ async function onBusinessLicenseSelect(event) {
   }
 }
 
-async function onAttachmentsSelect(event) {
+function removeBusinessLicense() {
+  businessLicense.value = null
+}
+
+function closeViewer() {
+  if (viewer.src) {
+    window.URL.revokeObjectURL(viewer.src)
+  }
+  viewer.open = false
+  viewer.src = ''
+  viewer.title = ''
+  viewer.type = ''
+}
+
+async function previewProfileFile(file, fallbackTitle) {
+  if (!file || !file.fileId) return
+  try {
+    const result = await fetchPortalProfileFile(file.fileId, file.fileName || fallbackTitle)
+    const previewable =
+      (result.contentType && result.contentType.startsWith('image/')) || result.contentType === 'application/pdf'
+
+    if (!previewable) {
+      const link = document.createElement('a')
+      link.href = result.objectUrl
+      link.download = result.filename || fallbackTitle
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      window.URL.revokeObjectURL(result.objectUrl)
+      return
+    }
+
+    closeViewer()
+    viewer.title = result.filename || fallbackTitle
+    viewer.src = result.objectUrl
+    viewer.type = result.contentType || ''
+    viewer.open = true
+  } catch (e) {
+    window.alert((e && e.message) || '查看失败，请稍后重试')
+  }
+}
+
+async function viewBusinessLicense() {
+  await previewProfileFile(businessLicense.value, '营业执照')
+}
+
+async function onPerformanceSelect(event) {
   const files = Array.from((event && event.target && event.target.files) || [])
   if (!files.length) return
   uploadError.value = ''
   uploading.value = true
   try {
-    const uploaded = await uploadPortalFiles(files)
-    uploaded.forEach(item => {
-      if (!item || item.fileId == null) return
-      if (attachments.value.some(a => a.fileId === item.fileId)) return
-      attachments.value.push({
-        fileId: item.fileId,
-        fileName: item.fileName || `文件#${item.fileId}`
-      })
-    })
+    const uploaded = await uploadPortalFiles([files[0]])
+    if (uploaded.length && uploaded[0].fileId != null) {
+      performanceFile.value = {
+        fileId: uploaded[0].fileId,
+        fileName: uploaded[0].fileName || files[0].name
+      }
+    }
   } catch (e) {
-    uploadError.value = (e && e.message) || '附件上传失败'
+    uploadError.value = (e && e.message) || '文件上传失败'
   } finally {
     uploading.value = false
     if (event && event.target) event.target.value = ''
   }
 }
 
-function removeBusinessLicense() {
-  businessLicense.value = null
+function removePerformanceFile() {
+  performanceFile.value = null
 }
 
-function removeAttachment(fileId) {
-  attachments.value = attachments.value.filter(item => item.fileId !== fileId)
+async function viewPerformanceFile() {
+  await previewProfileFile(performanceFile.value, '近三年业绩证明')
 }
 
 async function loadProfile() {
@@ -226,9 +313,8 @@ async function onSubmit() {
       companyName: form.companyName,
       contactPerson: form.contactPerson,
       unifiedSocialCreditCode: form.unifiedSocialCreditCode,
-      performanceDesc: form.performanceDesc,
       businessLicenseFileId: businessLicense.value ? businessLicense.value.fileId : null,
-      attachmentFileIds: attachments.value.map(item => item.fileId)
+      threeYearPerformanceFileId: performanceFile.value ? performanceFile.value.fileId : null
     })
     fillForm(profile || {})
     authState.username = form.realName || form.username || authState.username
@@ -241,6 +327,7 @@ async function onSubmit() {
 }
 
 onMounted(loadProfile)
+onBeforeUnmount(closeViewer)
 </script>
 
 <style scoped>
@@ -487,5 +574,70 @@ onMounted(loadProfile)
 .submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.preview-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.2rem;
+  z-index: 999;
+}
+
+.preview-dialog {
+  width: min(900px, 95vw);
+  height: min(80vh, 720px);
+  background: #ffffff;
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.preview-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.preview-title {
+  font-weight: 600;
+  color: #1f2937;
+  font-size: 0.95rem;
+}
+
+.preview-close {
+  border: none;
+  background: #1d4ed8;
+  color: #fff;
+  padding: 0.35rem 0.85rem;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.preview-body {
+  flex: 1;
+  background: #0f172a;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 0.5rem;
+}
+
+.preview-body img,
+.preview-body iframe {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border: none;
+  background: #0f172a;
 }
 </style>

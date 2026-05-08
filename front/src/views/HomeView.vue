@@ -9,7 +9,7 @@
           登录解锁全部
         </router-link>
       </div>
-      <p v-if="!isLoggedIn" class="hero-note">请先登录后浏览招标列表与公告详情。</p>
+      <p v-if="!isLoggedIn" class="hero-note">未登录仅展示最新 3 条公告，登录后可查看全部并下载附件。</p>
     </section>
 
     <section class="section">
@@ -24,12 +24,12 @@
 
     <section class="highlights">
       <div class="box">
-        <strong>{{ isLoggedIn ? stats.total : '—' }}</strong>
-        <span>{{ isLoggedIn ? '条公告' : '条公告总数（登录后可见）' }}</span>
+        <strong>{{ stats.total }}</strong>
+        <span>{{ isLoggedIn ? '条公告' : '最新公告数' }}</span>
       </div>
       <div class="box">
-        <strong>{{ isLoggedIn ? stats.open : '—' }}</strong>
-        <span>{{ isLoggedIn ? '进行中' : '进行中（登录后可见）' }}</span>
+        <strong>{{ stats.open }}</strong>
+        <span>{{ isLoggedIn ? '进行中' : '当前进行中' }}</span>
       </div>
       <div class="box">
         <strong>3</strong>
@@ -40,9 +40,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import TenderCard from '@/components/TenderCard.vue'
-import { listPortalTenders } from '@/api/portal'
+import { listLatestPortalTenders, listPortalTenders } from '@/api/portal'
 import { useAuth } from '@/auth'
 
 const { isLoggedIn } = useAuth()
@@ -58,15 +58,22 @@ const stats = computed(() => ({
   open: list.value.filter((t) => t.status === '进行中').length
 }))
 
-onMounted(async () => {
-  if (!isLoggedIn.value) return
+async function loadList() {
   try {
-    const res = await listPortalTenders({ pageNum: 1, pageSize: 100 })
-    list.value = Array.isArray(res.list) ? res.list : []
+    if (isLoggedIn.value) {
+      const res = await listPortalTenders({ pageNum: 1, pageSize: 100 })
+      list.value = Array.isArray(res.list) ? res.list : []
+    } else {
+      const res = await listLatestPortalTenders()
+      list.value = Array.isArray(res.list) ? res.list : []
+    }
   } catch (_) {
     list.value = []
   }
-})
+}
+
+onMounted(loadList)
+watch(isLoggedIn, loadList)
 </script>
 
 <style scoped>

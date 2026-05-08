@@ -48,7 +48,7 @@
         </button>
       </div>
 
-      <div class="pagination" aria-label="分页">
+      <div v-if="showPagination" class="pagination" aria-label="分页">
         <button type="button" class="page-btn" :disabled="pageNum <= 1" @click="goToPage(pageNum - 1)">
           上一页
         </button>
@@ -78,7 +78,7 @@
 import { ref, computed, watch, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import TenderCard from '@/components/TenderCard.vue'
-import { listPortalTenders } from '@/api/portal'
+import { listLatestPortalTenders, listPortalTenders } from '@/api/portal'
 import { useAuth } from '@/auth'
 
 /** 与后台 `frontend/src/pages/sys/tender/index.vue` 中 regionOptions 保持一致 */
@@ -126,6 +126,8 @@ const visiblePages = computed(() => {
   return pages
 })
 
+const showPagination = computed(() => isLoggedIn.value && totalPages.value > 1)
+
 function buildQueryPatch() {
   const q = {}
   if (category.value) q.category = category.value
@@ -140,15 +142,23 @@ async function loadList() {
   loading.value = true
   error.value = ''
   try {
-    const res = await listPortalTenders({
-      pageNum: pageNum.value,
-      pageSize: pageSize.value,
-      keyword: keyword.value || undefined,
-      region: region.value || undefined
-    })
-    tenders.value = Array.isArray(res.list) ? res.list : []
-    total.value = typeof res.total === 'number' ? res.total : 0
-    totalPages.value = typeof res.totalPages === 'number' ? res.totalPages : 0
+    if (isLoggedIn.value) {
+      const res = await listPortalTenders({
+        pageNum: pageNum.value,
+        pageSize: pageSize.value,
+        keyword: keyword.value || undefined,
+        region: region.value || undefined
+      })
+      tenders.value = Array.isArray(res.list) ? res.list : []
+      total.value = typeof res.total === 'number' ? res.total : tenders.value.length
+      totalPages.value = typeof res.totalPages === 'number' ? res.totalPages : 1
+    } else {
+      const res = await listLatestPortalTenders()
+      tenders.value = Array.isArray(res.list) ? res.list : []
+      total.value = res.total || tenders.value.length
+      totalPages.value = 1
+      pageNum.value = 1
+    }
     const categorySet = new Set()
     tenders.value.forEach(item => {
       if (item.category) categorySet.add(item.category)
@@ -157,9 +167,12 @@ async function loadList() {
       { value: '', label: '全部类型' },
       ...Array.from(categorySet).map(name => ({ value: name, label: name }))
     ]
+    showAll.value = false
   } catch (e) {
     error.value = (e && e.message) || '加载公告失败'
     tenders.value = []
+    total.value = 0
+    totalPages.value = 0
   } finally {
     loading.value = false
   }
@@ -170,6 +183,7 @@ function syncQuery() {
 }
 
 function goToPage(n) {
+  if (!isLoggedIn.value) return
   const next = Math.max(1, Math.min(totalPages.value || 1, n))
   if (next === pageNum.value) return
   pageNum.value = next
@@ -214,10 +228,14 @@ function reset() {
 }
 
 onMounted(() => {
-  if (isLoggedIn.value) {
-    syncQuery()
-    loadList()
-  }
+  syncQuery()
+  loadList()
+})
+
+watch(isLoggedIn, () => {
+  pageNum.value = 1
+  syncQuery()
+  loadList()
 })
 </script>
 

@@ -75,9 +75,9 @@ const error = ref('')
 const loading = ref(false)
 
 watch(
-  [isLoggedIn, () => route.path],
-  () => {
-    if (!isLoggedIn.value || route.path !== '/') return
+  isLoggedIn,
+  value => {
+    if (!value) return
     const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
     router.replace(redirect && redirect.startsWith('/') ? redirect : '/list')
   },
@@ -91,7 +91,12 @@ async function onSubmit() {
     const res = await doLogin(username.value, password.value)
     if (!res.ok) {
       error.value = res.message || '登录失败'
+      return
     }
+    const redirect = res.profileCompletionRequired
+      ? '/setting'
+      : (typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/list')
+    router.replace(redirect)
   } finally {
     loading.value = false
   }

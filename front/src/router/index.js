@@ -16,13 +16,13 @@ const routes = [
     path: '/list',
     name: 'list',
     component: () => import('@/views/ListView.vue'),
-    meta: { title: '招标公告', requiresAuth: true }
+    meta: { title: '招标公告' }
   },
   {
     path: '/detail/:id',
     name: 'detail',
     component: () => import('@/views/DetailView.vue'),
-    meta: { title: '公告详情', requiresAuth: true }
+    meta: { title: '公告详情' }
   },
   {
     path: '/setting',

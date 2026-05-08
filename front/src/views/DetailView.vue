@@ -62,15 +62,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue'
-import { useRoute } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { downloadPortalAttachment, getPortalTenderDetail } from '@/api/portal'
 import { formatDate, formatBudget } from '@/utils/format'
+import { useAuth } from '@/auth'
 
 const route = useRoute()
+const router = useRouter()
 const loading = ref(false)
 const error = ref('')
 const item = ref(null)
+const { isLoggedIn } = useAuth()
 
 async function loadDetail() {
   loading.value = true
@@ -87,9 +90,28 @@ async function loadDetail() {
 
 async function handleDownload(file) {
   if (!item.value || !file) return
+  if (!item.value.canDownload) {
+    if (!isLoggedIn.value) {
+      window.alert('请登录后下载附件')
+      router.push({ path: '/login', query: { redirect: route.fullPath } })
+    } else {
+      window.alert('当前账号暂无附件下载权限')
+    }
+    return
+  }
   try {
     await downloadPortalAttachment(item.value.id, file.attachmentId, file.fileName || '')
   } catch (e) {
+    const code = (e && (e.code || e.status)) || 0
+    if (code === 401) {
+      window.alert('请登录后下载附件')
+      router.push({ path: '/login', query: { redirect: route.fullPath } })
+      return
+    }
+    if (code === 403) {
+      window.alert('当前账号暂无附件下载权限')
+      return
+    }
     window.alert((e && e.message) || '下载失败，请稍后重试')
   }
 }
