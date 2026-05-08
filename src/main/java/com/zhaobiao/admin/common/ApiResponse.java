@@ -4,10 +4,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.time.LocalDateTime;
 
-@Schema(description = "统一响应结果")
+@Schema(description = "统一响应结果。业务接口通常以 HTTP 200 返回，调用方需要同时判断 code；code=0 表示成功，非 0 表示业务失败或参数失败。")
 public class ApiResponse<T> {
 
-    @Schema(description = "业务状态码，0 表示成功", example = "0")
+    @Schema(description = "业务状态码，0 表示成功；常见失败码包括 400 参数/业务校验失败、403 无权限或业务禁止、404 资源不存在、410 接口停用、500 系统异常", example = "0")
     private int code;
 
     @Schema(description = "响应消息", example = "success")
@@ -73,4 +73,3 @@ public class ApiResponse<T> {
         this.timestamp = timestamp;
     }
 }
-
