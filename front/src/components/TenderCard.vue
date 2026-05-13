@@ -33,7 +33,6 @@
 
 <script setup>
 import { computed } from 'vue'
-import { formatDate, formatBudget } from '@/utils/format'
 
 const props = defineProps({
   item: {
@@ -53,8 +52,8 @@ const detailLinkText = computed(() => '查看详情')
 .card {
   position: relative;
   background: linear-gradient(180deg, #ffffff 0%, #fafbfd 100%);
-  border-radius: 14px;
-  padding: 1.4rem 1.55rem 1.45rem;
+  border-radius: 10px;
+  padding: 1rem 1.15rem;
   box-shadow: 0 2px 4px rgba(15, 23, 42, 0.04), 0 10px 28px -8px rgba(26, 95, 180, 0.07);
   border: 1px solid rgba(226, 232, 240, 0.95);
   border-left: 3px solid #e2e8f0;
@@ -74,13 +73,13 @@ const detailLinkText = computed(() => '查看详情')
   flex-wrap: wrap;
   gap: 0.5rem 0.75rem;
   align-items: center;
-  margin-bottom: 0.65rem;
+  margin-bottom: 0.45rem;
 }
 
 .tag {
-  font-size: 0.75rem;
-  padding: 0.22rem 0.58rem;
-  border-radius: 6px;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
   background: linear-gradient(180deg, #eff6ff 0%, #e8f0fc 100%);
   color: var(--color-primary);
   font-weight: 600;
@@ -88,14 +87,14 @@ const detailLinkText = computed(() => '查看详情')
 }
 
 .region {
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
 .status {
-  font-size: 0.75rem;
-  padding: 0.2rem 0.5rem;
-  border-radius: 6px;
+  font-size: 0.7rem;
+  padding: 0.15rem 0.45rem;
+  border-radius: 4px;
   font-weight: 500;
 }
 
@@ -110,9 +109,9 @@ const detailLinkText = computed(() => '查看详情')
 }
 
 .title {
-  margin: 0 0 0.55rem;
-  font-size: 1.08rem;
-  line-height: 1.48;
+  margin: 0 0 0.45rem;
+  font-size: 0.98rem;
+  line-height: 1.4;
   font-weight: 600;
 }
 
@@ -126,10 +125,10 @@ const detailLinkText = computed(() => '查看详情')
 }
 
 .summary {
-  margin: 0 0 1rem;
-  font-size: 0.9rem;
+  margin: 0 0 0.75rem;
+  font-size: 0.85rem;
   color: var(--text-muted);
-  line-height: 1.55;
+  line-height: 1.45;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -138,13 +137,13 @@ const detailLinkText = computed(() => '查看详情')
 
 .facts {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 0.65rem 1rem;
-  margin: 0 0 1rem;
-  padding: 0.75rem 0.85rem;
-  font-size: 0.85rem;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 0.45rem 0.75rem;
+  margin: 0 0 0.75rem;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.8rem;
   background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
-  border-radius: 8px;
+  border-radius: 6px;
   border: 1px solid #eef2f7;
 }
 
@@ -152,7 +151,7 @@ const detailLinkText = computed(() => '查看详情')
   margin: 0;
   color: var(--text-muted);
   font-weight: normal;
-  font-size: 0.78rem;
+  font-size: 0.72rem;
 }
 
 .facts dd {
@@ -164,7 +163,7 @@ const detailLinkText = computed(() => '查看详情')
   display: inline-flex;
   align-items: center;
   gap: 0.25rem;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 600;
   text-decoration: none;
 }

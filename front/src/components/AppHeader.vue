@@ -26,9 +26,6 @@
     <div class="nav-bar">
       <div class="inner nav-inner">
         <nav class="nav">
-          <router-link to="/" exact-active-class="active" class="menu-link">
-            <span>首页</span>
-          </router-link>
           <router-link to="/list" active-class="active" class="menu-link">
             <span>招标公告</span>
           </router-link>

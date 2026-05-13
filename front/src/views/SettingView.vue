@@ -1,9 +1,5 @@
 <template>
   <div class="setting-page">
-    <header class="page-hero">
-      <h1>账户设置</h1>
-      <p class="page-desc">在这里维护您的会员账户信息，方便后续公告联系与资料下载。</p>
-    </header>
 
     <section class="card-surface form-wrap" aria-label="账户信息设置">
       <p v-if="loading" class="state state-loading">正在加载账户信息...</p>

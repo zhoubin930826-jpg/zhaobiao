@@ -25,6 +25,12 @@ const routes = [
     meta: { title: '招标公告' }
   },
   {
+    path: '/list/category',
+    name: 'categoryTenders',
+    component: () => import('@/views/CategoryTendersView.vue'),
+    meta: { title: '分类公告' }
+  },
+  {
     path: '/detail/:id',
     name: 'detail',
     component: () => import('@/views/DetailView.vue'),
