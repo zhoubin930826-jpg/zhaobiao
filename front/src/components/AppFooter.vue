@@ -1,6 +1,10 @@
 <template>
   <footer class="footer">
     <div class="inner">
+      <div class="company-info">
+        <p><span class="label">名&emsp;&emsp;称：</span>湖北省军科应力装备制造有限公司</p>
+        <p><span class="label">地&emsp;&emsp;址：</span>湖北省武汉市武汉经济技术开发区山科技产业园二区C栋写字楼4层C4016</p>
+      </div>
       <p class="muted">© {{ year }} 招投标信息公示</p>
       <p class="icp">
         <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备2026020834号-1</a>
@@ -32,6 +36,21 @@ const year = new Date().getFullYear()
 
 .inner p {
   margin: 0.25rem 0;
+}
+
+.company-info {
+  margin-bottom: 0.75rem;
+  font-size: 0.85rem;
+  color: #475569;
+}
+
+.company-info p {
+  margin: 0.35rem 0;
+}
+
+.label {
+  display: inline-block;
+  color: #64748b;
 }
 
 .muted {

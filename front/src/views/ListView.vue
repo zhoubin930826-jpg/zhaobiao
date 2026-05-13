@@ -2,7 +2,7 @@
   <div class="list-page">
     <header class="page-hero">
       <h1>招标公告</h1>
-      <p class="page-desc">按类型、地区与关键词筛选，数据来自门户招标接口。</p>
+      <p class="page-desc">按类型、地区与关键词筛选</p>
     </header>
 
     <section class="filters card-surface" aria-label="筛选条件">

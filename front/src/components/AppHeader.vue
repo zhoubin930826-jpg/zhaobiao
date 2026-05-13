@@ -1,28 +1,38 @@
 <template>
   <header class="header">
-    <div class="inner">
-      <router-link to="/" class="brand" aria-label="招投标信息公示 首页">
-        <img class="logo" :src="logoUrl" width="36" height="36" alt="" />
-        <span class="name">招投标信息公示</span>
-      </router-link>
-      <nav class="nav">
-        <router-link to="/list" active-class="active" class="menu-link">
-          <span class="menu-dot" aria-hidden="true">▦</span>
-          <span>招标公告</span>
-        </router-link>
-      </nav>
-      <div class="actions">
-        <div v-if="isLoggedIn" ref="menuRef" class="user-menu">
-          <button type="button" class="user-trigger" @click="toggleMenu">
-            <span class="user-name" :title="displayName">{{ displayName }}</span>
-            <span class="caret" :class="{ open: menuOpen }">▼</span>
-          </button>
-          <div v-if="menuOpen" class="menu-panel">
-            <router-link to="/setting" class="menu-item" @click="closeMenu">账户设置</router-link>
-            <button type="button" class="menu-item menu-item-btn" @click="onLogout">退出登录</button>
+    <!-- 顶部登录条 -->
+    <div class="top-bar">
+      <div class="inner top-inner">
+        <div class="welcome">欢迎您来到招投标信息公示平台</div>
+        <div class="actions">
+          <div v-if="isLoggedIn" ref="menuRef" class="user-menu">
+            <button type="button" class="user-trigger" @click="toggleMenu">
+              <span class="user-name" :title="displayName">{{ displayName }}</span>
+              <span class="caret" :class="{ open: menuOpen }">▼</span>
+            </button>
+            <div v-if="menuOpen" class="menu-panel">
+              <router-link to="/setting" class="menu-item" @click="closeMenu">账户设置</router-link>
+              <button type="button" class="menu-item menu-item-btn" @click="onLogout">退出登录</button>
+            </div>
+          </div>
+          <div v-else class="guest-actions">
+            <router-link to="/login" class="btn-text">登录</router-link>
+            <span class="divider">|</span>
+            <router-link to="/register" class="btn-text">注册</router-link>
           </div>
         </div>
-        <router-link v-else to="/login" class="btn-login">登录</router-link>
+      </div>
+    </div>
+    <div class="nav-bar">
+      <div class="inner nav-inner">
+        <nav class="nav">
+          <router-link to="/" exact-active-class="active" class="menu-link">
+            <span>首页</span>
+          </router-link>
+          <router-link to="/list" active-class="active" class="menu-link">
+            <span>招标公告</span>
+          </router-link>
+        </nav>
       </div>
     </div>
   </header>
@@ -100,70 +110,61 @@ function onLogout() {
 
 <style scoped>
 .header {
-  background: linear-gradient(135deg, #1e6bc9 0%, var(--color-primary) 42%, var(--color-primary-dark) 100%);
-  color: #fff;
-  box-shadow: 0 4px 18px rgba(13, 61, 122, 0.22);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.12);
+  background: #fff;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
 }
 
 .inner {
   max-width: 1200px;
   margin: 0 auto;
   padding: 0 1.25rem;
-  height: 58px;
+}
+
+/* 顶部条 */
+.top-bar {
+  background: #f5f5f5;
+  border-bottom: 1px solid #e5e5e5;
+  height: 36px;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.top-inner {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 1rem;
+  height: 100%;
 }
 
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  color: inherit;
-  text-decoration: none;
-  font-weight: 600;
-  font-size: 1.05rem;
-}
-
-.brand:hover {
-  text-decoration: none;
-  opacity: 0.95;
-}
-
-.logo {
-  width: 36px;
-  height: 36px;
-  flex-shrink: 0;
-  border-radius: 9px;
-  display: block;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
-}
-
-.nav {
-  display: flex;
-  gap: 1.5rem;
-  flex: 1;
-  justify-content: center;
-}
-
-.menu-link {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-}
-
-.menu-dot {
-  font-size: 0.82rem;
-  opacity: 0.92;
+.welcome {
+  color: #666;
 }
 
 .actions {
   display: flex;
   align-items: center;
-  gap: 0.6rem;
-  flex-shrink: 0;
+  gap: 1rem;
+}
+
+.guest-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.8rem;
+}
+
+.divider {
+  color: #ddd;
+  font-size: 0.8rem;
+}
+
+.btn-text {
+  color: #666 !important;
+  text-decoration: none !important;
+  transition: color 0.2s;
+}
+
+.btn-text:hover {
+  color: #1a5fb4 !important;
 }
 
 .user-menu {
@@ -173,28 +174,27 @@ function onLogout() {
 .user-trigger {
   display: inline-flex;
   align-items: center;
-  gap: 0.45rem;
-  max-width: 180px;
-  padding: 0.36rem 0.7rem;
-  border-radius: 999px;
-  border: 1px solid rgba(255, 255, 255, 0.34);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.23), rgba(255, 255, 255, 0.12));
-  color: #fff;
-  cursor: pointer;
+  gap: 0.4rem;
+  background: transparent;
+  border: none;
+  color: #666;
+  padding: 0;
+}
+
+.user-trigger:hover {
+  color: #1a5fb4;
 }
 
 .user-name {
-  font-size: 0.84rem;
-  font-weight: 600;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
 .caret {
-  font-size: 0.65rem;
-  opacity: 0.85;
-  transition: transform 0.15s ease;
+  font-size: 0.6rem;
+  transition: transform 0.2s;
 }
 
 .caret.open {
@@ -204,78 +204,103 @@ function onLogout() {
 .menu-panel {
   position: absolute;
   right: 0;
-  top: calc(100% + 0.45rem);
-  min-width: 150px;
-  padding: 0.35rem;
-  border-radius: 10px;
-  border: 1px solid #e2e8f0;
+  top: calc(100% + 8px);
+  min-width: 120px;
   background: #fff;
-  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.14);
-  z-index: 12;
+  border: 1px solid #eee;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  border-radius: 4px;
+  z-index: 100;
+  padding: 0.5rem 0;
 }
 
 .menu-item {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 0.5rem 0.6rem;
-  border-radius: 8px;
-  color: #1f2937;
+  padding: 0.5rem 1rem;
+  color: #333;
   text-decoration: none;
-  font-size: 0.86rem;
+  font-size: 0.9rem;
+  background: transparent;
+  border: none;
 }
 
 .menu-item:hover {
-  background: #f1f5f9;
+  background: #f8f8f8;
+  color: #1a5fb4;
 }
 
-.menu-item-btn {
-  border: none;
-  background: transparent;
-  cursor: pointer;
+/* 主头部 */
+.main-header {
+  height: 100px;
 }
 
-.btn-login {
-  font-size: 0.9rem;
+.main-inner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 100%;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  text-decoration: none;
+}
+
+.brand:hover {
+  text-decoration: none;
+}
+
+.logo {
+  border-radius: 4px;
+}
+
+.brand-text {
+  display: flex;
+  flex-direction: column;
+}
+
+.name {
+  font-size: 1.8rem;
+  font-weight: bold;
+  color: #1a5fb4;
+  letter-spacing: 2px;
+}
+
+/* 导航栏 */
+.nav-bar {
+  background: #1a5fb4;
+  height: 46px;
+}
+
+.nav-inner {
+  height: 100%;
+  display: flex;
+  align-items: center;
+}
+
+.nav {
+  display: flex;
+  height: 100%;
+}
+
+.menu-link {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2rem;
   color: #fff !important;
   text-decoration: none !important;
-  padding: 0.35rem 0.75rem;
-  border-radius: 6px;
-  background: rgba(255, 255, 255, 0.18);
-  border: 1px solid rgba(255, 255, 255, 0.35);
+  font-size: 1.05rem;
   font-weight: 500;
+  height: 100%;
+  transition: background 0.2s;
 }
 
-.btn-login:hover {
-  background: rgba(255, 255, 255, 0.28);
-  text-decoration: none !important;
-}
-
-.nav a {
-  color: rgba(255, 255, 255, 0.94);
-  text-decoration: none;
-  font-size: 0.92rem;
-  font-weight: 600;
-  padding: 0.45rem 1rem;
-  border-radius: 10px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.06));
-  box-shadow: 0 2px 6px rgba(13, 61, 122, 0.18);
-  transition: background 0.15s ease, border-color 0.15s ease, transform 0.12s ease;
-}
-
-.nav a:hover {
-  color: #fff;
-  text-decoration: none;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
-  border-color: rgba(255, 255, 255, 0.35);
-}
-
-.nav a.active {
-  color: #fff;
-  font-weight: 600;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.26), rgba(255, 255, 255, 0.13));
-  border-color: rgba(255, 255, 255, 0.45);
-  transform: translateY(-1px);
+.menu-link:hover,
+.menu-link.active {
+  background: #0d3d7a;
 }
 </style>

@@ -1,5 +1,5 @@
 <template>
-  <div class="login-page">
+  <div class="register-page">
     <div class="bg-decor" aria-hidden="true">
       <span class="bg-veil" />
       <span class="blob blob-a" />
@@ -15,12 +15,12 @@
         <header class="panel-head">
           <img class="brand-mark" :src="logoUrl" width="52" height="52" alt="" />
           <div class="head-lines">
-            <h1>会员登录</h1>
+            <h1>会员注册</h1>
             <p class="tagline">招投标信息公示平台</p>
           </div>
         </header>
 
-        <p class="hint">登录后可浏览招标公告、查看详情与下载附件。</p>
+        <p class="hint">注册成为会员后，可浏览更多招标公告、查看详情与下载附件。</p>
 
         <form class="form" @submit.prevent="onSubmit">
           <label class="field">
@@ -35,25 +35,105 @@
             />
           </label>
           <label class="field">
+            <span class="field-label">手机号</span>
+            <input
+              v-model="phone"
+              type="tel"
+              name="phone"
+              autocomplete="tel"
+              placeholder="请输入手机号"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">电子邮箱</span>
+            <input
+              v-model="email"
+              type="email"
+              name="email"
+              autocomplete="email"
+              placeholder="请输入电子邮箱"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">姓名</span>
+            <input
+              v-model="realName"
+              type="text"
+              name="realName"
+              autocomplete="name"
+              placeholder="请输入真实姓名"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">企业名称</span>
+            <input
+              v-model="companyName"
+              type="text"
+              name="companyName"
+              autocomplete="organization"
+              placeholder="请输入企业名称"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">验证码</span>
+            <div class="captcha-group">
+              <input
+                v-model="captcha"
+                type="text"
+                name="captcha"
+                autocomplete="off"
+                placeholder="请输入验证码"
+                required
+              />
+              <img 
+                :src="captchaUrl" 
+                alt="验证码" 
+                class="captcha-img" 
+                @click="refreshCaptcha" 
+                title="点击刷新验证码"
+              />
+            </div>
+          </label>
+          <label class="field">
             <span class="field-label">密码</span>
             <input
               v-model="password"
               type="password"
               name="password"
-              autocomplete="current-password"
+              autocomplete="new-password"
               placeholder="请输入密码"
               required
             />
           </label>
+          <label class="field">
+            <span class="field-label">确认密码</span>
+            <input
+              v-model="confirmPassword"
+              type="password"
+              name="confirmPassword"
+              autocomplete="new-password"
+              placeholder="请再次输入密码"
+              required
+            />
+          </label>
+          <label class="agreement">
+            <input type="checkbox" v-model="agreed" required />
+            <span>我同意 <a href="#" @click.prevent>服务条款</a> 和 <a href="#" @click.prevent>隐私政策</a></span>
+          </label>
           <p v-if="error" class="error" role="alert">{{ error }}</p>
+          <p v-if="success" class="success" role="alert">{{ success }}</p>
           <button type="submit" class="submit" :disabled="loading">
             <span class="submit-inner">
-              {{ loading ? '登录中…' : '进入平台' }}
+              {{ loading ? '注册中…' : '立即注册' }}
             </span>
           </button>
         </form>
-        <div class="register-link">
-          还没有账号？ <router-link to="/register">立即注册</router-link>
+        <div class="login-link">
+          已有账号？ <router-link to="/login">立即登录</router-link>
         </div>
       </div>
       <p class="fine-print">请妥善保管账号信息，勿向他人泄露密码。</p>
@@ -62,44 +142,76 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
-import { useRoute, useRouter } from 'vue-router'
-import { login as doLogin, useAuth } from '@/auth'
+import { ref } from 'vue'
+import { useRouter } from 'vue-router'
 
 const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
-
-const route = useRoute()
 const router = useRouter()
-const { isLoggedIn } = useAuth()
 
 const username = ref('')
+const phone = ref('')
+const email = ref('')
+const realName = ref('')
+const companyName = ref('')
+const captcha = ref('')
 const password = ref('')
+const confirmPassword = ref('')
+const agreed = ref(false)
 const error = ref('')
+const success = ref('')
 const loading = ref(false)
 
-watch(
-  isLoggedIn,
-  value => {
-    if (!value) return
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    router.replace(redirect && redirect.startsWith('/') ? redirect : '/list')
-  },
-  { immediate: true }
-)
+// 验证码图片URL
+const captchaUrl = ref('/api/portal/auth/captcha?t=' + Date.now())
+
+function refreshCaptcha() {
+  captchaUrl.value = '/api/portal/auth/captcha?t=' + Date.now()
+}
 
 async function onSubmit() {
   error.value = ''
+  success.value = ''
+  
+  if (!agreed.value) {
+    error.value = '请先阅读并同意服务条款和隐私政策'
+    return
+  }
+
+  if (password.value !== confirmPassword.value) {
+    error.value = '两次输入的密码不一致'
+    return
+  }
+
   loading.value = true
   try {
-    const res = await doLogin(username.value, password.value)
-    if (!res.ok) {
-      error.value = res.message || '登录失败'
+    // 调用注册接口，当前系统可能禁用注册，这里做统一处理
+    const res = await fetch('/api/portal/auth/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        username: username.value,
+        phone: phone.value,
+        email: email.value,
+        realName: realName.value,
+        companyName: companyName.value,
+        captcha: captcha.value,
+        password: password.value
+      })
+    })
+    
+    const data = await res.json().catch(() => ({}))
+    
+    if (!res.ok || data.code !== 0) {
+      error.value = data.message || '注册失败，系统可能已关闭公开注册'
       return
     }
-    const redirect = res.profileCompletionRequired
-      ? '/setting'
-      : (typeof route.query.redirect === 'string' && route.query.redirect.startsWith('/') ? route.query.redirect : '/list')
-    router.replace(redirect)
+    
+    success.value = '注册成功！即将跳转登录页...'
+    setTimeout(() => {
+      router.push('/login')
+    }, 1500)
+  } catch (err) {
+    error.value = '网络错误，请稍后再试'
   } finally {
     loading.value = false
   }
@@ -107,18 +219,19 @@ async function onSubmit() {
 </script>
 
 <style scoped>
-.login-page {
+.register-page {
   position: relative;
   width: 100%;
-  max-width: 440px;
+  max-width: 480px;
   padding: 1rem 0.75rem 2rem;
   display: flex;
   justify-content: center;
   align-items: center;
-  animation: login-enter 0.45s ease;
+  animation: register-enter 0.45s ease;
+  margin: 0 auto;
 }
 
-@keyframes login-enter {
+@keyframes register-enter {
   from {
     opacity: 0;
     transform: translateY(12px);
@@ -288,7 +401,7 @@ async function onSubmit() {
 .form {
   display: flex;
   flex-direction: column;
-  gap: 1.05rem;
+  gap: 0.85rem;
 }
 
 .field {
@@ -305,8 +418,8 @@ async function onSubmit() {
 }
 
 .field input {
-  min-height: 2.55rem;
-  padding: 0.55rem 0.75rem;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.75rem;
   border: 1px solid #e2e8f0;
   border-radius: 10px;
   font-size: 0.95rem;
@@ -331,6 +444,57 @@ async function onSubmit() {
   box-shadow: 0 0 0 3px rgba(26, 95, 180, 0.14);
 }
 
+.captcha-group {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.captcha-group input {
+  flex: 1;
+  min-width: 0;
+}
+
+.captcha-img {
+  width: 110px;
+  height: 2.35rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  object-fit: cover;
+  background-color: #f8fafc;
+  transition: opacity 0.2s;
+}
+
+.captcha-img:hover {
+  opacity: 0.85;
+}
+
+.agreement {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: #64748b;
+  margin-top: 0.25rem;
+}
+
+.agreement input[type="checkbox"] {
+  width: 1rem;
+  height: 1rem;
+  cursor: pointer;
+  accent-color: var(--color-primary);
+}
+
+.agreement a {
+  color: var(--color-primary);
+  text-decoration: none;
+}
+
+.agreement a:hover {
+  text-decoration: underline;
+}
+
 .error {
   margin: -0.15rem 0 0;
   padding: 0.55rem 0.65rem;
@@ -339,6 +503,16 @@ async function onSubmit() {
   background: #fef2f2;
   border-radius: 8px;
   border: 1px solid #fecaca;
+}
+
+.success {
+  margin: -0.15rem 0 0;
+  padding: 0.55rem 0.65rem;
+  font-size: 0.84rem;
+  color: #15803d;
+  background: #f0fdf4;
+  border-radius: 8px;
+  border: 1px solid #bbf7d0;
 }
 
 .submit {
@@ -376,20 +550,20 @@ async function onSubmit() {
   filter: grayscale(0.08);
 }
 
-.register-link {
+.login-link {
   margin-top: 1.25rem;
   text-align: center;
   font-size: 0.88rem;
   color: #64748b;
 }
 
-.register-link a {
+.login-link a {
   color: var(--color-primary);
   font-weight: 600;
   text-decoration: none;
 }
 
-.register-link a:hover {
+.login-link a:hover {
   text-decoration: underline;
 }
 

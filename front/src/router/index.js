@@ -13,6 +13,12 @@ const routes = [
     meta: { title: '登录', bare: true }
   },
   {
+    path: '/register',
+    name: 'register',
+    component: () => import('@/views/RegisterView.vue'),
+    meta: { title: '注册', bare: true }
+  },
+  {
     path: '/list',
     name: 'list',
     component: () => import('@/views/ListView.vue'),
@@ -41,8 +47,8 @@ const router = createRouter({
 })
 
 router.beforeEach(to => {
-  // 已登录时访问登录页 -> 重定向到目标或列表页
-  if (to.path === '/login' && isLoggedIn()) {
+  // 已登录时访问登录或注册页 -> 重定向到目标或列表页
+  if ((to.path === '/login' || to.path === '/register') && isLoggedIn()) {
     const redirect = typeof to.query.redirect === 'string' ? to.query.redirect : ''
     if (redirect && redirect.startsWith('/')) return redirect
     return '/list'
