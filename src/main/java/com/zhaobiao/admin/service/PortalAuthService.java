@@ -2,9 +2,11 @@ package com.zhaobiao.admin.service;
 
 import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.config.JwtProperties;
+import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
 import com.zhaobiao.admin.dto.member.MemberProfileUpdateRequest;
+import com.zhaobiao.admin.dto.member.MemberRegisterRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.entity.BusinessType;
 import com.zhaobiao.admin.entity.MemberUser;
@@ -19,8 +21,11 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDateTime;
+import java.util.Arrays;
+import java.util.List;
 
 @Service
 public class PortalAuthService {
@@ -31,30 +36,80 @@ public class PortalAuthService {
     private final JwtProperties jwtProperties;
     private final ViewMapper viewMapper;
     private final TenderFileStorageRepository tenderFileStorageRepository;
+    private final FileStorageService fileStorageService;
+    private final CaptchaService captchaService;
 
     public PortalAuthService(MemberUserRepository memberUserRepository,
                              PasswordEncoder passwordEncoder,
                              JwtTokenProvider jwtTokenProvider,
                              JwtProperties jwtProperties,
                              ViewMapper viewMapper,
-                             TenderFileStorageRepository tenderFileStorageRepository) {
+                             TenderFileStorageRepository tenderFileStorageRepository,
+                             FileStorageService fileStorageService,
+                             CaptchaService captchaService) {
         this.memberUserRepository = memberUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
         this.jwtProperties = jwtProperties;
         this.viewMapper = viewMapper;
         this.tenderFileStorageRepository = tenderFileStorageRepository;
+        this.fileStorageService = fileStorageService;
+        this.captchaService = captchaService;
+    }
+
+    public CaptchaChallenge createCaptcha(String scene, String captchaId) {
+        return captchaService.create(scene, captchaId);
+    }
+
+    @Transactional
+    public MemberUserDto register(MemberRegisterRequest request) {
+        captchaService.validate("register", request.getCaptchaId(), request.getCaptchaCode());
+        validatePassword(request.getPassword(), request.getConfirmPassword());
+        validateRegisterFile(request.getBusinessLicenseFile(), "营业执照不能为空");
+        validateRegisterFile(request.getThreeYearPerformanceFile(), "近三年业绩证明不能为空");
+        ensureMemberUnique(
+                request.getUsername(),
+                request.getPhone(),
+                request.getEmail(),
+                request.getUnifiedSocialCreditCode(),
+                null
+        );
+
+        List<FileUploadResponse> uploadedFiles = fileStorageService.store(Arrays.asList(
+                request.getBusinessLicenseFile(),
+                request.getThreeYearPerformanceFile()
+        ));
+        if (uploadedFiles.size() < 2) {
+            throw new BusinessException(500, "资料文件保存失败");
+        }
+
+        MemberUser user = new MemberUser();
+        user.setUsername(request.getUsername().trim());
+        user.setPhone(request.getPhone().trim());
+        user.setEmail(request.getEmail().trim());
+        user.setCompanyName(request.getCompanyName().trim());
+        user.setContactPerson(request.getContactPerson().trim());
+        user.setUnifiedSocialCreditCode(request.getUnifiedSocialCreditCode().trim());
+        user.setRealName(StringUtils.hasText(request.getRealName()) ? request.getRealName().trim() : null);
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        user.setStatus(MemberUserStatus.DISABLED);
+        user.setCanDownloadFile(false);
+        user.setDeleted(false);
+        user.setBusinessLicenseFile(loadProfileFile(uploadedFiles.get(0).getFileId()));
+        user.setThreeYearPerformanceFile(loadProfileFile(uploadedFiles.get(1).getFileId()));
+        return viewMapper.toMemberUserDto(memberUserRepository.save(user));
     }
 
     @Transactional
     public MemberLoginResponse login(MemberLoginRequest request) {
+        captchaService.validate("login", request.getCaptchaId(), request.getCaptchaCode());
         MemberUser user = memberUserRepository.findDetailByUsernameAndDeletedFalse(request.getUsername())
                 .orElseThrow(() -> new BusinessException(400, "用户名或密码错误"));
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new BusinessException(400, "用户名或密码错误");
         }
         if (user.getStatus() == MemberUserStatus.DISABLED) {
-            throw new BusinessException(403, "账号已被禁用");
+            throw new BusinessException(403, "账号未启用，请联系管理员");
         }
         if (isExpired(user.getExpiresAt())) {
             throw new BusinessException(403, "账号已过期，请联系管理员");
@@ -177,6 +232,12 @@ public class PortalAuthService {
 
     private boolean isExpired(LocalDateTime expiresAt) {
         return expiresAt == null || !expiresAt.isAfter(LocalDateTime.now());
+    }
+
+    private void validateRegisterFile(MultipartFile file, String message) {
+        if (file == null || file.isEmpty()) {
+            throw new BusinessException(400, message);
+        }
     }
 
     private java.util.List<Long> resolveActiveBusinessTypeIds(MemberUser user) {

@@ -4,8 +4,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
+import org.springframework.web.multipart.MultipartFile;
 
 @Schema(description = "会员注册请求")
 public class MemberRegisterRequest {
@@ -52,6 +54,22 @@ public class MemberRegisterRequest {
     @NotBlank(message = "确认密码不能为空")
     @Schema(description = "确认密码", example = "123456")
     private String confirmPassword;
+
+    @NotBlank(message = "验证码标识不能为空")
+    @Schema(description = "验证码标识", example = "register-uuid")
+    private String captchaId;
+
+    @NotBlank(message = "验证码不能为空")
+    @Schema(description = "验证码", example = "8K3D")
+    private String captchaCode;
+
+    @NotNull(message = "营业执照不能为空")
+    @Schema(description = "营业执照文件")
+    private MultipartFile businessLicenseFile;
+
+    @NotNull(message = "近三年业绩证明不能为空")
+    @Schema(description = "近三年业绩证明文件")
+    private MultipartFile threeYearPerformanceFile;
 
     public String getUsername() {
         return username;
@@ -124,5 +142,36 @@ public class MemberRegisterRequest {
     public void setConfirmPassword(String confirmPassword) {
         this.confirmPassword = confirmPassword;
     }
-}
 
+    public String getCaptchaId() {
+        return captchaId;
+    }
+
+    public void setCaptchaId(String captchaId) {
+        this.captchaId = captchaId;
+    }
+
+    public String getCaptchaCode() {
+        return captchaCode;
+    }
+
+    public void setCaptchaCode(String captchaCode) {
+        this.captchaCode = captchaCode;
+    }
+
+    public MultipartFile getBusinessLicenseFile() {
+        return businessLicenseFile;
+    }
+
+    public void setBusinessLicenseFile(MultipartFile businessLicenseFile) {
+        this.businessLicenseFile = businessLicenseFile;
+    }
+
+    public MultipartFile getThreeYearPerformanceFile() {
+        return threeYearPerformanceFile;
+    }
+
+    public void setThreeYearPerformanceFile(MultipartFile threeYearPerformanceFile) {
+        this.threeYearPerformanceFile = threeYearPerformanceFile;
+    }
+}

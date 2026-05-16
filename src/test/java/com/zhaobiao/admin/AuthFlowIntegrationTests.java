@@ -1,6 +1,7 @@
 package com.zhaobiao.admin;
 
 import com.zhaobiao.admin.config.DataInitializer;
+import com.zhaobiao.admin.service.CaptchaService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -31,6 +32,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -46,6 +49,9 @@ class AuthFlowIntegrationTests {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private CaptchaService captchaService;
 
     @Test
     void adminPublicRegisterIsDisabledAndSuperAdminCanCreateAdmin() throws Exception {
@@ -106,13 +112,132 @@ class AuthFlowIntegrationTests {
     }
 
     @Test
-    void memberAccountIsCreatedByAdminAndCanBeManaged() throws Exception {
-        mockMvc.perform(post("/api/portal/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"member1001\",\"phone\":\"13800138111\",\"email\":\"member1001@test.com\",\"companyName\":\"会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MA1K222222\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\"}"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(403));
+    void portalCaptchaSelfRegisterCreatesDisabledMemberAndBlocksLoginUntilEnabled() throws Exception {
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        String username = "selfreg" + uniqueTag;
+        String phoneSeed = uniqueTag.substring(uniqueTag.length() - 8);
+        String creditSeed = uniqueTag.substring(uniqueTag.length() - 6);
 
+        mockMvc.perform(get("/api/portal/auth/captcha")
+                        .param("scene", "register")
+                        .param("captchaId", "image-" + uniqueTag))
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.IMAGE_PNG))
+                .andExpect(header().string("Cache-Control", org.hamcrest.Matchers.containsString("no-store")))
+                .andExpect(result -> assertTrue(result.getResponse().getContentAsByteArray().length > 100));
+
+        mockMvc.perform(multipart("/api/portal/auth/register")
+                        .file(profileFile("businessLicenseFile", "营业执照-" + uniqueTag + ".pdf", "license-nocaptcha-" + uniqueTag))
+                        .file(profileFile("threeYearPerformanceFile", "三年业绩-" + uniqueTag + ".pdf", "performance-nocaptcha-" + uniqueTag))
+                        .param("username", username + "nocaptcha")
+                        .param("phone", "137" + phoneSeed)
+                        .param("email", "nocaptcha-" + username + "@test.com")
+                        .param("companyName", "自助注册企业")
+                        .param("contactPerson", "李四")
+                        .param("unifiedSocialCreditCode", "91310000MR1K" + creditSeed)
+                        .param("realName", "李四")
+                        .param("password", "123456")
+                        .param("confirmPassword", "123456"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        String wrongCaptchaId = "wrong-" + uniqueTag;
+        captchaService.create("register", wrongCaptchaId);
+        mockMvc.perform(multipart("/api/portal/auth/register")
+                        .file(profileFile("businessLicenseFile", "营业执照-" + uniqueTag + ".pdf", "license-wrong-" + uniqueTag))
+                        .file(profileFile("threeYearPerformanceFile", "三年业绩-" + uniqueTag + ".pdf", "performance-wrong-" + uniqueTag))
+                        .param("username", username + "wrong")
+                        .param("phone", "136" + phoneSeed)
+                        .param("email", "wrong-" + username + "@test.com")
+                        .param("companyName", "自助注册企业")
+                        .param("contactPerson", "李四")
+                        .param("unifiedSocialCreditCode", "91310000MR2K" + creditSeed)
+                        .param("realName", "李四")
+                        .param("password", "123456")
+                        .param("confirmPassword", "123456")
+                        .param("captchaId", wrongCaptchaId)
+                        .param("captchaCode", "0000"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        String missingFileCaptchaId = "missing-file-" + uniqueTag;
+        String missingFileCaptchaCode = captchaService.create("register", missingFileCaptchaId).getCode();
+        mockMvc.perform(multipart("/api/portal/auth/register")
+                        .file(profileFile("businessLicenseFile", "营业执照-" + uniqueTag + ".pdf", "license-missing-file-" + uniqueTag))
+                        .param("username", username + "missingfile")
+                        .param("phone", "135" + phoneSeed)
+                        .param("email", "missingfile-" + username + "@test.com")
+                        .param("companyName", "自助注册企业")
+                        .param("contactPerson", "李四")
+                        .param("unifiedSocialCreditCode", "91310000MR3K" + creditSeed)
+                        .param("realName", "李四")
+                        .param("password", "123456")
+                        .param("confirmPassword", "123456")
+                        .param("captchaId", missingFileCaptchaId)
+                        .param("captchaCode", missingFileCaptchaCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        String registerCaptchaId = "register-" + uniqueTag;
+        String registerCaptchaCode = captchaService.create("register", registerCaptchaId).getCode();
+        MvcResult registerResult = mockMvc.perform(multipart("/api/portal/auth/register")
+                        .file(profileFile("businessLicenseFile", "营业执照-" + uniqueTag + ".pdf", "license-success-" + uniqueTag))
+                        .file(profileFile("threeYearPerformanceFile", "三年业绩-" + uniqueTag + ".pdf", "performance-success-" + uniqueTag))
+                        .param("username", username)
+                        .param("phone", "134" + phoneSeed)
+                        .param("email", username + "@test.com")
+                        .param("companyName", "自助注册企业")
+                        .param("contactPerson", "李四")
+                        .param("unifiedSocialCreditCode", "91310000MR4K" + creditSeed)
+                        .param("realName", "李四")
+                        .param("password", "123456")
+                        .param("confirmPassword", "123456")
+                        .param("captchaId", registerCaptchaId)
+                        .param("captchaCode", registerCaptchaCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.message").value("注册成功，请等待管理员启用账号"))
+                .andExpect(jsonPath("$.data.username").value(username))
+                .andExpect(jsonPath("$.data.status").value("DISABLED"))
+                .andExpect(jsonPath("$.data.canDownloadFile").value(false))
+                .andExpect(jsonPath("$.data.expiresAt").doesNotExist())
+                .andExpect(jsonPath("$.data.businessTypes", hasSize(0)))
+                .andExpect(jsonPath("$.data.businessLicenseFileId").exists())
+                .andExpect(jsonPath("$.data.threeYearPerformanceFileId").exists())
+                .andReturn();
+
+        Long memberId = objectMapper.readTree(registerResult.getResponse().getContentAsString())
+                .path("data")
+                .path("id")
+                .asLong();
+        assertNotNull(memberId);
+
+        mockMvc.perform(post("/api/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(portalLoginBody(username, "123456")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.message").value("账号未启用，请联系管理员"));
+
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long engineeringTypeId = findBusinessTypeIdByCode(superAdminToken, "ENGINEERING");
+        assertNotNull(engineeringTypeId);
+        mockMvc.perform(put("/api/admin/members/{memberId}", memberId)
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"phone\":\"134" + phoneSeed + "\",\"email\":\"approved-" + username + "@test.com\",\"companyName\":\"自助注册企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MR5K" + creditSeed + "\",\"realName\":\"李四\",\"businessTypeIds\":[" + engineeringTypeId + "],\"expiresAt\":\"" + formatDateTime(LocalDateTime.now().plusMonths(1)) + "\",\"status\":\"ENABLED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("ENABLED"))
+                .andExpect(jsonPath("$.data.businessTypes", hasSize(1)))
+                .andExpect(jsonPath("$.data.expired").value(false));
+
+        String memberToken = loginMember(username, "123456");
+        assertNotNull(memberToken);
+    }
+
+    @Test
+    void memberAccountIsCreatedByAdminAndCanBeManaged() throws Exception {
         String uniqueTag = String.valueOf(System.currentTimeMillis());
         String username = "member" + uniqueTag;
         String superAdminToken = loginAdmin("admin", "adminqwert");
@@ -201,7 +326,7 @@ class AuthFlowIntegrationTests {
 
         mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"654321\"}"))
+                        .content(portalLoginBody(username, "654321")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
     }
@@ -235,7 +360,7 @@ class AuthFlowIntegrationTests {
 
         MvcResult firstLogin = mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"123456\"}"))
+                        .content(portalLoginBody(username, "123456")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.profileCompletionRequired").value(true))
@@ -248,7 +373,7 @@ class AuthFlowIntegrationTests {
 
         MvcResult secondLogin = mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"123456\"}"))
+                        .content(portalLoginBody(username, "123456")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.profileCompletionRequired").value(false))
@@ -332,7 +457,7 @@ class AuthFlowIntegrationTests {
 
         mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"123456\"}"))
+                        .content(portalLoginBody(username, "123456")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
 
@@ -486,11 +611,26 @@ class AuthFlowIntegrationTests {
     private String loginMember(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                        .content(portalLoginBody(username, password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
+    }
+
+    private String portalLoginBody(String username, String password) {
+        String captchaId = "login-" + System.nanoTime();
+        String captchaCode = captchaService.create("login", captchaId).getCode();
+        return "{\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"captchaId\":\"" + captchaId + "\",\"captchaCode\":\"" + captchaCode + "\"}";
+    }
+
+    private MockMultipartFile profileFile(String fieldName, String fileName, String content) {
+        return new MockMultipartFile(
+                fieldName,
+                fileName,
+                MediaType.APPLICATION_PDF_VALUE,
+                content.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
     private Long createRoleWithMenus(String adminToken, String roleCode, List<Long> menuIds, List<Long> permissionIds) throws Exception {

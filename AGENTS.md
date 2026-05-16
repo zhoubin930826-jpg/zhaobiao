@@ -13,7 +13,7 @@ This file is the working guide for coding agents in this repository. Keep it cur
 
 - Project: 招标系统, with a Spring Boot backend, an admin frontend, and a public tender portal.
 - Backend: Java 8, Spring Boot 2.7.18, Maven, Spring Security + JWT, Spring Data JPA, MySQL 8, springdoc-openapi/Swagger UI.
-- Main backend artifact: `target/zhaobiao-admin-0.0.3-SNAPSHOT.jar`.
+- Main backend artifact: `target/zhaobiao-admin-0.0.6-SNAPSHOT.jar`.
 - Main backend package: `src/main/java/com/zhaobiao/admin`.
 - Backend tests: `src/test/java/com/zhaobiao/admin`.
 - Test DB: Docker MySQL 8 from `src/test/resources/application.yml`, defaulting to `zhaobiao_admin_test`.
@@ -105,7 +105,7 @@ mvn clean package -DskipTests
 - Responses use `ApiResponse`; expected business and validation errors usually return HTTP 200 with non-zero `code`. Frontends must check `code`, not only HTTP status.
 - Authentication uses `Authorization: Bearer <token>`.
 - JWT contains `userType`; admin and member users are loaded by different user-detail services.
-- Public auth endpoints: `/api/auth/**`, `/api/portal/auth/login`, `/api/portal/auth/register`. The two register endpoints are publicly reachable but business-disabled and return code `403`.
+- Public auth endpoints: `/api/auth/**`, `/api/portal/auth/captcha`, `/api/portal/auth/login`, `/api/portal/auth/register`. Backend admin register remains disabled; portal register is enabled for self-registration.
 - Other public backend endpoints include `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`, `/`, `/index.html`, `/assets/**`, `/favicon.ico`, `/api/portal/tenders/latest`, and `/api/portal/tenders/{id}`.
 - Admin APIs are under `/api/admin/**` plus `/api/profile`.
 - Portal tender list `/api/portal/tenders` requires `MEMBER`; public visitors must use `/api/portal/tenders/latest`.
@@ -119,6 +119,10 @@ mvn clean package -DskipTests
 - Ordinary admins must not get the administrator-account management menu or APIs unless the business rule changes explicitly.
 - Legacy `/api/admin/users` is intentionally disabled and returns business code `410`; do not reopen it accidentally.
 - Portal attachment download requires a valid member token, tender published/current, attachment ownership, member business-type access to the tender, and member `canDownloadFile=true`.
+- Portal register uses `multipart/form-data` with member base fields, `captchaId`, `captchaCode`, `businessLicenseFile`, and `threeYearPerformanceFile`; successful self-registration creates `DISABLED`, no business types, no `expiresAt`, and `canDownloadFile=false`.
+- Portal login requires `captchaId` and `captchaCode`; `DISABLED` members cannot log in until an admin adds business types, sets an expiry time, and enables them.
+- Captcha images are served by `GET /api/portal/auth/captcha?scene=register|login&captchaId=<uuid>`; codes expire after 5 minutes, are one-time use, and compare case-insensitively.
+- Admin member edit/status changes support only `ENABLED` and `DISABLED`; enabling a member requires at least one business type and an expiry time.
 - Member login sets `first_login_at` only when it was empty and returns `profileCompletionRequired=true` for that first successful login.
 - Admin member create/edit and member self profile update may set `business_license_file_id` and `three_year_performance_file_id`; these fields are optional and reuse `biz_file_storage`.
 - When adding an admin capability, update controller authorization, `DataInitializer` permissions/menus/roles, frontend route/menu/button behavior, and tests together.
@@ -192,7 +196,7 @@ Notes:
 - Tracked frontend deploy scripts default to host `114.55.166.12` and user `root`.
 - Nginx exposes the admin frontend at `/ztbgl/` and the public portal at `/ztbfb/`; `/` redirects to `/ztbfb/`.
 - Captured Nginx root paths are `/usr/share/nginx/ztbgl` and `/usr/share/nginx/ztbfb`.
-- Backend JAR name: `target/zhaobiao-admin-0.0.3-SNAPSHOT.jar`.
+- Backend JAR name: `target/zhaobiao-admin-0.0.6-SNAPSHOT.jar`.
 - Known backend deploy directory from prior operations: `/opt/zhaobiao/app`.
 - Runtime env file on the server is expected at `/opt/zhaobiao/app/app.env`.
 - `DEPLOY_LINUX.md` shows a generic `zhaobiao.service` unit. The real host has previously used `zhaobiao-admin.service`; always verify current units before restarting.
@@ -245,5 +249,5 @@ curl -I http://127.0.0.1:8080/v3/api-docs
 - `frontend/production.env` is tracked but empty; do not use it for secrets.
 - `app.env` is mentioned in deployment docs but is not meant to live in the repo. If a local `app.env` appears, confirm whether it should be ignored or removed before committing.
 - `DataInitializer` looks like startup seed logic, but current main app does not register it as a bean. Confirm the intended direction before changing initialization behavior.
-- Portal public registration (`/api/portal/auth/register`) is currently disabled. Confirm with the owner before reopening it or changing the member onboarding flow.
+- Portal public registration (`/api/portal/auth/register`) is enabled and creates `DISABLED` members; do not bypass the admin enablement step when changing onboarding.
 - If a task says "the frontend", clarify whether it means admin console `frontend/` or public portal `front/`.

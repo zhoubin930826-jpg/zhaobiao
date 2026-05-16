@@ -58,7 +58,7 @@ public class OpenApiConfig {
                     new Tag().name("管理员-菜单管理").description("后台菜单树维护，菜单被角色引用或存在子菜单时不能删除。"),
                     new Tag().name("管理员-权限管理（已停用）").description("权限维护接口已停用，保留路径并统一返回业务码 410。"),
                     new Tag().name("管理员-操作日志").description("查看后台变更动作和登录等操作日志。"),
-                    new Tag().name("门户会员认证").description("门户会员登录、当前会员信息、资料文件上传和资料更新。在线注册已停用。"),
+                    new Tag().name("门户会员认证").description("门户会员验证码、登录、自助注册、当前会员信息、资料文件上传和资料更新。"),
                     new Tag().name("门户-招标公告").description("门户公开招标展示、会员范围内招标列表、详情和附件下载。")
             ));
 
@@ -106,6 +106,7 @@ public class OpenApiConfig {
         Set<String> keys = new LinkedHashSet<>();
         add(keys, "POST", "/api/auth/register");
         add(keys, "POST", "/api/auth/login");
+        add(keys, "GET", "/api/portal/auth/captcha");
         add(keys, "POST", "/api/portal/auth/register");
         add(keys, "POST", "/api/portal/auth/login");
         add(keys, "GET", "/api/portal/tenders/latest");
@@ -140,9 +141,9 @@ public class OpenApiConfig {
         put(map, "GET", "/api/admin/members/{memberId}", "功能：查询会员详情。\n输入：memberId。\n输出：MemberUserDto。\n权限：SYSTEM_MEMBER_USER。");
         put(map, "POST", "/api/admin/members", "功能：后台创建门户会员账号。\n输入：MemberCreateRequest，含账号资料、密码、业务类型 ID、有效期、可选资料文件 ID。\n输出：新会员 MemberUserDto。\n规则：业务类型至少一个且必须启用；账号字段唯一；默认不允许下载文件，除非 canDownloadFile=true。权限：MEMBER_CREATE_BUTTON。");
         put(map, "POST", "/api/admin/members/profile-files", "功能：后台上传会员资料文件。\n输入：multipart/form-data，字段名 files，可一次上传多个文件。\n输出：FileUploadResponse 数组，包含 fileId、fileName、contentType、fileSize、thumbnailUrl、thumbnailStatus。\n规则：返回的 fileId 可写入 businessLicenseFileId 或 threeYearPerformanceFileId。权限：MEMBER_CREATE_BUTTON 或 MEMBER_EDIT_BUTTON。");
-        put(map, "PUT", "/api/admin/members/{memberId}", "功能：修改会员资料。\n输入：memberId，MemberUpdateRequest。\n输出：更新后的 MemberUserDto。\n规则：业务类型至少一个且必须启用；资料文件 ID 不传或为 null 表示保持原值。权限：MEMBER_EDIT_BUTTON。");
+        put(map, "PUT", "/api/admin/members/{memberId}", "功能：修改会员资料。\n输入：memberId，MemberUpdateRequest，可传 status=ENABLED/DISABLED。\n输出：更新后的 MemberUserDto。\n规则：启用会员必须有至少一个启用业务类型和有效期；禁用可暂不绑定业务类型和有效期；资料文件 ID 不传或为 null 表示保持原值。权限：MEMBER_EDIT_BUTTON。");
         put(map, "PUT", "/api/admin/members/{memberId}/download-access", "功能：修改会员附件下载权限。\n输入：memberId，canDownloadFile。\n输出：更新后的 MemberUserDto。\n权限：MEMBER_DOWNLOAD_BUTTON。");
-        put(map, "PUT", "/api/admin/members/{memberId}/status", "功能：启用或禁用会员。\n输入：memberId，status=ENABLED 或 DISABLED。\n输出：更新后的 MemberUserDto。\n权限：MEMBER_STATUS_BUTTON。");
+        put(map, "PUT", "/api/admin/members/{memberId}/status", "功能：修改会员状态。\n输入：memberId，status=ENABLED 或 DISABLED。\n输出：更新后的 MemberUserDto。\n规则：启用会员必须已有至少一个启用业务类型和有效期。权限：MEMBER_STATUS_BUTTON。");
         put(map, "PUT", "/api/admin/members/{memberId}/password", "功能：重置会员密码。\n输入：memberId，MemberPasswordResetRequest。\n输出：data=null。\n规则：密码与确认密码必须一致。权限：MEMBER_PASSWORD_BUTTON。");
         put(map, "DELETE", "/api/admin/members/{memberId}", "功能：删除会员。\n输入：memberId。\n输出：data=null。\n规则：软删除，标记 deleted/deletedAt，不物理删除历史数据。权限：MEMBER_DELETE_BUTTON。");
 
@@ -183,8 +184,9 @@ public class OpenApiConfig {
 
         put(map, "GET", "/api/files/{fileId}/thumbnail", "功能：读取文件缩略图或文件类型预览图。\n输入：fileId。\n输出：image/jpeg 等图片流，Content-Type 来自 thumbnailContentType。\n规则：公共可访问；上传接口和附件 DTO 中的 thumbnailUrl 指向此接口，可直接放入 img src。");
 
-        put(map, "POST", "/api/portal/auth/register", "功能：门户会员在线注册入口。当前业务已停用，仅保留兼容路径。\n输入：MemberRegisterRequest。\n输出：固定失败，code=403，提示联系管理员发放账号。\n权限：公开。");
-        put(map, "POST", "/api/portal/auth/login", "功能：门户会员登录。\n输入：username、password。\n输出：token、tokenType、expireSeconds、profileCompletionRequired、会员 user。\n规则：会员必须启用、未过期且至少绑定一个启用业务类型；首次登录会写 firstLoginAt 并返回 profileCompletionRequired=true。");
+        put(map, "GET", "/api/portal/auth/captcha", "功能：获取门户验证码图片。\n输入：scene=register 或 login，captchaId=前端生成的唯一标识。\n输出：image/png 图片流。\n规则：验证码 5 分钟过期、一次性使用、校验不区分大小写；前端点击图片应重新生成 captchaId 并刷新图片。权限：公开。");
+        put(map, "POST", "/api/portal/auth/register", "功能：门户会员在线自助注册。\n输入：multipart/form-data，包含 username、password、confirmPassword、phone、email、companyName、contactPerson、unifiedSocialCreditCode、可选 realName、captchaId、captchaCode、businessLicenseFile、threeYearPerformanceFile。\n输出：新会员 MemberUserDto。\n规则：必须先通过 register 验证码；注册成功后状态为 DISABLED，不绑定业务类型、无有效期、canDownloadFile=false，需管理员补会员类型和有效期并启用后才能登录。权限：公开。");
+        put(map, "POST", "/api/portal/auth/login", "功能：门户会员登录。\n输入：username、password、captchaId、captchaCode。\n输出：token、tokenType、expireSeconds、profileCompletionRequired、会员 user。\n规则：先校验 login 验证码；会员必须启用、未过期且至少绑定一个启用业务类型；DISABLED 返回“账号未启用，请联系管理员”；首次登录会写 firstLoginAt 并返回 profileCompletionRequired=true。");
         put(map, "GET", "/api/portal/auth/me", "功能：获取当前门户会员资料。\n输入：会员 token。\n输出：MemberUserDto，含业务类型、有效期、下载权限、营业执照和三年内业绩文件缩略图字段。\n权限：MEMBER。");
         put(map, "POST", "/api/portal/auth/profile/files", "功能：门户会员上传资料文件。\n输入：multipart/form-data，字段名 files。\n输出：FileUploadResponse 数组。\n规则：返回 fileId 后可用于更新 businessLicenseFileId 或 threeYearPerformanceFileId。权限：MEMBER。");
         put(map, "PUT", "/api/portal/auth/profile", "功能：门户会员更新自己的资料。\n输入：MemberProfileUpdateRequest，可更新联系方式、公司信息、实名、营业执照文件 ID、三年内业绩文件 ID。\n输出：更新后的 MemberUserDto。\n规则：资料字段不传表示保持原值；传空字符串的必填文本会被拒绝；唯一字段不能与其他会员重复。权限：MEMBER。");

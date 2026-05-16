@@ -3,6 +3,7 @@ package com.zhaobiao.admin;
 import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.config.DataInitializer;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
+import com.zhaobiao.admin.service.CaptchaService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
@@ -52,6 +53,9 @@ class TenderIntegrationTests {
 
     @Autowired
     private TenderFileStorageRepository tenderFileStorageRepository;
+
+    @Autowired
+    private CaptchaService captchaService;
 
     @Test
     void anonymousCanViewLatestThreeAndPublicDetailButCannotDownloadAttachments() throws Exception {
@@ -407,11 +411,17 @@ class TenderIntegrationTests {
     private String loginMember(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                        .content(portalLoginBody(username, password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
+    }
+
+    private String portalLoginBody(String username, String password) {
+        String captchaId = "login-" + System.nanoTime();
+        String captchaCode = captchaService.create("login", captchaId).getCode();
+        return "{\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"captchaId\":\"" + captchaId + "\",\"captchaCode\":\"" + captchaCode + "\"}";
     }
 
     private Long uploadFile(String adminToken, String fileName, String content) throws Exception {

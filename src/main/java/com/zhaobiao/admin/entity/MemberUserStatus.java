@@ -4,4 +4,3 @@ public enum MemberUserStatus {
     ENABLED,
     DISABLED
 }
-

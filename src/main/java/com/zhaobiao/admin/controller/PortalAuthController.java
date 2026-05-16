@@ -1,7 +1,7 @@
 package com.zhaobiao.admin.controller;
 
 import com.zhaobiao.admin.common.ApiResponse;
-import com.zhaobiao.admin.common.BusinessException;
+import com.zhaobiao.admin.service.CaptchaChallenge;
 import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
@@ -17,7 +17,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
+import org.springframework.http.CacheControl;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -45,11 +49,24 @@ public class PortalAuthController {
         this.fileStorageService = fileStorageService;
     }
 
+    @Operation(summary = "获取门户验证码图片")
+    @GetMapping(value = "/captcha", produces = MediaType.IMAGE_PNG_VALUE)
+    public ResponseEntity<byte[]> captcha(@RequestParam String scene,
+                                          @RequestParam String captchaId) {
+        CaptchaChallenge challenge = portalAuthService.createCaptcha(scene, captchaId);
+        return ResponseEntity.ok()
+                .cacheControl(CacheControl.noStore())
+                .header("Pragma", "no-cache")
+                .header("Expires", "0")
+                .contentType(MediaType.IMAGE_PNG)
+                .body(challenge.getImage());
+    }
+
     @Operation(summary = "会员注册")
     @OperationLogRecord(module = "门户会员", action = "会员注册")
-    @PostMapping("/register")
-    public ApiResponse<Void> register(@Valid @RequestBody MemberRegisterRequest request) {
-        throw new BusinessException(403, "会员在线注册已停用，请联系管理员发放账号");
+    @PostMapping(value = "/register", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ApiResponse<MemberUserDto> register(@Valid @ModelAttribute MemberRegisterRequest request) {
+        return ApiResponse.success("注册成功，请等待管理员启用账号", portalAuthService.register(request));
     }
 
     @Operation(summary = "会员登录")

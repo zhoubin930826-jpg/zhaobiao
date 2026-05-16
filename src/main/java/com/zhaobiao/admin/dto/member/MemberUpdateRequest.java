@@ -1,12 +1,11 @@
 package com.zhaobiao.admin.dto.member;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.zhaobiao.admin.entity.MemberUserStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 import javax.validation.constraints.Email;
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotEmpty;
-import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
@@ -44,14 +43,15 @@ public class MemberUpdateRequest {
     @Schema(description = "真实姓名", example = "张三")
     private String realName;
 
-    @NotEmpty(message = "会员类型至少选择一个")
     @Schema(description = "会员类型ID列表")
     private List<Long> businessTypeIds;
 
-    @NotNull(message = "会员过期时间不能为空")
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss")
     @Schema(description = "会员过期时间", example = "2026-05-25 23:59:59")
     private LocalDateTime expiresAt;
+
+    @Schema(description = "会员状态，启用账号必须有会员类型和过期时间", example = "ENABLED")
+    private MemberUserStatus status;
 
     @Schema(description = "营业执照文件ID，不传或传 null 保持原值")
     private Long businessLicenseFileId;
@@ -121,6 +121,14 @@ public class MemberUpdateRequest {
 
     public void setExpiresAt(LocalDateTime expiresAt) {
         this.expiresAt = expiresAt;
+    }
+
+    public MemberUserStatus getStatus() {
+        return status;
+    }
+
+    public void setStatus(MemberUserStatus status) {
+        this.status = status;
     }
 
     public Long getBusinessLicenseFileId() {

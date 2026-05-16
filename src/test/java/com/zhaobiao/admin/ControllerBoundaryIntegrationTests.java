@@ -3,6 +3,7 @@ package com.zhaobiao.admin;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhaobiao.admin.config.DataInitializer;
+import com.zhaobiao.admin.service.CaptchaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -48,6 +49,9 @@ class ControllerBoundaryIntegrationTests {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private CaptchaService captchaService;
 
     @Test
     void authenticationSecurityAndMalformedParametersReturnExpectedErrors() throws Exception {
@@ -465,11 +469,17 @@ class ControllerBoundaryIntegrationTests {
     }
 
     private String loginMember(String username, String password) throws Exception {
-        MvcResult result = postJson("/api/portal/auth/login", "{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}")
+        MvcResult result = postJson("/api/portal/auth/login", portalLoginBody(username, password))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
+    }
+
+    private String portalLoginBody(String username, String password) {
+        String captchaId = "login-" + System.nanoTime();
+        String captchaCode = captchaService.create("login", captchaId).getCode();
+        return "{\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"captchaId\":\"" + captchaId + "\",\"captchaCode\":\"" + captchaCode + "\"}";
     }
 
     private Long createAdmin(String adminToken, String username, String tag, Long roleId) throws Exception {

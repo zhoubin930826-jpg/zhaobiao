@@ -3,6 +3,7 @@ package com.zhaobiao.admin;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhaobiao.admin.config.DataInitializer;
+import com.zhaobiao.admin.service.CaptchaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -49,6 +50,9 @@ class FullApiIntegrationTests {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Autowired
+    private CaptchaService captchaService;
+
     @Test
     void allAdminAndPublicApiEndpointsCanHandleExpectedAuthCrudAndValidationCases() throws Exception {
         String tag = uniqueTag();
@@ -64,11 +68,26 @@ class FullApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
 
-        mockMvc.perform(post("/api/portal/auth/register")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"portal" + tag + "\",\"phone\":\"138" + phoneSeed(tag) + "\",\"email\":\"portal" + tag + "@test.com\",\"companyName\":\"会员企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MB" + creditSeed(tag) + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\"}"))
+        String registerCaptchaId = "register-" + tag;
+        String registerCaptchaCode = captchaService.create("register", registerCaptchaId).getCode();
+        mockMvc.perform(multipart("/api/portal/auth/register")
+                        .file(profileFile("businessLicenseFile", "full-register-license-" + tag + ".pdf", "register license " + tag))
+                        .file(profileFile("threeYearPerformanceFile", "full-register-performance-" + tag + ".pdf", "register performance " + tag))
+                        .param("username", "portal" + tag)
+                        .param("phone", "135" + phoneSeed(tag))
+                        .param("email", "portal" + tag + "@test.com")
+                        .param("companyName", "会员企业")
+                        .param("contactPerson", "李四")
+                        .param("unifiedSocialCreditCode", "91310000MB" + creditSeed(tag))
+                        .param("realName", "李四")
+                        .param("password", "123456")
+                        .param("confirmPassword", "123456")
+                        .param("captchaId", registerCaptchaId)
+                        .param("captchaCode", registerCaptchaCode))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.code").value(403));
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DISABLED"))
+                .andExpect(jsonPath("$.data.canDownloadFile").value(false));
 
         mockMvc.perform(post("/api/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -161,7 +180,7 @@ class FullApiIntegrationTests {
         assertMemberPortalOperationsAreUnauthorized(memberToken, tenderId, attachmentId);
         mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                        .content(portalLoginBody(username, password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
 
@@ -202,7 +221,7 @@ class FullApiIntegrationTests {
 
         mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                        .content(portalLoginBody(username, password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(400));
 
@@ -455,7 +474,7 @@ class FullApiIntegrationTests {
 
         mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"654321\"}"))
+                        .content(portalLoginBody(username, "654321")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(403));
     }
@@ -607,11 +626,17 @@ class FullApiIntegrationTests {
     private String loginMember(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                        .content(portalLoginBody(username, password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
+    }
+
+    private String portalLoginBody(String username, String password) {
+        String captchaId = "login-" + System.nanoTime();
+        String captchaCode = captchaService.create("login", captchaId).getCode();
+        return "{\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"captchaId\":\"" + captchaId + "\",\"captchaCode\":\"" + captchaCode + "\"}";
     }
 
     private Long createMember(String adminToken,
@@ -654,6 +679,15 @@ class FullApiIntegrationTests {
                 ? String.valueOf(primaryBusinessTypeId)
                 : primaryBusinessTypeId + "," + secondBusinessTypeId;
         return "{\"phone\":\"136" + phoneSeed(tag) + "\",\"email\":\"" + phase + "-member" + tag + "@test.com\",\"companyName\":\"测试会员企业" + phase + "\",\"contactPerson\":\"王五\",\"unifiedSocialCreditCode\":\"91310000MD" + creditSeed(tag) + "\",\"realName\":\"王五\",\"businessTypeIds\":[" + businessTypeIds + "],\"expiresAt\":\"" + formatDateTime(expiresAt) + "\"}";
+    }
+
+    private MockMultipartFile profileFile(String fieldName, String fileName, String content) {
+        return new MockMultipartFile(
+                fieldName,
+                fileName,
+                MediaType.APPLICATION_PDF_VALUE,
+                content.getBytes(StandardCharsets.UTF_8)
+        );
     }
 
     private Long uploadFile(String adminToken, String fileName, String content) throws Exception {

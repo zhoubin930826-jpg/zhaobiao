@@ -3,6 +3,7 @@ package com.zhaobiao.admin;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhaobiao.admin.config.DataInitializer;
+import com.zhaobiao.admin.service.CaptchaService;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.pdmodel.PDPage;
 import org.junit.jupiter.api.Test;
@@ -46,6 +47,9 @@ class FileThumbnailIntegrationTests {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private CaptchaService captchaService;
 
     @Test
     void uploadingImagePdfAndOtherFilesCreatesReadableThumbnails() throws Exception {
@@ -233,11 +237,17 @@ class FileThumbnailIntegrationTests {
     private String loginMember(String username, String password) throws Exception {
         MvcResult result = mockMvc.perform(post("/api/portal/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"username\":\"" + username + "\",\"password\":\"" + password + "\"}"))
+                        .content(portalLoginBody(username, password)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
         return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("token").asText();
+    }
+
+    private String portalLoginBody(String username, String password) {
+        String captchaId = "login-" + System.nanoTime();
+        String captchaCode = captchaService.create("login", captchaId).getCode();
+        return "{\"username\":\"" + username + "\",\"password\":\"" + password + "\",\"captchaId\":\"" + captchaId + "\",\"captchaCode\":\"" + captchaCode + "\"}";
     }
 
     private Long findBusinessTypeIdByCode(String adminToken, String code) throws Exception {

@@ -20,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -96,6 +97,12 @@ public class MemberAdminService {
     @Transactional
     public MemberUserDto updateMember(Long memberId, MemberUpdateRequest request) {
         MemberUser user = getMember(memberId);
+        MemberUserStatus nextStatus = request.getStatus() == null ? user.getStatus() : request.getStatus();
+        List<Long> nextBusinessTypeIds = request.getBusinessTypeIds() == null
+                ? user.getBusinessTypes().stream().map(BusinessType::getId).collect(Collectors.toList())
+                : request.getBusinessTypeIds();
+        LocalDateTime nextExpiresAt = request.getExpiresAt() == null ? user.getExpiresAt() : request.getExpiresAt();
+        ensureEnabledMemberReady(nextStatus, nextBusinessTypeIds, nextExpiresAt);
         portalAuthService.ensureMemberUnique(
                 null,
                 request.getPhone(),
@@ -109,8 +116,13 @@ public class MemberAdminService {
         user.setContactPerson(request.getContactPerson().trim());
         user.setUnifiedSocialCreditCode(request.getUnifiedSocialCreditCode().trim());
         user.setRealName(request.getRealName());
-        user.setExpiresAt(request.getExpiresAt());
-        user.setBusinessTypes(loadEnabledBusinessTypes(request.getBusinessTypeIds()));
+        user.setExpiresAt(nextExpiresAt);
+        if (request.getBusinessTypeIds() != null) {
+            user.setBusinessTypes(loadEnabledBusinessTypes(request.getBusinessTypeIds()));
+        }
+        if (request.getStatus() != null) {
+            user.setStatus(request.getStatus());
+        }
         if (request.getBusinessLicenseFileId() != null) {
             user.setBusinessLicenseFile(loadProfileFile(request.getBusinessLicenseFileId()));
         }
@@ -130,6 +142,13 @@ public class MemberAdminService {
     @Transactional
     public MemberUserDto updateStatus(Long memberId, MemberStatusUpdateRequest request) {
         MemberUser user = getMember(memberId);
+        ensureEnabledMemberReady(
+                request.getStatus(),
+                user.getBusinessTypes() == null
+                        ? Collections.emptyList()
+                        : user.getBusinessTypes().stream().map(BusinessType::getId).collect(Collectors.toList()),
+                user.getExpiresAt()
+        );
         user.setStatus(request.getStatus());
         return viewMapper.toMemberUserDto(memberUserRepository.save(user));
     }
@@ -176,6 +195,20 @@ public class MemberAdminService {
         return businessTypes.stream()
                 .sorted(Comparator.comparing(BusinessType::getSortOrder).thenComparing(BusinessType::getId))
                 .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private void ensureEnabledMemberReady(MemberUserStatus status,
+                                          List<Long> businessTypeIds,
+                                          LocalDateTime expiresAt) {
+        if (status != MemberUserStatus.ENABLED) {
+            return;
+        }
+        if (businessTypeIds == null || businessTypeIds.stream().filter(Objects::nonNull).findAny().orElse(null) == null) {
+            throw new BusinessException(400, "启用会员前请至少选择一个会员类型");
+        }
+        if (expiresAt == null) {
+            throw new BusinessException(400, "启用会员前请选择会员过期时间");
+        }
     }
 
     private void validatePassword(String password, String confirmPassword) {

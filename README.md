@@ -33,8 +33,9 @@
 
 ### 门户端
 
-- 会员在线注册已停用：`/api/portal/auth/register` 返回业务码 `403`，会员账号由后台管理员发放。
-- 会员登录：`/api/portal/auth/login`。
+- 会员在线注册：`/api/portal/auth/register` 使用 `multipart/form-data` 提交基础资料、营业执照、近三年业绩证明和注册验证码；成功后账号默认为“禁用”，需管理员补会员类型和有效期后启用。
+- 会员登录：`/api/portal/auth/login`，需要先获取并提交登录验证码。
+- 门户验证码：`/api/portal/auth/captcha?scene=register|login&captchaId=<uuid>`，5 分钟过期、一次性使用，点击验证码图片应刷新。
 - 会员信息：`/api/portal/auth/me`。
 - 招标公告列表和详情：`/api/portal/tenders/**`，需要会员登录。
 - 附件下载：还需要会员账号 `canDownloadFile=true`。
@@ -114,7 +115,7 @@ mvn clean package -DskipTests
 生成的后端包为：
 
 ```text
-target/zhaobiao-admin-0.0.3-SNAPSHOT.jar
+target/zhaobiao-admin-0.0.6-SNAPSHOT.jar
 ```
 
 ## 前端运行
@@ -200,7 +201,8 @@ npm run build
 - 超级管理员创建和管理后台管理员。
 - 普通管理员不能访问管理员账号管理接口。
 - 旧 `/api/admin/users` 停用并不能用于提权。
-- 后台创建和管理会员账号。
+- 后台创建、审核和管理会员账号。
+- 门户会员自助注册、验证码校验、未启用账号拦截。
 - 会员业务类型隔离、附件下载权限控制。
 - 重复上传按内容哈希复用文件记录。
 - `prod` 数据库账号安全校验。

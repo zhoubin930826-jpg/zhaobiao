@@ -57,6 +57,7 @@ public class SecurityConfig {
                         "/api/auth/**",
                         "/api/portal/auth/login",
                         "/api/portal/auth/register",
+                        "/api/portal/auth/captcha",
                         "/api/portal/tenders/latest",
                         "/api/portal/tenders/*",
                         "/api/files/*/thumbnail",
