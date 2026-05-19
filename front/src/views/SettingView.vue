@@ -105,8 +105,7 @@
           <button type="button" class="preview-close" @click="closeViewer">关闭</button>
         </header>
         <div class="preview-body">
-          <img v-if="viewer.type.startsWith('image/')" :src="viewer.src" alt="文件预览" />
-          <iframe v-else :src="viewer.src" frameborder="0"></iframe>
+          <img v-if="viewer.src" :src="viewer.src" alt="资料预览（由系统生成的缩略图，PDF 为首页预览）" />
         </div>
       </div>
     </div>
@@ -115,7 +114,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { fetchPortalProfileFile, getPortalProfile, updatePortalProfile, uploadPortalFiles } from '@/api/portal'
+import { buildPortalFileThumbnailUrl, getPortalProfile, updatePortalProfile, uploadPortalFiles } from '@/api/portal'
 import { authState } from '@/auth'
 
 const loading = ref(false)
@@ -144,8 +143,7 @@ const profileState = reactive({
 const viewer = reactive({
   open: false,
   src: '',
-  title: '',
-  type: ''
+  title: ''
 })
 const displayName = computed(() => form.realName || form.username || '')
 const formatSize = size => {
@@ -169,7 +167,8 @@ function fillForm(profile) {
         fileId: profile.businessLicenseFileId,
         fileName: profile.businessLicenseFileName || '营业执照',
         contentType: profile.businessLicenseContentType,
-        fileSize: profile.businessLicenseFileSize
+        fileSize: profile.businessLicenseFileSize,
+        thumbnailUrl: profile.businessLicenseThumbnailUrl || buildPortalFileThumbnailUrl(profile.businessLicenseFileId)
       }
     : null
   performanceFile.value = profile.threeYearPerformanceFileId
@@ -177,7 +176,8 @@ function fillForm(profile) {
         fileId: profile.threeYearPerformanceFileId,
         fileName: profile.threeYearPerformanceFileName || '近三年业绩证明',
         contentType: profile.threeYearPerformanceContentType,
-        fileSize: profile.threeYearPerformanceFileSize
+        fileSize: profile.threeYearPerformanceFileSize,
+        thumbnailUrl: profile.threeYearPerformanceThumbnailUrl || buildPortalFileThumbnailUrl(profile.threeYearPerformanceFileId)
       }
     : null
   profileState.expiresAt = profile.expiresAt || ''
@@ -197,7 +197,8 @@ async function onBusinessLicenseSelect(event) {
     if (uploaded.length && uploaded[0].fileId != null) {
       businessLicense.value = {
         fileId: uploaded[0].fileId,
-        fileName: uploaded[0].fileName || files[0].name
+        fileName: uploaded[0].fileName || files[0].name,
+        thumbnailUrl: uploaded[0].thumbnailUrl || buildPortalFileThumbnailUrl(uploaded[0].fileId)
       }
     }
   } catch (e) {
@@ -213,42 +214,26 @@ function removeBusinessLicense() {
 }
 
 function closeViewer() {
-  if (viewer.src) {
+  if (viewer.src && viewer.src.startsWith('blob:')) {
     window.URL.revokeObjectURL(viewer.src)
   }
   viewer.open = false
   viewer.src = ''
   viewer.title = ''
-  viewer.type = ''
 }
 
-async function previewProfileFile(file, fallbackTitle) {
+function previewProfileFile(file, fallbackTitle) {
   if (!file || !file.fileId) return
-  try {
-    const result = await fetchPortalProfileFile(file.fileId, file.fileName || fallbackTitle)
-    const previewable =
-      (result.contentType && result.contentType.startsWith('image/')) || result.contentType === 'application/pdf'
-
-    if (!previewable) {
-      const link = document.createElement('a')
-      link.href = result.objectUrl
-      link.download = result.filename || fallbackTitle
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      window.URL.revokeObjectURL(result.objectUrl)
-      return
-    }
-
-    closeViewer()
-    viewer.title = result.filename || fallbackTitle
-    viewer.src = result.objectUrl
-    viewer.type = result.contentType || ''
-    viewer.open = true
-  } catch (e) {
-    window.alert((e && e.message) || '查看失败，请稍后重试')
+  const path = file.thumbnailUrl || buildPortalFileThumbnailUrl(file.fileId)
+  if (!path) {
+    window.alert('暂无可预览的缩略图')
+    return
   }
+  closeViewer()
+  const absolute = path.startsWith('http') ? path : new URL(path, window.location.origin).href
+  viewer.title = file.fileName || fallbackTitle
+  viewer.src = `${absolute}${absolute.includes('?') ? '&' : '?'}_t=${Date.now()}`
+  viewer.open = true
 }
 
 async function viewBusinessLicense() {
@@ -265,7 +250,8 @@ async function onPerformanceSelect(event) {
     if (uploaded.length && uploaded[0].fileId != null) {
       performanceFile.value = {
         fileId: uploaded[0].fileId,
-        fileName: uploaded[0].fileName || files[0].name
+        fileName: uploaded[0].fileName || files[0].name,
+        thumbnailUrl: uploaded[0].thumbnailUrl || buildPortalFileThumbnailUrl(uploaded[0].fileId)
       }
     }
   } catch (e) {

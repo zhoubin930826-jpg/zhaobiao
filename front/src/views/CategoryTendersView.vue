@@ -5,7 +5,7 @@
       <h1 v-if="categoryTitle" class="page-title">{{ categoryTitle }}</h1>
     </div>
 
-    <section v-if="!isLoggedIn" class="portal-section login-hint">
+    <section v-if="!authIsLoggedIn" class="portal-section login-hint">
       <p>查看该分类下的全部公告需登录会员账号。</p>
       <router-link :to="{ name: 'login', query: { redirect: redirectPath } }" class="login-btn">去登录</router-link>
     </section>
@@ -43,12 +43,11 @@
 import { computed, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { listPortalTenders } from '@/api/portal'
-import { useAuth } from '@/auth'
+import { authState, authIsLoggedIn } from '@/auth'
 import { formatDate } from '@/utils/format'
 
 const route = useRoute()
 const router = useRouter()
-const { isLoggedIn } = useAuth()
 
 const PAGE_SIZE = 15
 
@@ -78,7 +77,7 @@ async function load() {
     return
   }
   document.title = `${categoryTitle.value} · 分类公告 · 招投标信息公示`
-  if (!isLoggedIn.value) {
+  if (!authState.token) {
     list.value = []
     total.value = 0
     totalPages.value = 0
@@ -117,7 +116,7 @@ function goPage(n) {
   })
 }
 
-watch([categoryTitle, pageNum, isLoggedIn], load, { immediate: true })
+watch([categoryTitle, pageNum, () => !!authState.token], load, { immediate: true })
 </script>
 
 <style scoped>

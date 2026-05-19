@@ -45,6 +45,27 @@
               required
             />
           </label>
+          <label class="field">
+            <span class="field-label">验证码</span>
+            <div class="captcha-group">
+              <input
+                v-model="captchaCode"
+                type="text"
+                name="captchaCode"
+                autocomplete="off"
+                placeholder="请输入验证码"
+                required
+              />
+              <img
+                :key="captchaId"
+                :src="captchaUrl"
+                alt="验证码"
+                class="captcha-img"
+                @click="refreshCaptcha"
+                title="点击刷新验证码"
+              />
+            </div>
+          </label>
           <p v-if="error" class="error" role="alert">{{ error }}</p>
           <button type="submit" class="submit" :disabled="loading">
             <span class="submit-inner">
@@ -62,38 +83,45 @@
 </template>
 
 <script setup>
-import { ref, watch } from 'vue'
+import { ref, computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { login as doLogin, useAuth } from '@/auth'
+import { login as doLogin } from '@/auth'
+import { buildPortalCaptchaUrl } from '@/api/portal'
 
 const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
 
 const route = useRoute()
 const router = useRouter()
-const { isLoggedIn } = useAuth()
+
+function createCaptchaId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+}
 
 const username = ref('')
 const password = ref('')
+const captchaId = ref(createCaptchaId())
+const captchaCode = ref('')
 const error = ref('')
 const loading = ref(false)
 
-watch(
-  isLoggedIn,
-  value => {
-    if (!value) return
-    const redirect = typeof route.query.redirect === 'string' ? route.query.redirect : ''
-    router.replace(redirect && redirect.startsWith('/') ? redirect : '/list')
-  },
-  { immediate: true }
-)
+const captchaUrl = computed(() => buildPortalCaptchaUrl('login', captchaId.value))
+
+function refreshCaptcha() {
+  captchaId.value = createCaptchaId()
+  captchaCode.value = ''
+}
 
 async function onSubmit() {
   error.value = ''
   loading.value = true
   try {
-    const res = await doLogin(username.value, password.value)
+    const res = await doLogin(username.value, password.value, captchaId.value, captchaCode.value)
     if (!res.ok) {
       error.value = res.message || '登录失败'
+      refreshCaptcha()
       return
     }
     const redirect = res.profileCompletionRequired
@@ -329,6 +357,32 @@ async function onSubmit() {
   border-color: var(--color-primary);
   background: #fff;
   box-shadow: 0 0 0 3px rgba(26, 95, 180, 0.14);
+}
+
+.captcha-group {
+  display: flex;
+  gap: 0.6rem;
+  align-items: center;
+}
+
+.captcha-group input {
+  flex: 1;
+  min-width: 0;
+}
+
+.captcha-img {
+  width: 110px;
+  height: 2.55rem;
+  border-radius: 8px;
+  cursor: pointer;
+  border: 1px solid #e2e8f0;
+  object-fit: cover;
+  background-color: #f8fafc;
+  transition: opacity 0.2s;
+}
+
+.captcha-img:hover {
+  opacity: 0.85;
 }
 
 .error {

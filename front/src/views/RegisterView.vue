@@ -57,17 +57,6 @@
             />
           </label>
           <label class="field">
-            <span class="field-label">姓名</span>
-            <input
-              v-model="realName"
-              type="text"
-              name="realName"
-              autocomplete="name"
-              placeholder="请输入真实姓名"
-              required
-            />
-          </label>
-          <label class="field">
             <span class="field-label">企业名称</span>
             <input
               v-model="companyName"
@@ -79,24 +68,39 @@
             />
           </label>
           <label class="field">
-            <span class="field-label">验证码</span>
-            <div class="captcha-group">
-              <input
-                v-model="captcha"
-                type="text"
-                name="captcha"
-                autocomplete="off"
-                placeholder="请输入验证码"
-                required
-              />
-              <img 
-                :src="captchaUrl" 
-                alt="验证码" 
-                class="captcha-img" 
-                @click="refreshCaptcha" 
-                title="点击刷新验证码"
-              />
-            </div>
+            <span class="field-label">联系人</span>
+            <input
+              v-model="contactPerson"
+              type="text"
+              name="contactPerson"
+              autocomplete="name"
+              placeholder="请输入联系人姓名"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">统一社会信用代码</span>
+            <input
+              v-model="unifiedSocialCreditCode"
+              type="text"
+              name="unifiedSocialCreditCode"
+              autocomplete="off"
+              placeholder="18 位数字或大写字母"
+              maxlength="18"
+              pattern="[0-9A-Z]{18}"
+              title="请输入 18 位统一社会信用代码（数字或大写英文字母）"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">真实姓名</span>
+            <input
+              v-model="realName"
+              type="text"
+              name="realName"
+              autocomplete="name"
+              placeholder="选填"
+            />
           </label>
           <label class="field">
             <span class="field-label">密码</span>
@@ -120,6 +124,49 @@
               required
             />
           </label>
+          <label class="field">
+            <span class="field-label">营业执照</span>
+            <input
+              ref="licenseInput"
+              type="file"
+              name="businessLicenseFile"
+              class="file-input"
+              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">近三年业绩证明</span>
+            <input
+              ref="performanceInput"
+              type="file"
+              name="threeYearPerformanceFile"
+              class="file-input"
+              accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+              required
+            />
+          </label>
+          <label class="field">
+            <span class="field-label">验证码</span>
+            <div class="captcha-group">
+              <input
+                v-model="captchaCode"
+                type="text"
+                name="captchaCode"
+                autocomplete="off"
+                placeholder="请输入验证码"
+                required
+              />
+              <img
+                :key="captchaId"
+                :src="captchaUrl"
+                alt="验证码"
+                class="captcha-img"
+                @click="refreshCaptcha"
+                title="点击刷新验证码"
+              />
+            </div>
+          </label>
           <label class="agreement">
             <input type="checkbox" v-model="agreed" required />
             <span>我同意 <a href="#" @click.prevent>服务条款</a> 和 <a href="#" @click.prevent>隐私政策</a></span>
@@ -142,18 +189,29 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
+import { buildPortalCaptchaUrl, portalRegister } from '@/api/portal'
 
 const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
 const router = useRouter()
+
+function createCaptchaId() {
+  if (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function') {
+    return crypto.randomUUID()
+  }
+  return `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`
+}
 
 const username = ref('')
 const phone = ref('')
 const email = ref('')
 const realName = ref('')
 const companyName = ref('')
-const captcha = ref('')
+const contactPerson = ref('')
+const unifiedSocialCreditCode = ref('')
+const captchaId = ref(createCaptchaId())
+const captchaCode = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const agreed = ref(false)
@@ -161,17 +219,20 @@ const error = ref('')
 const success = ref('')
 const loading = ref(false)
 
-// 验证码图片URL
-const captchaUrl = ref('/api/portal/auth/captcha?t=' + Date.now())
+const licenseInput = ref(null)
+const performanceInput = ref(null)
+
+const captchaUrl = computed(() => buildPortalCaptchaUrl('register', captchaId.value))
 
 function refreshCaptcha() {
-  captchaUrl.value = '/api/portal/auth/captcha?t=' + Date.now()
+  captchaId.value = createCaptchaId()
+  captchaCode.value = ''
 }
 
 async function onSubmit() {
   error.value = ''
   success.value = ''
-  
+
   if (!agreed.value) {
     error.value = '请先阅读并同意服务条款和隐私政策'
     return
@@ -182,36 +243,44 @@ async function onSubmit() {
     return
   }
 
+  const licenseFile = licenseInput.value && licenseInput.value.files ? licenseInput.value.files[0] : null
+  const performanceFile =
+    performanceInput.value && performanceInput.value.files ? performanceInput.value.files[0] : null
+  if (!licenseFile || !performanceFile) {
+    error.value = '请上传营业执照与近三年业绩证明文件'
+    return
+  }
+
   loading.value = true
   try {
-    // 调用注册接口，当前系统可能禁用注册，这里做统一处理
-    const res = await fetch('/api/portal/auth/register', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        username: username.value,
-        phone: phone.value,
-        email: email.value,
-        realName: realName.value,
-        companyName: companyName.value,
-        captcha: captcha.value,
-        password: password.value
-      })
-    })
-    
-    const data = await res.json().catch(() => ({}))
-    
-    if (!res.ok || data.code !== 0) {
-      error.value = data.message || '注册失败，系统可能已关闭公开注册'
-      return
+    const fd = new FormData()
+    fd.append('username', username.value.trim())
+    fd.append('phone', phone.value.trim())
+    fd.append('email', email.value.trim())
+    fd.append('companyName', companyName.value.trim())
+    fd.append('contactPerson', contactPerson.value.trim())
+    fd.append('unifiedSocialCreditCode', unifiedSocialCreditCode.value.trim().toUpperCase())
+    const rn = realName.value.trim()
+    if (rn) {
+      fd.append('realName', rn)
     }
-    
-    success.value = '注册成功！即将跳转登录页...'
+    fd.append('password', password.value)
+    fd.append('confirmPassword', confirmPassword.value)
+    fd.append('captchaId', captchaId.value)
+    fd.append('captchaCode', captchaCode.value.trim())
+    fd.append('businessLicenseFile', licenseFile)
+    fd.append('threeYearPerformanceFile', performanceFile)
+
+    const reg = await portalRegister(fd)
+
+    success.value =
+      (reg && reg.message) || '注册成功，请等待管理员启用账号。账号需管理员启用后方可登录，即将跳转登录页…'
     setTimeout(() => {
       router.push('/login')
     }, 1500)
   } catch (err) {
-    error.value = '网络错误，请稍后再试'
+    error.value = (err && err.message) || '注册失败，请检查后重试'
+    refreshCaptcha()
   } finally {
     loading.value = false
   }
@@ -426,6 +495,11 @@ async function onSubmit() {
   background: #f8fafc;
   color: var(--text);
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.field input.file-input {
+  padding: 0.35rem 0.5rem;
+  cursor: pointer;
 }
 
 .field input::placeholder {
