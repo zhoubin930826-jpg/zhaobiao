@@ -1,5 +1,6 @@
 <template>
   <footer class="footer">
+    <ContactFloat />
     <div class="inner">
       <div class="company-info">
         <p><span class="label">名&emsp;&emsp;称：</span>湖北省军科应力装备制造有限公司</p>
@@ -14,11 +15,14 @@
 </template>
 
 <script setup>
+import ContactFloat from '@/components/ContactFloat.vue'
+
 const year = new Date().getFullYear()
 </script>
 
 <style scoped>
 .footer {
+  position: relative;
   border-top: 1px solid #e2e8f0;
   background: linear-gradient(180deg, #fbfcfe 0%, #f1f5f9 100%);
   padding: 1.35rem 1.25rem 1.5rem;

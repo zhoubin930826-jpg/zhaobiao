@@ -5,6 +5,7 @@
       <router-view />
     </main>
     <AppFooter v-if="!bare" />
+    <ContactFloat v-if="bare" />
   </div>
 </template>
 
@@ -13,6 +14,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 import AppHeader from '@/components/AppHeader.vue'
 import AppFooter from '@/components/AppFooter.vue'
+import ContactFloat from '@/components/ContactFloat.vue'
 
 const route = useRoute()
 const bare = computed(() => route.meta.bare === true)

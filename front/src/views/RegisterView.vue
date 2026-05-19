@@ -169,7 +169,12 @@
           </label>
           <label class="agreement">
             <input type="checkbox" v-model="agreed" required />
-            <span>我同意 <a href="#" @click.prevent>服务条款</a> 和 <a href="#" @click.prevent>隐私政策</a></span>
+            <span>
+              我同意
+              <a href="#" @click.prevent="openTerms">服务条款</a>
+              和
+              <a href="#" @click.prevent="openPrivacy">隐私政策</a>
+            </span>
           </label>
           <p v-if="error" class="error" role="alert">{{ error }}</p>
           <p v-if="success" class="success" role="alert">{{ success }}</p>
@@ -185,6 +190,17 @@
       </div>
       <p class="fine-print">请妥善保管账号信息，勿向他人泄露密码。</p>
     </div>
+
+    <LegalDocModal
+      v-model:visible="termsVisible"
+      title="服务条款"
+      :sections="serviceTermsSections"
+    />
+    <LegalDocModal
+      v-model:visible="privacyVisible"
+      title="隐私政策"
+      :sections="privacyPolicySections"
+    />
   </div>
 </template>
 
@@ -192,6 +208,9 @@
 import { ref, computed } from 'vue'
 import { useRouter } from 'vue-router'
 import { buildPortalCaptchaUrl, portalRegister } from '@/api/portal'
+import LegalDocModal from '@/components/LegalDocModal.vue'
+import { serviceTermsSections } from '@/content/service-terms'
+import { privacyPolicySections } from '@/content/privacy-policy'
 
 const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
 const router = useRouter()
@@ -215,6 +234,8 @@ const captchaCode = ref('')
 const password = ref('')
 const confirmPassword = ref('')
 const agreed = ref(false)
+const termsVisible = ref(false)
+const privacyVisible = ref(false)
 const error = ref('')
 const success = ref('')
 const loading = ref(false)
@@ -227,6 +248,14 @@ const captchaUrl = computed(() => buildPortalCaptchaUrl('register', captchaId.va
 function refreshCaptcha() {
   captchaId.value = createCaptchaId()
   captchaCode.value = ''
+}
+
+function openTerms() {
+  termsVisible.value = true
+}
+
+function openPrivacy() {
+  privacyVisible.value = true
 }
 
 async function onSubmit() {
@@ -274,10 +303,11 @@ async function onSubmit() {
     const reg = await portalRegister(fd)
 
     success.value =
-      (reg && reg.message) || '注册成功，请等待管理员启用账号。账号需管理员启用后方可登录，即将跳转登录页…'
+      (reg && reg.message) ||
+      '注册成功！请联系管理员开通账号权限（分配业务类型、设置有效期并启用账号）后再登录。'
     setTimeout(() => {
       router.push('/login')
-    }, 1500)
+    }, 3500)
   } catch (err) {
     error.value = (err && err.message) || '注册失败，请检查后重试'
     refreshCaptcha()
@@ -563,6 +593,10 @@ async function onSubmit() {
 .agreement a {
   color: var(--color-primary);
   text-decoration: none;
+}
+
+.agreement a {
+  cursor: pointer;
 }
 
 .agreement a:hover {

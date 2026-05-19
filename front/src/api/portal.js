@@ -96,7 +96,9 @@ export async function portalRegister(formData) {
   if (payload && (payload.code === 0 || payload.code === 200)) {
     return {
       data: payload.data !== undefined ? payload.data : payload,
-      message: payload.message || '注册成功，请等待管理员启用账号'
+      message:
+        payload.message ||
+        '注册成功！请联系管理员开通账号权限（分配业务类型、设置有效期并启用账号）后再登录。'
     }
   }
   throw new Error((payload && payload.message) || '注册失败')
