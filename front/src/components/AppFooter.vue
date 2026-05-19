@@ -5,6 +5,14 @@
       <div class="company-info">
         <p><span class="label">名&emsp;&emsp;称：</span>湖北省军科应力装备制造有限公司</p>
         <p><span class="label">地&emsp;&emsp;址：</span>湖北省武汉市武汉经济技术开发区山科技产业园二区C栋写字楼4层C4016</p>
+        <p>
+          <span class="label">联系邮箱：</span>
+          <a href="mailto:junkezhizao@163.com" class="contact-link">junkezhizao@163.com</a>
+        </p>
+        <p>
+          <span class="label">联系方式：</span>
+          <a href="tel:18427225774" class="contact-link">18427225774</a>
+        </p>
       </div>
       <p class="muted">© {{ year }} 招投标信息公示</p>
       <p class="icp">
@@ -55,6 +63,17 @@ const year = new Date().getFullYear()
 .label {
   display: inline-block;
   color: #64748b;
+}
+
+.contact-link {
+  color: #475569;
+  text-decoration: none;
+  border-bottom: 1px dashed rgba(71, 85, 105, 0.5);
+}
+
+.contact-link:hover {
+  color: #1d4ed8;
+  border-bottom-color: rgba(29, 78, 216, 0.65);
 }
 
 .muted {
