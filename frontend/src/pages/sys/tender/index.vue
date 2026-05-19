@@ -33,13 +33,17 @@
           {{ row.businessType ? row.businessType.name : '—' }}
         </template>
         <template slot="status" slot-scope="{ row }">
-          <Badge v-if="row.status === 'PUBLISHED'" color="green" text="发布中" />
+          <Badge v-if="row.status === 'PUBLISHED'" color="green" text="已发布" />
           <Badge v-else-if="row.status === 'CLOSED'" color="default" text="已关闭" />
           <span v-else>{{ row.status }}</span>
         </template>
         <template slot="action" slot-scope="{ row }">
           <div @click.stop.prevent>
             <a @click="handleEdit(row)">编辑</a>
+            <span v-if="row.status === 'CLOSED'" v-auth="['TENDER_EDIT_BUTTON']">
+              <Divider type="vertical" />
+              <a @click="handlePublish(row)">发布</a>
+            </span>
             <Divider type="vertical" />
             <a style="color: #ed4014" @click="handleDelete(row)">删除</a>
           </div>
@@ -156,14 +160,6 @@
                   placeholder="请选择报名截止时间"
                   style="width: 100%;"
                 />
-              </FormItem>
-            </Col>
-            <Col span="12">
-              <FormItem label="状态">
-                <RadioGroup v-model="formData.status">
-                  <Radio label="PUBLISHED">发布中</Radio>
-                  <Radio label="CLOSED">已关闭</Radio>
-                </RadioGroup>
               </FormItem>
             </Col>
           </Row>
@@ -327,7 +323,7 @@
                     { title: '招标单位', key: 'tenderUnit', minWidth: 180 },
                     { title: '预算', key: 'budget', minWidth: 120 },
                     { title: '状态', slot: 'status', minWidth: 90 },
-                    { title: '操作', slot: 'action', minWidth: 140, align: 'center', fixed: 'right' }
+                    { title: '操作', slot: 'action', minWidth: 180, align: 'center', fixed: 'right' }
                 ],
                 modal: {
                     show: false,
@@ -347,7 +343,7 @@
                     deadline: '',
                     projectCode: '',
                     signupDeadline: '',
-                    status: 'PUBLISHED',
+                    status: 'CLOSED',
                     attachmentFileIds: []
                 },
                 attachments: [],
@@ -460,7 +456,7 @@
                     deadline: null,
                     projectCode: '',
                     signupDeadline: null,
-                    status: 'PUBLISHED',
+                    status: 'CLOSED',
                     attachmentFileIds: []
                 };
                 this.attachments = [];
@@ -496,26 +492,50 @@
                     if (msg) this.$Message.error(msg);
                 });
             },
+            buildTenderPayload (data, status) {
+                return {
+                    title: data.title,
+                    region: data.region,
+                    businessTypeId: data.businessTypeId,
+                    publishAt: this.formatDateTime(data.publishAt),
+                    content: data.content,
+                    contactPerson: data.contactPerson,
+                    budget: data.budget,
+                    contactPhone: data.contactPhone,
+                    tenderUnit: data.tenderUnit,
+                    deadline: this.formatDateTime(data.deadline),
+                    projectCode: data.projectCode,
+                    signupDeadline: this.formatDateTime(data.signupDeadline),
+                    status: status,
+                    attachmentFileIds: data.attachmentFileIds
+                };
+            },
+            buildTenderPayloadFromDetail (detail, status) {
+                return {
+                    title: detail.title || '',
+                    region: detail.region || '',
+                    businessTypeId: detail.businessType ? detail.businessType.id : null,
+                    publishAt: detail.publishAt || '',
+                    content: detail.content || '',
+                    contactPerson: detail.contactPerson || '',
+                    budget: detail.budget || '',
+                    contactPhone: detail.contactPhone || '',
+                    tenderUnit: detail.tenderUnit || '',
+                    deadline: detail.deadline || '',
+                    projectCode: detail.projectCode || '',
+                    signupDeadline: detail.signupDeadline || '',
+                    status: status,
+                    attachmentFileIds: Array.isArray(detail.attachments)
+                        ? detail.attachments.map(item => item.fileId)
+                        : []
+                };
+            },
             handleSubmit () {
                 this.$refs.tenderForm.validate(valid => {
                     if (!valid) return;
                     this.submitting = true;
-                    const payload = {
-                        title: this.formData.title,
-                        region: this.formData.region,
-                        businessTypeId: this.formData.businessTypeId,
-                        publishAt: this.formatDateTime(this.formData.publishAt),
-                        content: this.formData.content,
-                        contactPerson: this.formData.contactPerson,
-                        budget: this.formData.budget,
-                        contactPhone: this.formData.contactPhone,
-                        tenderUnit: this.formData.tenderUnit,
-                        deadline: this.formatDateTime(this.formData.deadline),
-                        projectCode: this.formData.projectCode,
-                        signupDeadline: this.formatDateTime(this.formData.signupDeadline),
-                        status: this.formData.status,
-                        attachmentFileIds: this.formData.attachmentFileIds
-                    };
+                    const status = this.modal.type === 'add' ? 'CLOSED' : this.formData.status;
+                    const payload = this.buildTenderPayload(this.formData, status);
                     const req = this.modal.type === 'add'
                         ? createTender(payload)
                         : updateTender(this.formData.id, payload);
@@ -530,6 +550,23 @@
                         const msg = this.apiErrorMessage(err);
                         if (msg) this.$Message.error(msg);
                     });
+                });
+            },
+            handlePublish (row) {
+                this.$Modal.confirm({
+                    title: '确认发布',
+                    content: `确定发布招标「${row.title}」吗？`,
+                    onOk: () => getTenderDetail(row.id).then(res => {
+                        const payload = this.buildTenderPayloadFromDetail(res, 'PUBLISHED');
+                        return updateTender(row.id, payload);
+                    }).then(() => {
+                        this.$Message.success('发布成功');
+                        this.getData();
+                    }).catch(err => {
+                        const msg = this.apiErrorMessage(err);
+                        if (msg) this.$Message.error(msg);
+                        return Promise.reject(err);
+                    })
                 });
             },
             handleDelete (row) {
