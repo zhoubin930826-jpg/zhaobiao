@@ -38,7 +38,7 @@
 <script setup>
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
-import { useAuth, logout } from '@/auth'
+import { authState, useAuth, logout } from '@/auth'
 import { getPortalProfile } from '@/api/portal'
 
 const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
@@ -51,7 +51,7 @@ const menuOpen = ref(false)
 const menuRef = ref(null)
 
 async function loadDisplayName() {
-  if (!isLoggedIn.value) {
+  if (!authState.token) {
     displayName.value = '用户'
     return
   }
@@ -63,14 +63,18 @@ async function loadDisplayName() {
   }
 }
 
-watch(isLoggedIn, value => {
-  if (!value) {
-    menuOpen.value = false
-    displayName.value = '用户'
-    return
-  }
-  loadDisplayName()
-}, { immediate: true })
+watch(
+  () => authState.token,
+  token => {
+    if (!token) {
+      menuOpen.value = false
+      displayName.value = '用户'
+      return
+    }
+    loadDisplayName()
+  },
+  { immediate: true }
+)
 
 watch(() => route.fullPath, () => {
   closeMenu()

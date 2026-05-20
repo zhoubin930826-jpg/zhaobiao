@@ -80,7 +80,7 @@
           <Badge
             v-else-if="row.status === 'DISABLED'"
             color="default"
-            text="禁用"
+            text="未启用"
           />
           <span v-else>{{ row.status }}</span>
         </template>
@@ -440,7 +440,7 @@
           <Row :gutter="16">
             <Col span="12">
               <FormItem label="会员状态" prop="status">
-                <RadioGroup v-model="formData.status">
+                <RadioGroup v-model="formData.status" @on-change="onMemberStatusChange">
                   <Radio label="ENABLED">启用</Radio>
                   <Radio label="DISABLED">禁用</Radio>
                 </RadioGroup>
@@ -597,18 +597,45 @@ export default {
         ],
         businessTypeIds: [
           {
-            type: "array",
-            required: true,
-            min: 1,
-            message: "请至少选择一个会员类型",
+            validator: (rule, value, callback) => {
+              if (this.modal.type === "add") {
+                if (!Array.isArray(value) || value.length < 1) {
+                  callback(new Error("请至少选择一个会员类型"));
+                  return;
+                }
+                callback();
+                return;
+              }
+              if (this.formData.status !== "ENABLED") {
+                callback();
+                return;
+              }
+              if (!Array.isArray(value) || value.length < 1) {
+                callback(new Error("启用会员前请至少选择一个会员类型"));
+                return;
+              }
+              callback();
+            },
             trigger: "change",
           },
         ],
         expiresAt: [
           {
             validator: (rule, value, callback) => {
+              if (this.modal.type === "add") {
+                if (!value) {
+                  callback(new Error("请选择会员过期时间"));
+                  return;
+                }
+                callback();
+                return;
+              }
+              if (this.formData.status !== "ENABLED") {
+                callback();
+                return;
+              }
               if (!value) {
-                callback(new Error("请选择会员过期时间"));
+                callback(new Error("启用会员前请选择会员过期时间"));
                 return;
               }
               callback();
@@ -780,49 +807,90 @@ export default {
     handleCloseModal() {
       this.modal.show = false;
     },
+    apiErrorMessage(err) {
+      if (!err) return "";
+      const data = err.response && err.response.data;
+      if (data && typeof data.message === "string" && data.message) {
+        return data.message;
+      }
+      if (typeof err.message === "string" && err.message) {
+        return err.message;
+      }
+      return "";
+    },
+    onMemberStatusChange() {
+      this.$nextTick(() => {
+        if (!this.$refs.memberForm) return;
+        this.$refs.memberForm.validateField("businessTypeIds");
+        this.$refs.memberForm.validateField("expiresAt");
+      });
+    },
+    buildMemberUpdatePayload() {
+      const fd = this.formData;
+      const payload = {
+        phone: (fd.phone || "").trim(),
+        email: (fd.email || "").trim(),
+        companyName: (fd.companyName || "").trim(),
+        contactPerson: (fd.contactPerson || "").trim(),
+        unifiedSocialCreditCode: (fd.unifiedSocialCreditCode || "")
+          .trim()
+          .toUpperCase(),
+        realName: fd.realName != null ? String(fd.realName).trim() : "",
+        status: fd.status,
+      };
+      const bt = Array.isArray(fd.businessTypeIds) ? fd.businessTypeIds : [];
+      if (fd.status === "ENABLED" || bt.length > 0) {
+        payload.businessTypeIds = bt;
+      }
+      if (fd.status === "ENABLED") {
+        payload.expiresAt = this.formatDateTime(fd.expiresAt);
+      } else if (fd.expiresAt) {
+        payload.expiresAt = this.formatDateTime(fd.expiresAt);
+      }
+      return payload;
+    },
     handleSubmit() {
       this.$refs.memberForm.validate((valid) => {
         if (!valid) return;
         this.submitting = true;
-        const request =
-          this.modal.type === "add"
-            ? createMember({
-                username: this.formData.username,
-                phone: this.formData.phone,
-                email: this.formData.email,
-                companyName: this.formData.companyName,
-                contactPerson: this.formData.contactPerson,
-                unifiedSocialCreditCode: this.formData.unifiedSocialCreditCode,
-                realName: this.formData.realName,
-                password: this.formData.password,
-                confirmPassword: this.formData.confirmPassword,
-                businessLicenseFileId: this.formData.businessLicenseFileId,
-                threeYearPerformanceFileId:
-                  this.formData.threeYearPerformanceFileId,
-                businessTypeIds: this.formData.businessTypeIds,
-                expiresAt: this.formatDateTime(this.formData.expiresAt),
-                canDownloadFile: this.formData.canDownloadFile,
-                status: this.formData.status,
+        const isAdd = this.modal.type === "add";
+        const request = isAdd
+          ? createMember({
+              username: this.formData.username,
+              phone: this.formData.phone,
+              email: this.formData.email,
+              companyName: this.formData.companyName,
+              contactPerson: this.formData.contactPerson,
+              unifiedSocialCreditCode: (
+                this.formData.unifiedSocialCreditCode || ""
+              )
+                .trim()
+                .toUpperCase(),
+              realName: this.formData.realName,
+              password: this.formData.password,
+              confirmPassword: this.formData.confirmPassword,
+              businessLicenseFileId: this.formData.businessLicenseFileId,
+              threeYearPerformanceFileId:
+                this.formData.threeYearPerformanceFileId,
+              businessTypeIds: this.formData.businessTypeIds,
+              expiresAt: this.formatDateTime(this.formData.expiresAt),
+              canDownloadFile: this.formData.canDownloadFile,
+              status: this.formData.status,
+            })
+          : updateMember(
+              this.formData.id,
+              this.buildMemberUpdatePayload()
+            ).then(() =>
+              updateMemberDownloadAccess(this.formData.id, {
+                canDownloadFile: !!this.formData.canDownloadFile,
               })
-            : updateMember(this.formData.id, {
-                phone: this.formData.phone,
-                email: this.formData.email,
-                companyName: this.formData.companyName,
-                contactPerson: this.formData.contactPerson,
-                unifiedSocialCreditCode: this.formData.unifiedSocialCreditCode,
-                realName: this.formData.realName,
-                businessLicenseFileId: this.formData.businessLicenseFileId,
-                threeYearPerformanceFileId:
-                  this.formData.threeYearPerformanceFileId,
-                businessTypeIds: this.formData.businessTypeIds,
-                expiresAt: this.formatDateTime(this.formData.expiresAt),
-              });
+            );
         request
           .then(() => {
             this.submitting = false;
             this.modal.show = false;
             this.$Message.success(
-              this.modal.type === "add" ? "新增会员成功" : "编辑会员成功"
+              isAdd ? "新增会员成功" : "编辑会员成功"
             );
             this.current = 1;
             this.getData();

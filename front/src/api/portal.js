@@ -73,11 +73,42 @@ export function mapTenderListItem(item) {
   }
 }
 
-export async function portalLogin(username, password) {
+export function buildPortalCaptchaUrl(scene, captchaId) {
+  const url = new URL(`${API_BASE_URL}/portal/auth/captcha`, window.location.origin)
+  url.searchParams.set('scene', scene)
+  url.searchParams.set('captchaId', captchaId)
+  url.searchParams.set('_t', String(Date.now()))
+  return url.toString()
+}
+
+/**
+ * @param {FormData} formData — 字段名与后端 MemberRegisterRequest 一致（含 businessLicenseFile、threeYearPerformanceFile）
+ */
+export async function portalRegister(formData) {
+  const response = await fetch(new URL(`${API_BASE_URL}/portal/auth/register`, window.location.origin).toString(), {
+    method: 'POST',
+    body: formData
+  })
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(payload.message || `注册失败(${response.status})`)
+  }
+  if (payload && (payload.code === 0 || payload.code === 200)) {
+    return {
+      data: payload.data !== undefined ? payload.data : payload,
+      message:
+        payload.message ||
+        '注册成功！请联系管理员开通账号权限（分配业务类型、设置有效期并启用账号）后再登录。'
+    }
+  }
+  throw new Error((payload && payload.message) || '注册失败')
+}
+
+export async function portalLogin(username, password, captchaId, captchaCode) {
   return request('/portal/auth/login', {
     method: 'POST',
     withAuth: false,
-    data: { username, password }
+    data: { username, password, captchaId, captchaCode }
   })
 }
 
@@ -156,8 +187,10 @@ export function buildAttachmentDownloadUrl(tenderId, attachmentId) {
   return `${API_BASE_URL}/portal/tenders/${tenderId}/attachments/${attachmentId}/download`
 }
 
-export function buildProfileFileDownloadUrl(fileId) {
-  return `${API_BASE_URL}/portal/auth/profile/files/${fileId}/download`
+/** 与后端 FileThumbnailUrlBuilder 一致：公开缩略图，可用于资料文件预览（无需会员下载接口） */
+export function buildPortalFileThumbnailUrl(fileId) {
+  if (fileId === undefined || fileId === null) return ''
+  return `${API_BASE_URL}/files/${fileId}/thumbnail`
 }
 
 function extractFilename(contentDisposition) {
@@ -200,74 +233,6 @@ export async function downloadPortalAttachment(tenderId, attachmentId, fallbackF
     fallbackFilename ||
     `attachment-${attachmentId}`
   const objectUrl = window.URL.createObjectURL(blob)
-  const link = document.createElement('a')
-  link.href = objectUrl
-  link.download = filename
-  link.style.display = 'none'
-  document.body.appendChild(link)
-  link.click()
-  document.body.removeChild(link)
-  window.URL.revokeObjectURL(objectUrl)
-}
-
-// 资料文件查看与下载
-export async function fetchPortalProfileFile(fileId, fallbackFilename = '文件') {
-  if (fileId === undefined || fileId === null) {
-    throw new Error('文件不存在或已被移除')
-  }
-
-  const url = new URL(buildProfileFileDownloadUrl(fileId), window.location.origin)
-  const headers = {}
-  const token = readToken()
-  if (token) {
-    headers.Authorization = `Bearer ${token}`
-  }
-
-  const response = await fetch(url.toString(), { method: 'GET', headers })
-  if (!response.ok) {
-    const payload = await response.json().catch(() => ({}))
-    const message =
-      payload.message ||
-      (response.status === 401
-        ? '请登录后查看文件'
-        : response.status === 403
-          ? '当前账号暂无查看权限'
-          : `查看失败(${response.status})`)
-    const error = new Error(message)
-    error.code = payload.code || response.status
-    error.status = response.status
-    throw error
-  }
-
-  const blob = await response.blob()
-  const filename =
-    extractFilename(response.headers.get('content-disposition')) ||
-    fallbackFilename ||
-    `文件-${fileId}`
-  const contentType = response.headers.get('content-type') || ''
-  const objectUrl = window.URL.createObjectURL(blob)
-
-  return { blob, objectUrl, filename, contentType }
-}
-
-export async function viewPortalProfileFile(fileId, fallbackFilename = '文件') {
-  const { objectUrl, filename, contentType } = await fetchPortalProfileFile(fileId, fallbackFilename)
-  const canPreview = contentType.startsWith('image/') || contentType === 'application/pdf'
-
-  if (canPreview) {
-    const win = window.open(objectUrl, '_blank')
-    if (!win) {
-      const link = document.createElement('a')
-      link.href = objectUrl
-      link.download = filename
-      link.style.display = 'none'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-    }
-    return
-  }
-
   const link = document.createElement('a')
   link.href = objectUrl
   link.download = filename

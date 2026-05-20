@@ -46,26 +46,35 @@ export function isLoggedIn() {
   return !!authState.token
 }
 
+/** 全局复用，避免每处 useAuth() 新建 computed 导致部分 watch / 界面不同步 */
+export const authIsLoggedIn = computed(() => !!authState.token)
+export const authUsername = computed(() => authState.username)
+
 /**
  * @returns {{ isLoggedIn: import('vue').ComputedRef<boolean>, username: import('vue').ComputedRef<string|null>, login: Function, logout: Function }}
  */
 export function useAuth() {
   return {
-    isLoggedIn: computed(() => !!authState.token),
-    username: computed(() => authState.username),
+    isLoggedIn: authIsLoggedIn,
+    username: authUsername,
     login,
     logout
   }
 }
 
-export async function login(username, password) {
+export async function login(username, password, captchaId, captchaCode) {
   const u = String(username || '').trim()
   const p = String(password || '')
+  const cid = String(captchaId || '').trim()
+  const ccode = String(captchaCode || '').trim()
   if (!u || !p) {
     return { ok: false, message: '请输入用户名和密码' }
   }
+  if (!cid || !ccode) {
+    return { ok: false, message: '请输入验证码' }
+  }
   try {
-    const res = await portalLogin(u, p)
+    const res = await portalLogin(u, p, cid, ccode)
     authState.token = res.token || ''
     authState.tokenType = res.tokenType || 'Bearer'
     authState.username = (res.user && res.user.username) || u

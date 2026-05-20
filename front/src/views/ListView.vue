@@ -30,10 +30,9 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
 import { listLatestPortalTenders, listPortalTenders } from '@/api/portal'
-import { useAuth } from '@/auth'
+import { authState } from '@/auth'
 import { formatDate } from '@/utils/format'
 
-const { isLoggedIn } = useAuth()
 const list = ref([])
 
 // 动态分类展示
@@ -58,7 +57,7 @@ const categorySections = computed(() => {
 
 async function loadList() {
   try {
-    if (isLoggedIn.value) {
+    if (authState.token) {
       const res = await listPortalTenders({ pageNum: 1, pageSize: 100 })
       list.value = Array.isArray(res.list) ? res.list : []
     } else {
@@ -71,7 +70,7 @@ async function loadList() {
 }
 
 onMounted(loadList)
-watch(isLoggedIn, loadList)
+watch(() => authState.token, loadList)
 </script>
 
 <style scoped>

@@ -1,77 +1,115 @@
 <template>
   <footer class="footer">
+    <ContactFloat />
     <div class="inner">
-      <div class="company-info">
-        <p><span class="label">名&emsp;&emsp;称：</span>湖北省军科应力装备制造有限公司</p>
-        <p><span class="label">地&emsp;&emsp;址：</span>湖北省武汉市武汉经济技术开发区军山科技产业园二区C栋写字楼4层C4016</p>
+      <div class="footer-main">
+        <div class="footer-brand">
+          <p class="company-name">湖北省军科应力装备制造有限公司</p>
+          <p class="company-line">
+            <span class="line-label">地址：</span>
+            <span>湖北省武汉市武汉经济技术开发区军山科技产业园二区C栋写字楼4层C4016</span>
+          </p>
+          <p class="company-line">
+            <span class="line-label">邮箱：</span>
+            <a href="mailto:junkezhizao@163.com">junkezhizao@163.com</a>
+          </p>
+          <p class="company-line">
+            <span class="line-label">电话：</span>
+            <a href="tel:18427225774">18427225774</a>
+          </p>
+        </div>
       </div>
-      <p class="muted">© {{ year }} 招投标信息公示</p>
-      <p class="icp">
-        <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备2026020834号-1</a>
-      </p>
+      <div class="footer-bottom">
+        <p class="copyright">© {{ year }} 招投标信息公示</p>
+        <span class="footer-divider">|</span>
+        <p class="icp">
+          <a href="https://beian.miit.gov.cn/" target="_blank" rel="noopener noreferrer">鄂ICP备2026020834号-1</a>
+        </p>
+      </div>
     </div>
   </footer>
 </template>
 
 <script setup>
+import ContactFloat from '@/components/ContactFloat.vue'
+
 const year = new Date().getFullYear()
 </script>
 
 <style scoped>
 .footer {
-  border-top: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #fbfcfe 0%, #f1f5f9 100%);
-  padding: 1.35rem 1.25rem 1.5rem;
+  position: relative;
   margin-top: auto;
-  box-shadow: 0 -1px 0 rgba(255, 255, 255, 0.8) inset;
+  background: #e8e8e8;
+  border-top: 3px solid var(--color-nav, #015293);
+  padding: 18px 0 14px;
+  font-size: 13px;
+  color: #666;
 }
 
 .inner {
-  max-width: 1200px;
+  max-width: var(--content-width, 1100px);
   margin: 0 auto;
+  padding: 0 12px;
+}
+
+.footer-main {
+  padding-bottom: 12px;
+  border-bottom: 1px solid #ccc;
+}
+
+.company-name {
+  margin: 0 0 8px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #333;
+}
+
+.company-line {
+  margin: 0 0 4px;
+  line-height: 1.7;
+}
+
+.line-label {
+  color: #333;
+}
+
+.company-line a {
+  color: #666;
+  text-decoration: none;
+}
+
+.company-line a:hover {
+  color: var(--color-link, #1277e0);
+  text-decoration: underline;
+}
+
+.footer-bottom {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding-top: 12px;
   text-align: center;
-  font-size: 0.84rem;
-  color: #64748b;
 }
 
-.inner p {
-  margin: 0.25rem 0;
-}
-
-.company-info {
-  margin-bottom: 0.75rem;
-  font-size: 0.85rem;
-  color: #475569;
-}
-
-.company-info p {
-  margin: 0.35rem 0;
-}
-
-.label {
-  display: inline-block;
-  color: #64748b;
-}
-
-.muted {
-  font-size: 0.8rem;
-  opacity: 0.85;
-}
-
+.copyright,
 .icp {
-  font-size: 0.78rem;
-  color: #64748b;
-  opacity: 0.9;
+  margin: 0;
+}
+
+.footer-divider {
+  color: #bbb;
 }
 
 .icp a {
-  color: inherit;
+  color: #666;
   text-decoration: none;
-  border-bottom: 1px dashed rgba(100, 116, 139, 0.65);
 }
 
 .icp a:hover {
-  color: #1d4ed8;
-  border-bottom-color: rgba(29, 78, 216, 0.65);
+  color: var(--color-link, #1277e0);
+  text-decoration: underline;
 }
 </style>
