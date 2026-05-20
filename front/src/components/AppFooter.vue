@@ -3,7 +3,7 @@
     <div class="inner">
       <div class="company-info">
         <p><span class="label">名&emsp;&emsp;称：</span>湖北省军科应力装备制造有限公司</p>
-        <p><span class="label">地&emsp;&emsp;址：</span>湖北省武汉市武汉经济技术开发区山科技产业园二区C栋写字楼4层C4016</p>
+        <p><span class="label">地&emsp;&emsp;址：</span>湖北省武汉市武汉经济技术开发区军山科技产业园二区C栋写字楼4层C4016</p>
       </div>
       <p class="muted">© {{ year }} 招投标信息公示</p>
       <p class="icp">
