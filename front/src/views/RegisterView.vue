@@ -201,13 +201,53 @@
       title="隐私政策"
       :sections="privacyPolicySections"
     />
+
+    <Teleport to="body">
+      <div
+        v-if="qrcodeModalVisible"
+        class="register-success-mask"
+        role="presentation"
+        @click.self="closeQrcodeModal"
+      >
+        <div
+          class="register-success-dialog"
+          role="dialog"
+          aria-labelledby="register-success-title"
+          aria-modal="true"
+        >
+          <header class="register-success-header">
+            <h2 id="register-success-title" class="register-success-title">注册成功</h2>
+            <button type="button" class="register-success-close" aria-label="关闭" @click="closeQrcodeModal">
+              ×
+            </button>
+          </header>
+          <div class="register-success-body">
+            <p class="register-success-msg">{{ successMessage }}</p>
+            <div class="register-success-qrcode-wrap">
+              <img
+                :src="contactQrcodeUrl"
+                alt="微信二维码，扫码联系管理员开通会员"
+                class="register-success-qrcode"
+              />
+            </div>
+            <p class="register-success-tip">请使用微信扫码联系管理员，分配业务类型并开通会员权限后再登录。</p>
+          </div>
+          <footer class="register-success-footer">
+            <button type="button" class="register-success-confirm" @click="closeQrcodeModal">
+              我知道了，去登录
+            </button>
+          </footer>
+        </div>
+      </div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed } from 'vue'
+import { ref, computed, watch, onBeforeUnmount } from 'vue'
 import { useRouter } from 'vue-router'
 import { buildPortalCaptchaUrl, portalRegister } from '@/api/portal'
+import contactQrcodeUrl from '@/assets/contact-qrcode.png'
 import LegalDocModal from '@/components/LegalDocModal.vue'
 import { serviceTermsSections } from '@/content/service-terms'
 import { privacyPolicySections } from '@/content/privacy-policy'
@@ -238,6 +278,8 @@ const termsVisible = ref(false)
 const privacyVisible = ref(false)
 const error = ref('')
 const success = ref('')
+const successMessage = ref('')
+const qrcodeModalVisible = ref(false)
 const loading = ref(false)
 
 const licenseInput = ref(null)
@@ -257,6 +299,37 @@ function openTerms() {
 function openPrivacy() {
   privacyVisible.value = true
 }
+
+function closeQrcodeModal() {
+  qrcodeModalVisible.value = false
+  router.push('/login')
+}
+
+function onQrcodeModalKeydown(event) {
+  if (event.key === 'Escape' && qrcodeModalVisible.value) {
+    closeQrcodeModal()
+  }
+}
+
+watch(qrcodeModalVisible, (open) => {
+  if (typeof document === 'undefined') {
+    return
+  }
+  if (open) {
+    document.body.style.overflow = 'hidden'
+    window.addEventListener('keydown', onQrcodeModalKeydown)
+  } else {
+    document.body.style.overflow = ''
+    window.removeEventListener('keydown', onQrcodeModalKeydown)
+  }
+})
+
+onBeforeUnmount(() => {
+  if (typeof document !== 'undefined') {
+    document.body.style.overflow = ''
+  }
+  window.removeEventListener('keydown', onQrcodeModalKeydown)
+})
 
 async function onSubmit() {
   error.value = ''
@@ -302,12 +375,11 @@ async function onSubmit() {
 
     const reg = await portalRegister(fd)
 
-    success.value =
+    successMessage.value =
       (reg && reg.message) ||
       '注册成功！请联系管理员开通账号权限（分配业务类型、设置有效期并启用账号）后再登录。'
-    setTimeout(() => {
-      router.push('/login')
-    }, 3500)
+    success.value = successMessage.value
+    qrcodeModalVisible.value = true
   } catch (err) {
     error.value = (err && err.message) || '注册失败，请检查后重试'
     refreshCaptcha()
@@ -693,5 +765,122 @@ async function onSubmit() {
   .head-lines {
     text-align: center;
   }
+}
+
+.register-success-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1rem;
+  background: rgba(15, 23, 42, 0.48);
+}
+
+.register-success-dialog {
+  display: flex;
+  flex-direction: column;
+  width: min(400px, 100%);
+  background: #fff;
+  border-radius: 14px;
+  box-shadow: 0 20px 50px rgba(15, 23, 42, 0.2);
+  overflow: hidden;
+}
+
+.register-success-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.9rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: linear-gradient(180deg, #f0fdf4 0%, #fff 100%);
+}
+
+.register-success-title {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #15803d;
+  line-height: 1.35;
+}
+
+.register-success-close {
+  flex-shrink: 0;
+  width: 2rem;
+  height: 2rem;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.register-success-close:hover {
+  background: #f1f5f9;
+  color: #334155;
+}
+
+.register-success-body {
+  padding: 1rem 1.15rem 0.5rem;
+  text-align: center;
+}
+
+.register-success-msg {
+  margin: 0 0 1rem;
+  font-size: 0.88rem;
+  line-height: 1.55;
+  color: #334155;
+}
+
+.register-success-qrcode-wrap {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 0.85rem;
+}
+
+.register-success-qrcode {
+  width: 200px;
+  height: 200px;
+  object-fit: contain;
+  border: 1px solid #e2e8f0;
+  border-radius: 10px;
+  background: #fff;
+}
+
+.register-success-tip {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  color: #64748b;
+}
+
+.register-success-footer {
+  padding: 0.85rem 1rem 1rem;
+  border-top: 1px solid #e2e8f0;
+  background: #fafbfd;
+  text-align: center;
+}
+
+.register-success-confirm {
+  min-width: 10rem;
+  padding: 0.55rem 1.25rem;
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(180deg, #2563eb 0%, var(--color-primary, #1a5fb4) 45%, var(--color-primary-dark, #0d3d7a) 100%);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(26, 95, 180, 0.25);
+  transition: filter 0.15s;
+}
+
+.register-success-confirm:hover {
+  filter: brightness(1.05);
 }
 </style>
