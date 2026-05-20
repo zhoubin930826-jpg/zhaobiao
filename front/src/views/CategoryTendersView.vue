@@ -2,11 +2,11 @@
   <div class="home-portal category-page">
     <div class="toolbar">
       <router-link :to="{ name: 'list' }" class="back-link">← 返回列表</router-link>
-      <h1 v-if="categoryTitle" class="page-title">{{ categoryTitle }}</h1>
+      <h1 v-if="pageTitle" class="page-title">{{ pageTitle }}</h1>
     </div>
 
     <section v-if="!authIsLoggedIn" class="portal-section login-hint">
-      <p>查看该分类下的全部公告需登录会员账号。</p>
+      <p>查看{{ isAllCategory ? '全部' : '该分类下' }}采购项目公告需登录会员账号。</p>
       <router-link :to="{ name: 'login', query: { redirect: redirectPath } }" class="login-btn">去登录</router-link>
     </section>
 
@@ -51,10 +51,18 @@ const router = useRouter()
 
 const PAGE_SIZE = 15
 
+const ALL_CATEGORY = '全部'
+
 const categoryTitle = computed(() => {
   const c = route.query.category
   return typeof c === 'string' && c.trim() ? c.trim() : ''
 })
+
+const isAllCategory = computed(() => categoryTitle.value === ALL_CATEGORY)
+
+const pageTitle = computed(() =>
+  isAllCategory.value ? '采购项目动态' : categoryTitle.value
+)
 
 const pageNum = computed(() => {
   const p = Number(route.query.page)
@@ -76,7 +84,7 @@ async function load() {
     router.replace({ name: 'list' })
     return
   }
-  document.title = `${categoryTitle.value} · 分类公告 · 招投标信息公示`
+  document.title = `${pageTitle.value} · 分类公告 · 招投标信息公示`
   if (!authState.token) {
     list.value = []
     total.value = 0
@@ -85,11 +93,14 @@ async function load() {
   }
   loading.value = true
   try {
-    const res = await listPortalTenders({
+    const params = {
       pageNum: pageNum.value,
-      pageSize: PAGE_SIZE,
-      businessTypeName: categoryTitle.value
-    })
+      pageSize: PAGE_SIZE
+    }
+    if (!isAllCategory.value) {
+      params.businessTypeName = categoryTitle.value
+    }
+    const res = await listPortalTenders(params)
     list.value = Array.isArray(res.list) ? res.list : []
     total.value = Number(res.total) || 0
     const tp = Number(res.totalPages)

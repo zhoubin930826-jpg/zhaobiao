@@ -2,26 +2,69 @@
   <div class="home-portal">
     <div class="main-layout">
       <div class="content-left">
-
-        <!-- 动态分类展示（单列） -->
-        <div class="category-grid">
-          <section class="portal-section" v-for="sec in categorySections" :key="sec.title">
-            <div class="section-header">
-              <h3>{{ sec.title }}</h3>
-              <router-link :to="{ name: 'categoryTenders', query: { category: sec.title } }" class="more">更多 >></router-link>
+        <!-- 资讯看板 -->
+        <section class="portal-section">
+          <div class="section-header">
+            <h3>最新资讯</h3>
+            <router-link :to="{ name: 'newsList' }" class="more">更多 >></router-link>
+          </div>
+          <div class="news-panel">
+            <router-link
+              v-if="activeNews"
+              :to="{ name: 'newsDetail', params: { id: activeNews.id } }"
+              class="news-visual"
+            >
+              <img :src="newsBanner" alt="资讯配图" class="news-image" />
+              <div class="news-visual-mask">
+                <span class="news-visual-tag">{{ activeNews.category }}</span>
+                <p class="news-visual-title">{{ activeNews.title }}</p>
+                <p class="news-visual-summary">{{ activeNews.summary }}</p>
+              </div>
+            </router-link>
+            <div v-else class="news-visual news-visual--static">
+              <img :src="newsBanner" alt="资讯配图" class="news-image" />
             </div>
-            <ul class="text-list">
-              <li v-for="item in sec.items" :key="item.id">
-                <router-link :to="{ name: 'detail', params: { id: item.id } }" class="item-link">
-                  <span class="dot"></span>
-                  <span class="title" :title="item.title">{{ item.title }}</span>
-                </router-link>
-                <span class="date">{{ formatDate(item.publishAt, 'MM-DD') }}</span>
-              </li>
-              <li v-if="!sec.items.length" class="empty-tip">暂无相关数据</li>
-            </ul>
-          </section>
-        </div>
+
+            <div class="news-list-panel">
+              <ul class="news-list">
+                <li
+                  v-for="item in newsList"
+                  :key="item.id"
+                  :class="{ active: item.id === activeNewsId }"
+                >
+                  <router-link
+                    :to="{ name: 'newsDetail', params: { id: item.id } }"
+                    class="news-item-link"
+                    @mouseenter="activeNewsId = item.id"
+                  >
+                    <span class="news-type">{{ item.category }}</span>
+                    <span class="news-title" :title="item.title">{{ item.title }}</span>
+                    <span class="news-date">{{ item.date }}</span>
+                  </router-link>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </section>
+
+        <!-- 采购项目动态 -->
+        <section class="portal-section">
+          <div class="section-header">
+            <h3>采购项目动态</h3>
+            <router-link :to="moreLink" class="more">更多 >></router-link>
+          </div>
+          <ul class="text-list">
+            <li v-for="item in previewList" :key="item.id">
+              <router-link :to="{ name: 'detail', params: { id: item.id } }" class="item-link">
+                <span class="dot"></span>
+                <span v-if="item.category" class="project-type">{{ item.category }}</span>
+                <span class="title" :title="item.title">{{ item.title }}</span>
+              </router-link>
+              <span class="date">{{ formatDate(item.publishAt, 'MM-DD') }}</span>
+            </li>
+            <li v-if="!previewList.length" class="empty-tip">暂无相关数据</li>
+          </ul>
+        </section>
       </div>
     </div>
   </div>
@@ -32,28 +75,43 @@ import { computed, onMounted, ref, watch } from 'vue'
 import { listLatestPortalTenders, listPortalTenders } from '@/api/portal'
 import { authState } from '@/auth'
 import { formatDate } from '@/utils/format'
+import { getNewsList } from '@/data/news'
+import newsBanner from '@/assets/banner-greatwall.png'
+
+const NEWS_PREVIEW_LIMIT = 4
+
+const newsList = computed(() => getNewsList().slice(0, NEWS_PREVIEW_LIMIT))
+const activeNewsId = ref(newsList.value[0]?.id ?? null)
+
+const PREVIEW_LIMIT = 6
+const MORE_CATEGORY = '全部'
 
 const list = ref([])
 
-// 动态分类展示
-const categorySections = computed(() => {
-  const cats = [...new Set(list.value.map(t => t.category).filter(Boolean))]
-  
-  // 如果没有数据，提供默认分类占位
-  if (cats.length === 0) {
-    return [
-      { title: '工程', items: [] },
-      { title: '货物', items: [] },
-      { title: '服务', items: [] }
-    ]
-  }
+const displayList = computed(() =>
+  [...list.value].sort((a, b) => new Date(b.publishAt) - new Date(a.publishAt))
+)
 
-  // 按照分类分组，每个分类取前 6 条
-  return cats.map(c => ({
-    title: c,
-    items: list.value.filter(t => t.category === c).sort((a, b) => new Date(b.publishAt) - new Date(a.publishAt)).slice(0, 6)
-  }))
-})
+const previewList = computed(() => displayList.value.slice(0, PREVIEW_LIMIT))
+
+const moreLink = computed(() => ({
+  name: 'categoryTenders',
+  query: { category: MORE_CATEGORY }
+}))
+
+const activeNews = computed(() =>
+  newsList.value.find(item => item.id === activeNewsId.value) || newsList.value[0] || null
+)
+
+watch(newsList, items => {
+  if (!items.length) {
+    activeNewsId.value = null
+    return
+  }
+  if (!items.some(item => item.id === activeNewsId.value)) {
+    activeNewsId.value = items[0].id
+  }
+}, { immediate: true })
 
 async function loadList() {
   try {
@@ -75,12 +133,16 @@ watch(() => authState.token, loadList)
 
 <style scoped>
 .home-portal {
+  --section-color: #1a5fb4;
+  --section-color-light: #eff6ff;
+  --section-color-border: #bfdbfe;
+  --section-header-bg: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+
   padding: 1.5rem 0 3rem;
   max-width: 1200px;
   margin: 0 auto;
 }
 
-/* 主体布局 */
 .main-layout {
   display: block;
 }
@@ -92,12 +154,11 @@ watch(() => authState.token, loadList)
   gap: 1.5rem;
 }
 
-/* 栏目区块 */
 .portal-section {
   background: #fff;
-  border: 1px solid #e2e8f0;
-  border-radius: 8px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.02);
+  border: 1px solid #dce4ee;
+  border-radius: 6px;
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -106,14 +167,14 @@ watch(() => authState.token, loadList)
   justify-content: space-between;
   align-items: center;
   padding: 1rem 1.25rem;
-  border-bottom: 1px solid #e2e8f0;
-  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  border-bottom: 1px solid var(--section-color-border);
+  background: var(--section-header-bg);
 }
 
 .section-header h3 {
   margin: 0;
   font-size: 1.15rem;
-  color: #1a5fb4;
+  color: var(--section-color);
   font-weight: bold;
   position: relative;
   padding-left: 0.85rem;
@@ -127,7 +188,7 @@ watch(() => authState.token, loadList)
   transform: translateY(-50%);
   width: 4px;
   height: 18px;
-  background: #1a5fb4;
+  background: var(--section-color);
   border-radius: 2px;
 }
 
@@ -139,17 +200,158 @@ watch(() => authState.token, loadList)
 }
 
 .more:hover {
-  color: #1a5fb4;
+  color: var(--section-color);
 }
 
-/* 动态分类：单列，每类一行 */
-.category-grid {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1.5rem;
+/* 资讯栏 */
+.news-panel {
+  display: flex;
+  gap: 1.25rem;
+  padding: 1.25rem;
 }
 
-/* 文本列表 */
+.news-visual {
+  flex: 0 0 42%;
+  max-width: 42%;
+  position: relative;
+  display: block;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  min-height: 220px;
+  background: #e2e8f0;
+  text-decoration: none;
+}
+
+.news-visual--static {
+  flex: 0 0 42%;
+  max-width: 42%;
+}
+
+.news-image {
+  width: 100%;
+  height: 100%;
+  min-height: 220px;
+  object-fit: cover;
+  display: block;
+  transition: transform 0.35s ease;
+}
+
+.news-visual-mask {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 1rem 1rem 0.85rem;
+  background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.82) 100%);
+  color: #fff;
+}
+
+.news-visual-tag {
+  display: inline-block;
+  margin-bottom: 0.35rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.72rem;
+  background: rgba(26, 95, 180, 0.9);
+  border-radius: 4px;
+}
+
+.news-visual-title {
+  margin: 0 0 0.35rem;
+  font-size: 0.95rem;
+  line-height: 1.45;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-visual-summary {
+  margin: 0;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  opacity: 0.92;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.news-list-panel {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.news-list {
+  list-style: none;
+  margin: 0;
+  padding: 0.35rem 0;
+  flex: 1;
+  overflow: auto;
+}
+
+.news-list li {
+  border-bottom: 1px dashed #e2e8f0;
+}
+
+.news-list li:last-child {
+  border-bottom: none;
+}
+
+.news-list li.active {
+  background: var(--section-color-light);
+}
+
+.news-item-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  width: 100%;
+  padding: 0.65rem 1rem;
+  text-decoration: none;
+  color: #334155;
+  min-width: 0;
+}
+
+.news-item-link:hover .news-title,
+.news-list li.active .news-title {
+  color: var(--section-color);
+}
+
+.news-type {
+  flex-shrink: 0;
+  font-size: 0.72rem;
+  color: var(--section-color);
+  background: var(--section-color-light);
+  border: 1px solid var(--section-color-border);
+  border-radius: 4px;
+  padding: 0.05rem 0.35rem;
+}
+
+.news-title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.9rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.news-date {
+  flex-shrink: 0;
+  font-size: 0.8rem;
+  color: #94a3b8;
+  font-family: monospace;
+}
+
 .text-list {
   list-style: none;
   margin: 0;
@@ -179,7 +381,7 @@ watch(() => authState.token, loadList)
 }
 
 .item-link:hover .title {
-  color: #1a5fb4;
+  color: var(--section-color);
   text-decoration: underline;
 }
 
@@ -195,7 +397,20 @@ watch(() => authState.token, loadList)
 }
 
 .item-link:hover .dot {
-  background: #1a5fb4;
+  background: var(--section-color);
+}
+
+.project-type {
+  display: inline-block;
+  margin-right: 0.5rem;
+  padding: 0.1rem 0.45rem;
+  font-size: 0.75rem;
+  line-height: 1.4;
+  color: var(--section-color);
+  background: var(--section-color-light);
+  border: 1px solid var(--section-color-border);
+  border-radius: 4px;
+  flex-shrink: 0;
 }
 
 .title {
@@ -219,5 +434,17 @@ watch(() => authState.token, loadList)
   justify-content: center !important;
   padding: 2rem 0 !important;
 }
-</style>
 
+@media (max-width: 768px) {
+  .news-panel {
+    flex-direction: column;
+  }
+
+  .news-visual,
+  .news-visual--static {
+    flex: none;
+    max-width: 100%;
+    width: 100%;
+  }
+}
+</style>

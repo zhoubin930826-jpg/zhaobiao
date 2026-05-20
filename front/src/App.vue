@@ -22,33 +22,58 @@ const bare = computed(() => route.meta.bare === true)
 
 <style scoped>
 .app-root {
+  position: relative;
+  isolation: isolate;
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-  background: var(--bg-page);
+  background-color: var(--bg-page);
+}
+
+/* 门户主站：正式、克制的蓝灰渐变 + 淡网格纹理 */
+.app-root:not(.app-root-bare)::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -2;
+  pointer-events: none;
+  background:
+    linear-gradient(180deg, rgba(0, 78, 140, 0.07) 0%, rgba(0, 104, 183, 0.025) 140px, transparent 300px),
+    linear-gradient(165deg, var(--bg-page-top) 0%, var(--bg-page-mid) 45%, var(--bg-page-bottom) 100%);
+}
+
+.app-root:not(.app-root-bare)::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  opacity: 0.4;
+  background-image:
+    linear-gradient(rgba(0, 78, 140, 0.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0, 78, 140, 0.035) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: radial-gradient(ellipse 85% 75% at 50% 35%, #000 15%, transparent 72%);
+  -webkit-mask-image: radial-gradient(ellipse 85% 75% at 50% 35%, #000 15%, transparent 72%);
 }
 
 .app-root-bare {
   position: relative;
   min-height: 100vh;
   min-height: 100dvh;
-  background-color: #e4ebf4;
+  background-color: #e8edf3;
   background-image:
-    radial-gradient(ellipse 130% 95% at 50% -28%, rgba(26, 95, 180, 0.32) 0%, transparent 58%),
-    radial-gradient(ellipse 75% 58% at 108% 42%, rgba(59, 130, 246, 0.22) 0%, transparent 54%),
-    radial-gradient(ellipse 70% 52% at -12% 72%, rgba(13, 61, 122, 0.18) 0%, transparent 50%),
-    radial-gradient(ellipse 90% 45% at 50% 108%, rgba(148, 163, 184, 0.15) 0%, transparent 55%),
-    linear-gradient(168deg, #fafcfe 0%, #eef3fb 32%, #e2eaf5 62%, #eef2f8 100%);
+    linear-gradient(180deg, rgba(0, 78, 140, 0.06) 0%, transparent 220px),
+    linear-gradient(168deg, #fafbfc 0%, #f2f5f9 38%, #e8edf3 100%);
 }
 
 .app-root-bare::before {
   content: '';
   position: absolute;
   inset: 0;
-  background-image: radial-gradient(rgba(255, 255, 255, 0.5) 1.2px, transparent 1.2px);
-  background-size: 20px 20px;
-  opacity: 0.65;
-  mix-blend-mode: soft-light;
+  background-image: radial-gradient(rgba(0, 78, 140, 0.04) 1px, transparent 1px);
+  background-size: 22px 22px;
+  opacity: 0.5;
   pointer-events: none;
 }
 
@@ -56,7 +81,7 @@ const bare = computed(() => route.meta.bare === true)
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse 85% 75% at 50% 48%, transparent 42%, rgba(15, 23, 42, 0.045) 100%);
+  background: radial-gradient(ellipse 90% 80% at 50% 50%, transparent 50%, rgba(15, 23, 42, 0.03) 100%);
   pointer-events: none;
 }
 
@@ -69,8 +94,7 @@ const bare = computed(() => route.meta.bare === true)
 }
 
 .main:not(.main-bare) {
-  background: radial-gradient(ellipse 90% 55% at 50% -8%, rgba(26, 95, 180, 0.06) 0%, transparent 52%),
-    radial-gradient(ellipse 60% 40% at 100% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 45%);
+  background: transparent;
 }
 
 .main-bare {

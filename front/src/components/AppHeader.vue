@@ -27,7 +27,7 @@
       <div class="inner nav-inner">
         <nav class="nav">
           <router-link to="/list" active-class="active" class="menu-link">
-            <span>招标公告</span>
+            <span>首页</span>
           </router-link>
         </nav>
       </div>
@@ -40,8 +40,6 @@ import { onBeforeUnmount, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { authState, useAuth, logout } from '@/auth'
 import { getPortalProfile } from '@/api/portal'
-
-const logoUrl = `${import.meta.env.BASE_URL}logo.jpg`
 
 const route = useRoute()
 const router = useRouter()
@@ -111,8 +109,10 @@ function onLogout() {
 
 <style scoped>
 .header {
+  position: relative;
+  z-index: 2;
   background: #fff;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  box-shadow: 0 1px 0 #e2e8f0, 0 4px 16px rgba(15, 35, 65, 0.06);
 }
 
 .inner {
@@ -123,8 +123,8 @@ function onLogout() {
 
 /* 顶部条 */
 .top-bar {
-  background: #f5f5f5;
-  border-bottom: 1px solid #e5e5e5;
+  background: linear-gradient(180deg, #f8fafc 0%, #f3f6fa 100%);
+  border-bottom: 1px solid #e2e8f0;
   height: 36px;
   font-size: 0.85rem;
   color: #666;
@@ -232,48 +232,9 @@ function onLogout() {
   color: #1a5fb4;
 }
 
-/* 主头部 */
-.main-header {
-  height: 100px;
-}
-
-.main-inner {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  height: 100%;
-}
-
-.brand {
-  display: flex;
-  align-items: center;
-  gap: 1rem;
-  text-decoration: none;
-}
-
-.brand:hover {
-  text-decoration: none;
-}
-
-.logo {
-  border-radius: 4px;
-}
-
-.brand-text {
-  display: flex;
-  flex-direction: column;
-}
-
-.name {
-  font-size: 1.8rem;
-  font-weight: bold;
-  color: #1a5fb4;
-  letter-spacing: 2px;
-}
-
 /* 导航栏 */
 .nav-bar {
-  background: #1a5fb4;
+  background: linear-gradient(90deg, #004e8c 0%, var(--color-primary) 55%, #1a7fc4 100%);
   height: 46px;
 }
 

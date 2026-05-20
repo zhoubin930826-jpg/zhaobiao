@@ -37,6 +37,18 @@ const routes = [
     meta: { title: '公告详情' }
   },
   {
+    path: '/news/list',
+    name: 'newsList',
+    component: () => import('@/views/NewsListView.vue'),
+    meta: { title: '最新资讯' }
+  },
+  {
+    path: '/news/:id',
+    name: 'newsDetail',
+    component: () => import('@/views/NewsDetailView.vue'),
+    meta: { title: '资讯详情' }
+  },
+  {
     path: '/setting',
     name: 'setting',
     component: () => import('@/views/SettingView.vue'),
