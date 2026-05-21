@@ -95,8 +95,8 @@
           <a type="text" @click="handleView(row)">查看</a>
           <Divider type="vertical" />
           <a type="text" @click="handleEdit(row)">编辑</a>
-          <Divider type="vertical" />
-          <a type="text" @click="handleStatus(row)">状态</a>
+          <!-- <Divider type="vertical" />
+          <a type="text" @click="handleStatus(row)">状态</a> -->
           <Divider type="vertical" />
           <a type="text" style="color: #ed4014" @click="handleResetPassword(row)">重置密码</a>
         </div>
