@@ -327,20 +327,20 @@
                     {
                         title: '联系方式',
                         key: 'phone',
-                        minWidth: 120,
+                        minWidth: 140,
                         show: true
                     },
                     {
                         title: '邮箱',
                         key: 'email',
-                        minWidth: 180,
+                        minWidth: 200,
                         show: true
                     },
                     {
                         title: '最后登录',
                         key: 'lastLoginAt',
                         slot: 'lastLoginAt',
-                        minWidth: 160,
+                        minWidth: 180,
                         show: true
                     },
                     {
@@ -367,7 +367,7 @@
                         title: '操作',
                         key: 'action',
                         slot: 'action',
-                        minWidth: 220,
+                        minWidth: 250,
                         align: 'center',
                         fixed: 'right',
                         show: true
