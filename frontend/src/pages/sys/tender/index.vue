@@ -186,16 +186,55 @@
                 <p>点击或拖拽文件到此处上传</p>
               </div>
             </Upload>
-            <div class="ivu-mt-8" v-if="attachments.length">
+            <div class="ivu-mt-8 attachment-list" v-if="attachments.length">
               <div
                 v-for="item in attachments"
                 :key="item.fileId"
-                class="attachment-item"
+                class="attachment-card"
               >
-                <a @click.prevent="previewAttachment(item)">
-                  {{ item.fileName || (`文件#${item.fileId}`) }}
-                </a>
-                <Icon type="md-close" class="attachment-remove" @click="removeAttachment(item.fileId)" />
+                <span class="attachment-card__icon">
+                  <Icon :type="fileIconType(item)" />
+                </span>
+                <div class="attachment-card__body">
+                  <div
+                    class="attachment-card__name"
+                    :title="item.fileName || (`文件#${item.fileId}`)"
+                  >
+                    {{ item.fileName || (`文件#${item.fileId}`) }}
+                  </div>
+                  <div class="attachment-card__meta">
+                    <Tag v-if="formatContentTypeShort(item)" size="small" color="blue">{{
+                      formatContentTypeShort(item)
+                    }}</Tag>
+                    <span v-if="item.fileSize">{{ formatFileSize(item.fileSize) }}</span>
+                  </div>
+                </div>
+                <div class="attachment-card__actions">
+                  <Button
+                    type="default"
+                    ghost
+                    size="small"
+                    icon="ios-download-outline"
+                    @click="downloadAttachment(item)"
+                    >下载</Button
+                  >
+                  <Button
+                    type="primary"
+                    ghost
+                    size="small"
+                    icon="ios-eye-outline"
+                    @click="previewAttachment(item)"
+                    >查看</Button
+                  >
+                  <Button
+                    type="error"
+                    ghost
+                    size="small"
+                    icon="md-trash"
+                    @click="removeAttachment(item.fileId)"
+                    >移除</Button
+                  >
+                </div>
               </div>
             </div>
           </FormItem>
@@ -211,6 +250,7 @@
 
 <script>
     import IQuillEditor from '@/components/quill-editor';
+    import Setting from '@/setting';
     import {
         listTenders,
         getTenderDetail,
@@ -218,8 +258,10 @@
         updateTender,
         deleteTender,
         listBusinessTypeOptions,
-        uploadTenderFiles
+        uploadTenderFiles,
+        fetchAdminStoredFile
     } from '@api/system';
+    import { downloadFile } from '@/utils';
 
     export default {
         name: 'system-tender',
@@ -459,7 +501,7 @@
                     status: 'CLOSED',
                     attachmentFileIds: []
                 };
-                this.attachments = [];
+                this.clearAttachments();
                 this.$nextTick(() => this.$refs.tenderForm && this.$refs.tenderForm.resetFields());
             },
             handleEdit (row) {
@@ -483,8 +525,9 @@
                         status: res.status || 'PUBLISHED',
                         attachmentFileIds: Array.isArray(res.attachments) ? res.attachments.map(item => item.fileId) : []
                     };
+                    this.revokeAllAttachmentLocalUrls();
                     this.attachments = Array.isArray(res.attachments)
-                        ? res.attachments.map(item => ({ fileId: item.fileId, fileName: item.fileName, localUrl: '' }))
+                        ? res.attachments.map(item => this.normalizeAttachmentFromDetail(item))
                         : [];
                     this.$nextTick(() => this.$refs.tenderForm && this.$refs.tenderForm.clearValidate());
                 }).catch(err => {
@@ -579,38 +622,158 @@
                     })
                 });
             },
+            normalizeAttachmentFromUpload (item, file, localUrl) {
+                return {
+                    fileId: item.fileId,
+                    fileName: item.fileName,
+                    contentType: item.contentType || (file && file.type) || '',
+                    fileSize: item.fileSize || (file && file.size) || 0,
+                    thumbnailUrl: item.thumbnailUrl || '',
+                    thumbnailContentType: item.thumbnailContentType || '',
+                    thumbnailStatus: item.thumbnailStatus || '',
+                    localUrl: localUrl || ''
+                };
+            },
+            normalizeAttachmentFromDetail (item) {
+                return {
+                    fileId: item.fileId,
+                    fileName: item.fileName,
+                    contentType: item.contentType || '',
+                    fileSize: item.fileSize || 0,
+                    thumbnailUrl: item.thumbnailUrl || '',
+                    thumbnailContentType: item.thumbnailContentType || '',
+                    thumbnailStatus: item.thumbnailStatus || '',
+                    localUrl: ''
+                };
+            },
+            revokeAttachmentLocalUrl (item) {
+                if (item && item.localUrl) {
+                    window.URL.revokeObjectURL(item.localUrl);
+                }
+            },
+            revokeAllAttachmentLocalUrls () {
+                this.attachments.forEach(item => this.revokeAttachmentLocalUrl(item));
+            },
+            clearAttachments () {
+                this.revokeAllAttachmentLocalUrls();
+                this.attachments = [];
+                this.formData.attachmentFileIds = [];
+            },
+            withApiBase (path) {
+                if (!path) return '';
+                if (/^https?:\/\//i.test(path)) return path;
+                const raw = String(path);
+                if (raw.startsWith('/api/')) return raw;
+                const base = (Setting.apiBaseURL || '').replace(/\/+$/, '');
+                const cleaned = raw.replace(/^\/+/, '');
+                return `${base}/${cleaned}`;
+            },
+            resolvePreviewUrl (item) {
+                if (!item || item.fileId == null) return '';
+                if (item.thumbnailUrl) return this.withApiBase(item.thumbnailUrl);
+                return this.withApiBase(`/api/files/${item.fileId}/thumbnail`);
+            },
+            fileIconType (file) {
+                if (!file) return 'md-document';
+                const name = String(file.fileName || '').toLowerCase();
+                const type = String(file.contentType || '').toLowerCase();
+                if (type.indexOf('image/') === 0 || /\.(png|jpe?g|gif|webp|bmp)$/.test(name)) {
+                    return 'md-image';
+                }
+                if (type.indexOf('pdf') >= 0 || name.endsWith('.pdf')) return 'md-document';
+                if (type.indexOf('word') >= 0 || type.indexOf('msword') >= 0 || /\.docx?$/.test(name)) {
+                    return 'md-paper';
+                }
+                if (type.indexOf('excel') >= 0 || type.indexOf('spreadsheet') >= 0 || /\.xlsx?$/.test(name)) {
+                    return 'md-stats';
+                }
+                return 'md-document';
+            },
+            formatContentTypeShort (file) {
+                if (!file) return '';
+                const type = String(file.contentType || '').toLowerCase();
+                const name = String(file.fileName || '').toLowerCase();
+                if (type.indexOf('image/') === 0 || /\.(png|jpe?g|gif|webp|bmp)$/.test(name)) return '图片';
+                if (type.indexOf('pdf') >= 0 || name.endsWith('.pdf')) return 'PDF';
+                if (type.indexOf('word') >= 0 || type.indexOf('msword') >= 0 || /\.docx?$/.test(name)) return 'Word';
+                if (type.indexOf('excel') >= 0 || type.indexOf('spreadsheet') >= 0 || /\.xlsx?$/.test(name)) return 'Excel';
+                if (type) {
+                    const part = type.split('/').pop();
+                    return part ? part.toUpperCase() : '';
+                }
+                return '';
+            },
+            formatFileSize (size) {
+                if (!size || Number.isNaN(size)) return '';
+                if (size < 1024) return `${size} B`;
+                if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+                if (size < 1024 * 1024 * 1024) return `${(size / 1024 / 1024).toFixed(1)} MB`;
+                return `${(size / 1024 / 1024 / 1024).toFixed(1)} GB`;
+            },
             handleBeforeUpload (file) {
+                const localUrl = window.URL.createObjectURL(file);
                 uploadTenderFiles([file]).then(res => {
                     const files = Array.isArray(res) ? res : [];
+                    let added = false;
                     files.forEach(item => {
                         if (!item || item.fileId == null) return;
-                        if (this.formData.attachmentFileIds.includes(item.fileId)) return;
+                        if (this.formData.attachmentFileIds.includes(item.fileId)) {
+                            return;
+                        }
                         this.formData.attachmentFileIds.push(item.fileId);
-                        this.attachments.push({
-                            fileId: item.fileId,
-                            fileName: item.fileName,
-                            localUrl: window.URL.createObjectURL(file)
-                        });
+                        this.attachments.push(
+                            this.normalizeAttachmentFromUpload(item, file, localUrl)
+                        );
+                        added = true;
                     });
+                    if (!added) {
+                        this.revokeAttachmentLocalUrl({ localUrl });
+                    }
                     this.$Message.success('附件上传成功');
                 }).catch(err => {
+                    this.revokeAttachmentLocalUrl({ localUrl });
                     const msg = this.apiErrorMessage(err);
                     if (msg) this.$Message.error(msg);
                 });
                 return false;
             },
             previewAttachment (item) {
-                if (item && item.localUrl) {
+                if (!item || item.fileId == null) {
+                    this.$Message.info('暂无可预览的文件');
+                    return;
+                }
+                if (item.localUrl) {
                     window.open(item.localUrl, '_blank');
                     return;
                 }
-                this.$Message.info('当前仅支持预览本次新增上传的附件');
+                const previewUrl = this.resolvePreviewUrl(item);
+                if (previewUrl) {
+                    window.open(previewUrl, '_blank');
+                    return;
+                }
+                this.$Message.info('当前附件暂不支持预览');
+            },
+            async downloadAttachment (item) {
+                if (!item || item.fileId == null) {
+                    this.$Message.info('暂无可下载的文件');
+                    return;
+                }
+                const filename = item.fileName || `文件-${item.fileId}`;
+                try {
+                    if (item.localUrl) {
+                        downloadFile(item.localUrl, filename);
+                        return;
+                    }
+                    const result = await fetchAdminStoredFile(item.fileId, filename);
+                    downloadFile(result.objectUrl, result.filename);
+                    window.URL.revokeObjectURL(result.objectUrl);
+                } catch (err) {
+                    this.$Message.error(err.message || '下载失败');
+                }
             },
             removeAttachment (fileId) {
                 const removed = this.attachments.find(item => item.fileId === fileId);
-                if (removed && removed.localUrl) {
-                    window.URL.revokeObjectURL(removed.localUrl);
-                }
+                this.revokeAttachmentLocalUrl(removed);
                 this.formData.attachmentFileIds = this.formData.attachmentFileIds.filter(id => id !== fileId);
                 this.attachments = this.attachments.filter(item => item.fileId !== fileId);
             },
@@ -632,16 +795,64 @@
 </script>
 
 <style scoped>
-  .attachment-item {
+  .attachment-list {
     display: flex;
-    align-items: center;
+    flex-direction: column;
     gap: 8px;
-    margin-bottom: 6px;
   }
 
-  .attachment-remove {
+  .attachment-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: #f8fafc;
+    border: 1px solid #e8eaec;
+    border-radius: 6px;
+  }
+
+  .attachment-card__icon {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 6px;
+    background: #e8f4ff;
+    color: #2d8cf0;
+    font-size: 20px;
+  }
+
+  .attachment-card__body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .attachment-card__name {
+    font-size: 13px;
+    font-weight: 600;
+    color: #17233d;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .attachment-card__meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-top: 4px;
+    font-size: 12px;
     color: #808695;
-    cursor: pointer;
+  }
+
+  .attachment-card__actions {
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
   }
 
   /* 让弹窗表单区域滚动，而不是触发全屏滚动（iView Modal 内部 DOM 需要穿透样式） */

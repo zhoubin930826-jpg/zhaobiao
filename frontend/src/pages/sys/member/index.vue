@@ -92,7 +92,7 @@
               text="已过期"
               style="margin-right: 8px"
             />
-            <span>{{ formatDisplayDate(row.expiresAt) }}</span>
+            <span v-else>{{ formatDisplayDate(row.expiresAt) }}</span>
           </div>
         </template>
         <template slot="download" slot-scope="{ row }">
@@ -109,52 +109,124 @@
           <span>{{ formatDisplayDate(row.lastLoginAt) }}</span>
         </template>
         <template slot="businessLicense" slot-scope="{ row }">
-          <div v-if="row.businessLicenseFileId">
-            <a
-              @click.prevent="
+          <div
+            v-if="row.businessLicenseFileId"
+            class="table-file-chip"
+          >
+            <div class="table-file-chip__main">
+              <span class="table-file-chip__icon-wrap">
+                <Icon
+                  :type="fileIconType(normalizeProfileFileFromResponse(row, 'business'))"
+                />
+              </span>
+              <div class="table-file-chip__info">
+                <a
+                  class="table-file-chip__name"
+                  :title="row.businessLicenseFileName || ''"
+                  @click.prevent="
+                    previewProfileFile(
+                      normalizeProfileFileFromResponse(row, 'business'),
+                      '营业执照'
+                    )
+                  "
+                  >{{
+                    row.businessLicenseFileName ||
+                    `文件#${row.businessLicenseFileId}`
+                  }}</a
+                >
+                <span class="table-file-chip__meta">{{
+                  formatTableFileMeta(row, 'business')
+                }}</span>
+              </div>
+            </div>
+            <Button
+              type="text"
+              size="small"
+              icon="ios-download-outline"
+              class="table-file-chip__btn"
+              @click="
+                downloadProfileFile(
+                  normalizeProfileFileFromResponse(row, 'business'),
+                  '营业执照'
+                )
+              "
+              >下载</Button
+            >
+            <Button
+              type="text"
+              size="small"
+              icon="ios-eye-outline"
+              class="table-file-chip__btn"
+              @click="
                 previewProfileFile(
                   normalizeProfileFileFromResponse(row, 'business'),
                   '营业执照'
                 )
               "
-              >{{
-                row.businessLicenseFileName ||
-                `文件#${row.businessLicenseFileId}`
-              }}</a
+              >查看</Button
             >
-            <div class="table-file-meta">
-              <span>{{ formatFileSize(row.businessLicenseFileSize) }}</span>
-              <span v-if="row.businessLicenseContentType" class="ivu-ml-4">{{
-                row.businessLicenseContentType
-              }}</span>
-            </div>
           </div>
-          <span v-else>未上传</span>
+          <span v-else class="table-file-none">未上传</span>
         </template>
         <template slot="performanceFile" slot-scope="{ row }">
-          <div v-if="row.threeYearPerformanceFileId">
-            <a
-              @click.prevent="
+          <div
+            v-if="row.threeYearPerformanceFileId"
+            class="table-file-chip"
+          >
+            <div class="table-file-chip__main">
+              <span class="table-file-chip__icon-wrap">
+                <Icon
+                  :type="fileIconType(normalizeProfileFileFromResponse(row, 'performance'))"
+                />
+              </span>
+              <div class="table-file-chip__info">
+                <a
+                  class="table-file-chip__name"
+                  :title="row.threeYearPerformanceFileName || ''"
+                  @click.prevent="
+                    previewProfileFile(
+                      normalizeProfileFileFromResponse(row, 'performance'),
+                      '近三年业绩证明'
+                    )
+                  "
+                  >{{
+                    row.threeYearPerformanceFileName ||
+                    `文件#${row.threeYearPerformanceFileId}`
+                  }}</a
+                >
+                <span class="table-file-chip__meta">{{
+                  formatTableFileMeta(row, 'performance')
+                }}</span>
+              </div>
+            </div>
+            <Button
+              type="text"
+              size="small"
+              icon="ios-download-outline"
+              class="table-file-chip__btn"
+              @click="
+                downloadProfileFile(
+                  normalizeProfileFileFromResponse(row, 'performance'),
+                  '近三年业绩证明'
+                )
+              "
+              >下载</Button
+            >
+            <Button
+              type="text"
+              size="small"
+              icon="ios-eye-outline"
+              class="table-file-chip__btn"
+              @click="
                 previewProfileFile(
                   normalizeProfileFileFromResponse(row, 'performance'),
                   '近三年业绩证明'
                 )
               "
-              >{{
-                row.threeYearPerformanceFileName ||
-                `文件#${row.threeYearPerformanceFileId}`
-              }}</a
+              >查看</Button
             >
-            <div class="table-file-meta">
-              <span>{{ formatFileSize(row.threeYearPerformanceFileSize) }}</span>
-              <span
-                v-if="row.threeYearPerformanceContentType"
-                class="ivu-ml-4"
-                >{{ row.threeYearPerformanceContentType }}</span
-              >
-            </div>
           </div>
-          <span v-else>未上传</span>
+          <span v-else class="table-file-none">未上传</span>
         </template>
         <template slot="action" slot-scope="{ row }">
           <div @click.stop.prevent>
@@ -252,119 +324,221 @@
           </Row>
           <Row :gutter="16">
             <Col span="12">
-              <FormItem label="营业执照上传">
-                <Upload
-                  type="drag"
-                  :before-upload="handleBeforeUploadBusinessLicense"
-                  :show-upload-list="false"
-                >
-                  <div style="padding: 12px 0">
-                    <Icon
-                      type="ios-cloud-upload"
-                      size="20"
-                      style="color: #2d8cf0"
-                    ></Icon>
-                    <p>拖拽或点击上传营业执照（单个文件）</p>
-                  </div>
-                </Upload>
-              <div class="ivu-mt-8" v-if="businessLicense">
-                <div class="attachment-item">
-                  <div class="attachment-text">
-                    <div class="attachment-name">
-                      {{
-                        businessLicense.fileName ||
-                        `文件#${businessLicense.fileId}`
-                      }}
-                    </div>
-                    <div class="attachment-meta">
-                      <span>{{ formatFileSize(businessLicense.fileSize) }}</span>
-                      <span
-                        v-if="businessLicense.contentType"
-                        class="ivu-ml-8"
-                        >{{ businessLicense.contentType }}</span
+              <FormItem label="营业执照">
+                <div class="profile-file-field">
+                  <div v-if="businessLicense" class="profile-file-card">
+                    <span class="profile-file-card__icon">
+                      <Icon :type="fileIconType(businessLicense)" />
+                    </span>
+                    <div class="profile-file-card__body">
+                      <div
+                        class="profile-file-card__name"
+                        :title="
+                          businessLicense.fileName ||
+                          `文件#${businessLicense.fileId}`
+                        "
                       >
-                      <span
-                        v-if="businessLicense.thumbnailStatus"
-                        class="ivu-ml-8"
+                        {{
+                          businessLicense.fileName ||
+                          `文件#${businessLicense.fileId}`
+                        }}
+                      </div>
+                      <div class="profile-file-card__meta">
+                        <Tag size="small" color="blue">{{
+                          formatContentTypeShort(businessLicense)
+                        }}</Tag>
+                        <span>{{ formatFileSize(businessLicense.fileSize) }}</span>
+                        <span
+                          v-if="businessLicense.thumbnailStatus"
+                          class="profile-file-card__thumb"
+                        >
+                          {{
+                            formatThumbnailStatus(
+                              businessLicense.thumbnailStatus
+                            )
+                          }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="profile-file-card__actions">
+                      <Button
+                        type="default"
+                        ghost
+                        size="small"
+                        icon="ios-download-outline"
+                        @click="
+                          downloadProfileFile(businessLicense, '营业执照')
+                        "
+                        >下载</Button
                       >
-                        {{ formatThumbnailStatus(businessLicense.thumbnailStatus) }}
-                      </span>
+                      <Button
+                        type="primary"
+                        ghost
+                        size="small"
+                        icon="ios-eye-outline"
+                        @click="
+                          previewProfileFile(businessLicense, '营业执照')
+                        "
+                        >查看</Button
+                      >
+                      <Button
+                        type="error"
+                        ghost
+                        size="small"
+                        icon="md-trash"
+                        @click="removeBusinessLicense"
+                        >移除</Button
+                      >
                     </div>
                   </div>
-                  <div class="attachment-actions">
-                    <a
-                      class="ivu-mr-8"
-                      @click.prevent="
-                        previewProfileFile(businessLicense, '营业执照')
-                      "
-                      >查看</a
+                  <Upload
+                    v-if="!businessLicense"
+                    type="drag"
+                    class="profile-file-upload"
+                    :before-upload="handleBeforeUploadBusinessLicense"
+                    :show-upload-list="false"
+                    :disabled="businessLicenseUploading"
+                  >
+                    <div class="profile-file-drop">
+                      <Spin v-if="businessLicenseUploading" fix />
+                      <Icon
+                        type="ios-cloud-upload-outline"
+                        class="profile-file-drop__icon"
+                      />
+                      <p class="profile-file-drop__title">点击或拖拽上传</p>
+                      <p class="profile-file-drop__hint">
+                        单个文件，支持 PDF、图片、Word 等
+                      </p>
+                    </div>
+                  </Upload>
+                  <Upload
+                    v-else
+                    :before-upload="handleBeforeUploadBusinessLicense"
+                    :show-upload-list="false"
+                    :disabled="businessLicenseUploading"
+                  >
+                    <Button
+                      type="dashed"
+                      size="small"
+                      icon="ios-cloud-upload-outline"
+                      :loading="businessLicenseUploading"
+                      class="profile-file-replace-btn"
+                      >更换文件</Button
                     >
-                    <Divider type="vertical" />
-                    <a @click.prevent="removeBusinessLicense">移除</a>
-                  </div>
+                  </Upload>
                 </div>
-              </div>
-              <div class="ivu-mt-8" v-else>
-                <span class="ivu-text-muted">未上传营业执照</span>
-              </div>
               </FormItem>
             </Col>
             <Col span="12">
               <FormItem label="近三年业绩证明">
-                <Upload
-                  type="drag"
-                  :before-upload="handleBeforeUploadPerformance"
-                  :show-upload-list="false"
-                >
-                  <div style="padding: 12px 0">
-                    <Icon
-                      type="ios-cloud-upload"
-                      size="20"
-                      style="color: #2d8cf0"
-                    ></Icon>
-                    <p>点击或拖拽上传近三年业绩证明（单个文件）</p>
-                  </div>
-                </Upload>
-              <div class="ivu-mt-8" v-if="performanceFile">
-                <div class="attachment-item">
-                  <div class="attachment-text">
-                    <div class="attachment-name">
-                      {{
-                        performanceFile.fileName ||
-                        `文件#${performanceFile.fileId}`
-                      }}
-                    </div>
-                    <div class="attachment-meta">
-                      <span>{{ formatFileSize(performanceFile.fileSize) }}</span>
-                      <span
-                        v-if="performanceFile.contentType"
-                        class="ivu-ml-8"
-                        >{{ performanceFile.contentType }}</span
+                <div class="profile-file-field">
+                  <div v-if="performanceFile" class="profile-file-card">
+                    <span class="profile-file-card__icon">
+                      <Icon :type="fileIconType(performanceFile)" />
+                    </span>
+                    <div class="profile-file-card__body">
+                      <div
+                        class="profile-file-card__name"
+                        :title="
+                          performanceFile.fileName ||
+                          `文件#${performanceFile.fileId}`
+                        "
                       >
-                      <span
-                        v-if="performanceFile.thumbnailStatus"
-                        class="ivu-ml-8"
+                        {{
+                          performanceFile.fileName ||
+                          `文件#${performanceFile.fileId}`
+                        }}
+                      </div>
+                      <div class="profile-file-card__meta">
+                        <Tag size="small" color="blue">{{
+                          formatContentTypeShort(performanceFile)
+                        }}</Tag>
+                        <span>{{ formatFileSize(performanceFile.fileSize) }}</span>
+                        <span
+                          v-if="performanceFile.thumbnailStatus"
+                          class="profile-file-card__thumb"
+                        >
+                          {{
+                            formatThumbnailStatus(
+                              performanceFile.thumbnailStatus
+                            )
+                          }}
+                        </span>
+                      </div>
+                    </div>
+                    <div class="profile-file-card__actions">
+                      <Button
+                        type="default"
+                        ghost
+                        size="small"
+                        icon="ios-download-outline"
+                        @click="
+                          downloadProfileFile(
+                            performanceFile,
+                            '近三年业绩证明'
+                          )
+                        "
+                        >下载</Button
                       >
-                        {{ formatThumbnailStatus(performanceFile.thumbnailStatus) }}
-                      </span>
+                      <Button
+                        type="primary"
+                        ghost
+                        size="small"
+                        icon="ios-eye-outline"
+                        @click="
+                          previewProfileFile(
+                            performanceFile,
+                            '近三年业绩证明'
+                          )
+                        "
+                        >查看</Button
+                      >
+                      <Button
+                        type="error"
+                        ghost
+                        size="small"
+                        icon="md-trash"
+                        @click="removePerformanceFile"
+                        >移除</Button
+                      >
                     </div>
                   </div>
-                  <div class="attachment-actions">
-                    <a
-                      class="ivu-mr-8"
-                      @click.prevent="
-                        previewProfileFile(performanceFile, '近三年业绩证明')
-                      "
-                      >查看</a
+                  <Upload
+                    v-if="!performanceFile"
+                    type="drag"
+                    class="profile-file-upload"
+                    :before-upload="handleBeforeUploadPerformance"
+                    :show-upload-list="false"
+                    :disabled="performanceUploading"
+                  >
+                    <div class="profile-file-drop">
+                      <Spin v-if="performanceUploading" fix />
+                      <Icon
+                        type="ios-cloud-upload-outline"
+                        class="profile-file-drop__icon"
+                      />
+                      <p class="profile-file-drop__title">点击或拖拽上传</p>
+                      <p class="profile-file-drop__hint">
+                        单个文件，支持 PDF、图片、Word 等
+                      </p>
+                    </div>
+                  </Upload>
+                  <Upload
+                    v-else
+                    :before-upload="handleBeforeUploadPerformance"
+                    :show-upload-list="false"
+                    :disabled="performanceUploading"
+                  >
+                    <Button
+                      type="dashed"
+                      size="small"
+                      icon="ios-cloud-upload-outline"
+                      :loading="performanceUploading"
+                      class="profile-file-replace-btn"
+                      >更换文件</Button
                     >
-                    <Divider type="vertical" />
-                    <a @click.prevent="removePerformanceFile">移除</a>
-                  </div>
+                  </Upload>
                 </div>
-              </div>
-              <div class="ivu-mt-8" v-else>
-                <span class="ivu-text-muted">未上传业绩证明</span>
-              </div>
               </FormItem>
             </Col>
           </Row>
@@ -478,7 +652,9 @@ import {
   resetMemberPassword,
   deleteMember,
   uploadMemberProfileFiles,
+  fetchMemberProfileFile,
 } from "@api/system";
+import { downloadFile } from "@/utils";
 
 export default {
   name: "system-member",
@@ -520,6 +696,8 @@ export default {
       // local files for preview/remove
       performanceFile: null,
       businessLicense: null,
+      businessLicenseUploading: false,
+      performanceUploading: false,
       formRules: {
         username: [
           { required: true, message: "请输入用户名", trigger: "blur" },
@@ -657,13 +835,13 @@ export default {
           title: "营业执照",
           slot: "businessLicense",
           minWidth: 180,
-          show: true,
+          show: false,
         },
         {
           title: "业绩证明",
           slot: "performanceFile",
           minWidth: 180,
-          show: true,
+          show: false,
         },
         { title: "过期时间", slot: "expiresAt", minWidth: 190, show: true },
         { title: "下载权限", slot: "download", minWidth: 100, show: true },
@@ -733,8 +911,10 @@ export default {
       }
     },
     handleAdd() {
-      this.removeBusinessLicense();
-      this.removePerformanceFile();
+      this.removeBusinessLicense(false);
+      this.removePerformanceFile(false);
+      this.businessLicenseUploading = false;
+      this.performanceUploading = false;
       this.formData = {
         id: null,
         username: "",
@@ -902,12 +1082,14 @@ export default {
     },
     // 文件上传：营业执照（单个）
     handleBeforeUploadBusinessLicense(file) {
+      this.businessLicenseUploading = true;
       uploadMemberProfileFiles([file])
         .then((res) => {
           const files = Array.isArray(res) ? res : [];
           if (!files.length) return;
           const item = files[0];
           if (!item || item.fileId == null) return;
+          this.removeBusinessLicense(false);
           this.formData.businessLicenseFileId = item.fileId;
           this.businessLicense = {
             fileId: item.fileId,
@@ -924,17 +1106,22 @@ export default {
         .catch((err) => {
           const msg = this.apiErrorMessage(err);
           if (msg) this.$Message.error(msg);
+        })
+        .finally(() => {
+          this.businessLicenseUploading = false;
         });
       return false;
     },
     // 文件上传：近三年业绩证明（单个）
     handleBeforeUploadPerformance(file) {
+      this.performanceUploading = true;
       uploadMemberProfileFiles([file])
         .then((res) => {
           const files = Array.isArray(res) ? res : [];
           if (!files.length) return;
           const item = files[0];
           if (!item || item.fileId == null) return;
+          this.removePerformanceFile(false);
           this.formData.threeYearPerformanceFileId = item.fileId;
           this.performanceFile = {
             fileId: item.fileId,
@@ -951,22 +1138,127 @@ export default {
         .catch((err) => {
           const msg = this.apiErrorMessage(err);
           if (msg) this.$Message.error(msg);
+        })
+        .finally(() => {
+          this.performanceUploading = false;
         });
       return false;
     },
-    removeBusinessLicense() {
-      if (this.businessLicense && this.businessLicense.localUrl) {
-        window.URL.revokeObjectURL(this.businessLicense.localUrl);
+    removeBusinessLicense(confirmRemove) {
+      const doRemove = () => {
+        if (this.businessLicense && this.businessLicense.localUrl) {
+          window.URL.revokeObjectURL(this.businessLicense.localUrl);
+        }
+        this.formData.businessLicenseFileId = null;
+        this.businessLicense = null;
+      };
+      if (confirmRemove === false) {
+        doRemove();
+        return;
       }
-      this.formData.businessLicenseFileId = null;
-      this.businessLicense = null;
+      if (!this.businessLicense) return;
+      this.$Modal.confirm({
+        title: "移除营业执照",
+        content: "确定移除已上传的营业执照吗？保存前可重新上传。",
+        okText: "移除",
+        cancelText: "取消",
+        onOk: doRemove,
+      });
     },
-    removePerformanceFile() {
-      if (this.performanceFile && this.performanceFile.localUrl) {
-        window.URL.revokeObjectURL(this.performanceFile.localUrl);
+    removePerformanceFile(confirmRemove) {
+      const doRemove = () => {
+        if (this.performanceFile && this.performanceFile.localUrl) {
+          window.URL.revokeObjectURL(this.performanceFile.localUrl);
+        }
+        this.formData.threeYearPerformanceFileId = null;
+        this.performanceFile = null;
+      };
+      if (confirmRemove === false) {
+        doRemove();
+        return;
       }
-      this.formData.threeYearPerformanceFileId = null;
-      this.performanceFile = null;
+      if (!this.performanceFile) return;
+      this.$Modal.confirm({
+        title: "移除业绩证明",
+        content: "确定移除已上传的业绩证明文件吗？保存前可重新上传。",
+        okText: "移除",
+        cancelText: "取消",
+        onOk: doRemove,
+      });
+    },
+    fileIconType(file) {
+      if (!file) return "md-document";
+      const name = String(file.fileName || "").toLowerCase();
+      const type = String(file.contentType || "").toLowerCase();
+      if (
+        type.indexOf("image/") === 0 ||
+        /\.(png|jpe?g|gif|webp|bmp)$/.test(name)
+      ) {
+        return "md-image";
+      }
+      if (type.indexOf("pdf") >= 0 || name.endsWith(".pdf")) {
+        return "md-document";
+      }
+      if (
+        type.indexOf("word") >= 0 ||
+        type.indexOf("msword") >= 0 ||
+        /\.docx?$/.test(name)
+      ) {
+        return "md-paper";
+      }
+      if (
+        type.indexOf("excel") >= 0 ||
+        type.indexOf("spreadsheet") >= 0 ||
+        /\.xlsx?$/.test(name)
+      ) {
+        return "md-stats";
+      }
+      return "md-document";
+    },
+    formatContentTypeShort(file) {
+      if (!file) return "文件";
+      const type = String(file.contentType || "").toLowerCase();
+      const name = String(file.fileName || "").toLowerCase();
+      if (type.indexOf("image/") === 0 || /\.(png|jpe?g|gif|webp|bmp)$/.test(name)) {
+        return "图片";
+      }
+      if (type.indexOf("pdf") >= 0 || name.endsWith(".pdf")) return "PDF";
+      if (
+        type.indexOf("word") >= 0 ||
+        type.indexOf("msword") >= 0 ||
+        /\.docx?$/.test(name)
+      ) {
+        return "Word";
+      }
+      if (
+        type.indexOf("excel") >= 0 ||
+        type.indexOf("spreadsheet") >= 0 ||
+        /\.xlsx?$/.test(name)
+      ) {
+        return "Excel";
+      }
+      if (type) {
+        const part = type.split("/").pop();
+        return part ? part.toUpperCase() : "文件";
+      }
+      return "文件";
+    },
+    formatTableFileMeta(row, type) {
+      const prefix =
+        type === "performance" ? "threeYearPerformance" : "businessLicense";
+      const parts = [];
+      const size = row[`${prefix}FileSize`];
+      const contentType = row[`${prefix}ContentType`];
+      if (size) parts.push(this.formatFileSize(size));
+      if (contentType) {
+        parts.push(
+          this.formatContentTypeShort({
+            contentType,
+            fileName: row[`${prefix}FileName`],
+          })
+        );
+      }
+      return parts.length ? parts.join(" · ") : "—";
     },
     normalizeProfileFileFromResponse(source, type) {
       if (!source) return null;
@@ -1049,6 +1341,25 @@ export default {
       }
       window.open(previewUrl, "_blank");
     },
+    async downloadProfileFile(file, fallbackName) {
+      if (!file || !file.fileId) {
+        this.$Message.info("暂无可下载的文件");
+        return;
+      }
+      const filename =
+        file.fileName || fallbackName || `文件-${file.fileId}`;
+      try {
+        if (file.localUrl) {
+          downloadFile(file.localUrl, filename);
+          return;
+        }
+        const result = await fetchMemberProfileFile(file.fileId, filename);
+        downloadFile(result.objectUrl, result.filename);
+        window.URL.revokeObjectURL(result.objectUrl);
+      } catch (err) {
+        this.$Message.error(err.message || "下载失败");
+      }
+    },
     withApiBase(path) {
       if (!path) return "";
       if (/^https?:\/\//i.test(path)) return path;
@@ -1124,40 +1435,180 @@ export default {
 </script>
 
 <style scoped>
-.attachment-item {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 0;
-  border-bottom: 1px dashed #f0f0f0;
+.profile-file-field {
+  width: 100%;
 }
 
-.attachment-text {
+.profile-file-card {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  background: #f8fafc;
+  border: 1px solid #e8eaec;
+  border-radius: 6px;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.profile-file-card:hover {
+  border-color: #c5d8f0;
+  box-shadow: 0 1px 4px rgba(45, 140, 240, 0.08);
+}
+
+.profile-file-card__icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: 6px;
+  background: #e8f4ff;
+  color: #2d8cf0;
+  font-size: 22px;
+}
+
+.profile-file-card__body {
   flex: 1;
   min-width: 0;
 }
 
-.attachment-name {
+.profile-file-card__name {
   font-weight: 600;
+  font-size: 13px;
   color: #17233d;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
-.attachment-meta {
-  margin-top: 4px;
-  color: #999;
+.profile-file-card__meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
   font-size: 12px;
+  color: #808695;
 }
 
-.attachment-actions {
+.profile-file-card__thumb {
+  color: #999;
+}
+
+.profile-file-card__actions {
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.profile-file-upload >>> .ivu-upload-drag {
+  border-radius: 6px;
+  border-style: dashed;
+  background: #fafbfc;
+}
+
+.profile-file-upload >>> .ivu-upload-drag:hover {
+  border-color: #2d8cf0;
+  background: #f0faff;
+}
+
+.profile-file-drop {
+  position: relative;
+  padding: 16px 8px;
+  text-align: center;
+}
+
+.profile-file-drop__icon {
+  font-size: 28px;
+  color: #2d8cf0;
+  line-height: 1;
+}
+
+.profile-file-drop__title {
+  margin: 8px 0 4px;
+  font-size: 13px;
+  color: #515a6e;
+}
+
+.profile-file-drop__hint {
+  margin: 0;
+  font-size: 12px;
+  color: #c5c8ce;
+  line-height: 1.4;
+}
+
+.profile-file-replace-btn {
+  width: 100%;
+}
+
+.table-file-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  max-width: 100%;
+  padding: 4px 8px 4px 4px;
+  background: #f8fafc;
+  border: 1px solid #eef0f3;
+  border-radius: 4px;
+}
+
+.table-file-chip__main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.table-file-chip__icon-wrap {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: 6px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 4px;
+  background: #e8f4ff;
+  color: #2d8cf0;
+  font-size: 16px;
 }
 
-.table-file-meta {
-  color: #999;
+.table-file-chip__info {
+  min-width: 0;
+  line-height: 1.3;
+}
+
+.table-file-chip__name {
+  display: block;
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 13px;
+  color: #2d8cf0;
+}
+
+.table-file-chip__name:hover {
+  color: #57a3f3;
+}
+
+.table-file-chip__meta {
+  display: block;
   font-size: 12px;
-  margin-top: 2px;
+  color: #999;
+}
+
+.table-file-chip__btn {
+  flex-shrink: 0;
+  padding: 0 4px;
+  color: #2d8cf0;
+}
+
+.table-file-none {
+  color: #c5c8ce;
+  font-size: 12px;
 }
 </style>

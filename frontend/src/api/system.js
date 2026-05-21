@@ -252,12 +252,11 @@ function buildApiUrl (path) {
     return `${base}/${cleanedPath}`;
 }
 
-/** 管理员查看会员资料文件（返回 blob、objectUrl、文件名与类型） */
-export async function fetchMemberProfileFile (fileId, fallbackFilename = '文件') {
+async function fetchAdminFileBlob (fileId, downloadPath, fallbackFilename, actionLabel) {
     if (fileId === undefined || fileId === null) {
         throw new Error('文件不存在或已被移除');
     }
-    const url = new URL(buildApiUrl(`/admin/members/profile-files/${fileId}/download`), window.location.origin);
+    const url = new URL(buildApiUrl(downloadPath), window.location.origin);
     const headers = {};
     const token = util.cookies.get('token');
     if (token) headers.Authorization = `Bearer ${token}`;
@@ -268,10 +267,10 @@ export async function fetchMemberProfileFile (fileId, fallbackFilename = '文件
         const message =
             payload.message ||
             (response.status === 401
-                ? '请登录后查看文件'
+                ? '请登录后操作'
                 : response.status === 403
-                    ? '当前账号暂无查看权限'
-                    : `查看失败(${response.status})`);
+                    ? '当前账号暂无权限'
+                    : `${actionLabel}失败(${response.status})`);
         const error = new Error(message);
         error.code = payload.code || response.status;
         error.status = response.status;
@@ -286,6 +285,26 @@ export async function fetchMemberProfileFile (fileId, fallbackFilename = '文件
     const contentType = response.headers.get('content-type') || '';
     const objectUrl = window.URL.createObjectURL(blob);
     return { blob, objectUrl, filename, contentType };
+}
+
+/** 管理员下载/预览会员资料文件（返回 blob、objectUrl、文件名与类型） */
+export function fetchMemberProfileFile (fileId, fallbackFilename = '文件') {
+    return fetchAdminFileBlob(
+        fileId,
+        `/admin/members/profile-files/${fileId}/download`,
+        fallbackFilename,
+        '获取文件'
+    );
+}
+
+/** 管理员下载招标附件等已上传文件 */
+export function fetchAdminStoredFile (fileId, fallbackFilename = '文件') {
+    return fetchAdminFileBlob(
+        fileId,
+        `/admin/files/${fileId}/download`,
+        fallbackFilename,
+        '下载'
+    );
 }
 
 export function auditUser () {
