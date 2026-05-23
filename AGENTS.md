@@ -37,7 +37,11 @@ This file is the working guide for coding agents in this repository. Keep it cur
 - `front/`: public tender portal UI.
 - `sql/mysql8/data-initializer.sql`: manual MySQL seed script derived from `DataInitializer`.
 - `sql/mysql8/2026-05-07-portal-member-profile-fields.sql`: production schema migration for member first-login and profile-file fields.
-- `production-db-schema-change-list.md`: production schema/data migration notes.
+- `sql/mysql8/2026-05-23-complete-release.sql`: complete 2026-05-23 migration for test/prod release validation.
+- `sql/mysql8/2026-05-23-news-module.sql`: focused migration for the news module and tender publish permission.
+- `sql/mysql8/2026-05-23-news-publish-permission.sql`: incremental migration to add/fix `NEWS_PUBLISH_BUTTON` after the complete script has already been run.
+- `docs/production-db-schema-change-list.md`: production-facing schema/data migration notes.
+- `docs/frontend-change-guide-2026-05-23.md` and `.html`: frontend handoff for the 2026-05-23 backend contracts.
 - `DEPLOY_LINUX.md`: generic Linux backend deployment guide; verify against the real server before operating.
 - `nginx.conf.from-server`: captured Nginx config for `/ztbgl/` and `/ztbfb/`.
 - Historical analysis docs such as `backend-change-analysis.md`, `backend-dev-task-list.md`, and `backend-quality-report-2026-04-16-qa.md` are useful context, not current authority.
@@ -91,14 +95,16 @@ mvn clean package -DskipTests
 - Default database name: `zhaobiao_admin`.
 - Main config uses MySQL with `spring.jpa.hibernate.ddl-auto=update`.
 - Tests use Docker MySQL; `src/test/resources/schema.sql` resets the schema and Hibernate `ddl-auto=update` recreates tables. Ensure the local `zhaobiao-mysql` container is running before `mvn test`.
-- Production changes must not rely only on Hibernate auto-update. Update or add a migration note, usually in `production-db-schema-change-list.md`.
+- Production changes must not rely only on Hibernate auto-update. Update or add a MySQL migration under `sql/mysql8/`, and keep `docs/production-db-schema-change-list.md` plus relevant handoff/deployment docs current.
 - Key system tables: `sys_user`, `sys_role`, `sys_permission`, `sys_menu`, `sys_user_role`, `sys_role_permission`, `sys_role_menu`, `sys_operation_log`.
 - Historical table still present in code: `sys_user_audit_record`.
-- Key business tables: `portal_member_user`, `portal_member_business_type_rel`, `biz_business_type`, `biz_tender`, `biz_tender_attachment`, `biz_file_storage`.
+- Key business tables: `portal_member_user`, `portal_member_business_type_rel`, `biz_business_type`, `biz_tender`, `biz_tender_attachment`, `biz_file_storage`, `biz_news`.
 - `portal_member_user` stores member lifecycle fields such as `expires_at`, `first_login_at`, and optional profile-file references `business_license_file_id` and `three_year_performance_file_id`.
 - Anonymous portal visitors can call `/api/portal/tenders/latest` to see the latest 3 `PUBLISHED` tenders whose `publish_at` is not in the future, without business-type filtering.
 - Portal tender detail text at `/api/portal/tenders/{id}` is public for published/current tenders and is not business-type filtered.
-- Authenticated member portal list queries at `/api/portal/tenders` still return only published/current tenders whose business type is assigned to the member.
+- Authenticated member portal list queries at `/api/portal/tenders` still return only published/current tenders whose business type is assigned to the member; the optional `businessTypeName` filter is a name filter inside the member's allowed business types.
+- Portal news list/latest/detail endpoints only expose `PUBLISHED` news whose `publish_at` is not in the future.
+- For environments that have already run `sql/mysql8/2026-05-23-complete-release.sql`, use `sql/mysql8/2026-05-23-news-publish-permission.sql` as the follow-up incremental script for the final news publish permission split.
 
 ## Security And Business Rules
 
@@ -106,7 +112,7 @@ mvn clean package -DskipTests
 - Authentication uses `Authorization: Bearer <token>`.
 - JWT contains `userType`; admin and member users are loaded by different user-detail services.
 - Public auth endpoints: `/api/auth/**`, `/api/portal/auth/captcha`, `/api/portal/auth/login`, `/api/portal/auth/register`. Backend admin register remains disabled; portal register is enabled for self-registration.
-- Other public backend endpoints include `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`, `/`, `/index.html`, `/assets/**`, `/favicon.ico`, `/api/portal/tenders/latest`, and `/api/portal/tenders/{id}`.
+- Other public backend endpoints include `/swagger-ui.html`, `/swagger-ui/**`, `/v3/api-docs/**`, `/`, `/index.html`, `/assets/**`, `/favicon.ico`, `/api/files/{fileId}/thumbnail`, `/api/portal/tenders/latest`, `/api/portal/tenders/{id}`, and `/api/portal/news/**`.
 - Admin APIs are under `/api/admin/**` plus `/api/profile`.
 - Portal tender list `/api/portal/tenders` requires `MEMBER`; public visitors must use `/api/portal/tenders/latest`.
 - Portal tender attachment downloads require `MEMBER`; do not make `/api/portal/tenders/{id}/attachments/{attachmentId}/download` public.
@@ -118,6 +124,11 @@ mvn clean package -DskipTests
 - Admin accounts must not receive `NORMAL_USER`; member/ordinary accounts must not receive administrator-only powers unless the business rule changes explicitly.
 - Ordinary admins must not get the administrator-account management menu or APIs unless the business rule changes explicitly.
 - Legacy `/api/admin/users` is intentionally disabled and returns business code `410`; do not reopen it accidentally.
+- Admin tender create always persists `DRAFT`; tender publish/unpublish must use `PUT /api/admin/tenders/{id}/status` and requires `TENDER_PUBLISH_BUTTON`.
+- Published tenders cannot be edited, deleted, or have attachments added/removed. Only a user with `TENDER_PUBLISH_BUTTON` may set them back to `DRAFT`.
+- Admin news create always persists `DRAFT`; news publish/unpublish must use `PUT /api/admin/news/{id}/status` and requires `NEWS_PUBLISH_BUTTON`.
+- Published news cannot be edited or deleted. Only a user with `NEWS_PUBLISH_BUTTON` may set them back to `DRAFT`.
+- News categories are `PLATFORM_NOTICE`, `INDUSTRY_NEWS`, `SERVICE_GUIDE`, and `POLICY_REGULATION`; news statuses are `DRAFT` and `PUBLISHED`.
 - Portal attachment download requires a valid member token, tender published/current, attachment ownership, member business-type access to the tender, and member `canDownloadFile=true`.
 - Portal register uses `multipart/form-data` with member base fields, `captchaId`, `captchaCode`, `businessLicenseFile`, and `threeYearPerformanceFile`; successful self-registration creates `DISABLED`, no business types, no `expiresAt`, and `canDownloadFile=false`.
 - Portal login requires `captchaId` and `captchaCode`; `DISABLED` members cannot log in until an admin adds business types, sets an expiry time, and enables them.
@@ -141,6 +152,9 @@ mvn clean package -DskipTests
 - Uploads are content-hash deduplicated through `biz_file_storage.content_hash`; preserve this behavior when changing attachment code.
 - When DB save fails after writing a local/OSS object, current services try to clean up the newly written object.
 - Member profile files reuse `biz_file_storage`; file cleanup must count both tender attachment references and member profile-file references before deleting storage records or physical objects.
+- Public thumbnails are served by `GET /api/files/{fileId}/thumbnail`; frontends should render `thumbnailUrl` directly and fall back to a file icon when `thumbnailStatus` is `UNSUPPORTED` or `FAILED`.
+- Admin file download is `GET /api/admin/files/{fileId}/download`; admin file inline view is `GET /api/admin/files/{fileId}/view`. Both return the complete file stream and require admin permissions, while preview UI and PDF paging are frontend responsibilities.
+- Frontends must not construct local filesystem paths, OSS bucket URLs, or OSS object keys. Use file IDs and backend URLs so local, test, and production OSS storage remain interchangeable.
 
 ## Admin Frontend: `frontend/`
 
@@ -164,6 +178,9 @@ Notes:
 - Deploy target in scripts is `/usr/share/nginx/ztbgl`.
 - The admin UI uses `frontend/src/plugins/request/index.js`; it treats `code` 0 or 200 as success and redirects on 10001/401.
 - Current admin business pages live under `frontend/src/pages/sys`: administrator accounts, members, business types, tenders, menus, roles, and permissions.
+- The admin UI needs a news-management page for `SYSTEM_NEWS` and button-level checks for `NEWS_*_BUTTON` and `TENDER_PUBLISH_BUTTON`.
+- Admin file preview should happen inside the current page, such as a modal/drawer using `/api/admin/files/{fileId}/view`; do not open a new browser tab as the primary interaction.
+- Use `docs/frontend-change-guide-2026-05-23.md` as the current handoff for news, tender publish status, file preview/download, member profile files, and portal news/tender changes.
 - `frontend/.env` is tracked and currently only sets a public page title. Do not put secrets there.
 
 ## Public Portal: `front/`
@@ -185,11 +202,13 @@ Notes:
 - Production base is `/ztbfb/`.
 - Production output is `front/dist`.
 - Deploy target in scripts is `/usr/share/nginx/ztbfb`.
-- Routes are `/` for login, `/list` for tender list, and `/detail/:id` for detail.
+- Routes currently include `/` for login, `/list` for tender list, and `/detail/:id` for tender detail; add public news list/detail routes when implementing the 2026-05-23 handoff.
 - Portal auth is stored in localStorage key `zb_portal_auth`.
 - The `/list` page should call `/api/portal/tenders/latest` when no member token is present, and refresh to `/api/portal/tenders` after successful member login.
+- Authenticated portal tender list filters by `businessTypeName` when the user selects a business-type category.
 - Portal detail can be opened without login, but `canDownload=false` for guests.
 - Portal downloads call `/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download` with the member token.
+- Portal news calls `/api/portal/news`, `/api/portal/news/latest`, and `/api/portal/news/{newsId}` without a member token.
 
 ## Deployment Notes
 
@@ -239,6 +258,7 @@ curl -I http://127.0.0.1:8080/v3/api-docs
 - Backend behavior or schema changes: run `mvn test`.
 - Security/permission changes: add or update integration tests under `src/test/java/com/zhaobiao/admin`.
 - File upload/download changes: include duplicate-upload and download-permission coverage.
+- Tender/news publish-permission changes: cover roles that can create/edit but cannot publish/unpublish, plus published records rejecting edit/delete/attachment mutation.
 - Admin frontend changes: run `cd frontend && npm run build:prod`; run lint when touching shared UI code.
 - Public portal changes: run `cd front && npm run build`.
 - Deployment or production DB work: verify against the real running service/database, not only local files.

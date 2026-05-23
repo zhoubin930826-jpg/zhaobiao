@@ -26,8 +26,9 @@
 - 超级管理员管理后台管理员账号：`/api/admin/admin-users`，仅 `SUPER_ADMIN` 可用。
 - 会员管理：后台创建会员、修改资料、启停账号、重置密码、控制附件下载权限、分配可访问业务类型。
 - 业务类型管理：工程、货物、服务是默认种子数据，后续可在后台维护。
-- 招标管理：分页查询、新增、编辑、删除招标，绑定和删除附件。
-- 文件上传：`/api/admin/files/upload`，支持本地和 OSS 存储，并按文件内容哈希去重。
+- 招标管理：分页查询、新增、编辑、删除招标，绑定和删除附件；新增招标默认 `DRAFT`，发布和改为未发布必须走 `PUT /api/admin/tenders/{tenderId}/status`，并要求 `TENDER_PUBLISH_BUTTON`。
+- 资讯管理：`/api/admin/news`，支持分页、详情、新增、编辑、删除、发布、改为未发布和封面上传；新增资讯默认 `DRAFT`，发布和改为未发布要求 `NEWS_PUBLISH_BUTTON`。
+- 文件上传、下载和查看：`/api/admin/files/upload`、`/api/admin/files/{fileId}/download`、`/api/admin/files/{fileId}/view`，支持本地和 OSS 存储，并按文件内容哈希去重。
 - 角色、权限、菜单和操作日志管理。
 - 个人中心维护。
 
@@ -37,9 +38,10 @@
 - 会员登录：`/api/portal/auth/login`，需要先获取并提交登录验证码。
 - 门户验证码：`/api/portal/auth/captcha?scene=register|login&captchaId=<uuid>`，5 分钟过期、一次性使用，点击验证码图片应刷新。
 - 会员信息：`/api/portal/auth/me`。
-- 招标公告列表和详情：`/api/portal/tenders/**`，需要会员登录。
-- 附件下载：还需要会员账号 `canDownloadFile=true`。
-- 门户只展示已发布、发布时间不晚于当前时间、并且业务类型在会员授权范围内的招标。
+- 招标公告：游客可调用 `/api/portal/tenders/latest` 查看最新公开招标，也可打开 `/api/portal/tenders/{tenderId}` 查看已发布且发布时间已到的详情；会员列表 `/api/portal/tenders` 需要登录，并按会员业务类型过滤。
+- 招标分类过滤：会员列表支持 `businessTypeName` 查询参数，传业务类型名称。
+- 附件下载：`/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download` 需要会员登录、业务类型匹配，并且会员账号 `canDownloadFile=true`。
+- 资讯公告：`/api/portal/news`、`/api/portal/news/latest`、`/api/portal/news/{newsId}` 对游客开放，只返回已发布且发布时间不晚于当前时间的资讯。
 
 ## 权限和账号规则
 
@@ -54,6 +56,9 @@
 - 旧接口 `/api/admin/users` 已停用，返回业务码 `410`，不要再用于提权或用户管理。
 - 初始 `admin` 用户不能被禁用，也必须保留 `SUPER_ADMIN`。
 - 普通管理员不能管理其他管理员账号；管理员账号也不能分配 `NORMAL_USER`。
+- 发布权限独立于新增/编辑权限：只有 `TENDER_PUBLISH_BUTTON` 才能发布/改为未发布招标，只有 `NEWS_PUBLISH_BUTTON` 才能发布/改为未发布资讯。
+- 已发布招标不能编辑、删除、增删附件；必须先由有发布权限的管理员改为未发布。
+- 已发布资讯不能编辑、删除；必须先由有发布权限的管理员改为未发布。
 
 ## 后端运行
 
@@ -105,6 +110,12 @@ mysql -h 127.0.0.1 -P 3306 -u root -p zhaobiao_admin < sql/mysql8/data-initializ
 ```
 
 这个脚本包含默认 `admin` 账号的初始化哈希。生产环境执行后应立即重置初始管理员密码。
+
+2026-05-23 相关生产/测试库脚本：
+
+- `sql/mysql8/2026-05-23-complete-release.sql`：完整发布脚本，包含会员文件字段、软删除索引、缩略图字段、资讯表、菜单/按钮权限等。
+- `sql/mysql8/2026-05-23-news-module.sql`：资讯模块和招标发布权限的专项脚本，适用于只补这部分能力的环境。
+- `sql/mysql8/2026-05-23-news-publish-permission.sql`：在已经执行过完整脚本后，用来补齐或修正 `NEWS_PUBLISH_BUTTON` 的增量脚本。
 
 ### 4. 打包
 
@@ -205,6 +216,9 @@ npm run build
 - 门户会员自助注册、验证码校验、未启用账号拦截。
 - 会员业务类型隔离、附件下载权限控制。
 - 重复上传按内容哈希复用文件记录。
+- 招标新增默认未发布、发布权限独立控制、已发布招标禁止编辑/删除/维护附件。
+- 资讯新增默认草稿、发布权限独立控制、门户只展示已发布且发布时间已到的资讯。
+- 后台文件下载和查看接口权限边界。
 - `prod` 数据库账号安全校验。
 
 ## 部署要点
@@ -235,7 +249,10 @@ curl -I http://127.0.0.1:8080/v3/api-docs
 - `frontend/`：管理后台。
 - `front/`：公开门户。
 - `sql/mysql8/data-initializer.sql`：MySQL 初始化数据脚本。
-- `production-db-schema-change-list.md`：生产库结构/数据变更记录。
+- `sql/mysql8/2026-05-23-*.sql`：2026-05-23 发布相关 MySQL 迁移脚本。
+- `docs/production-db-schema-change-list.md`：生产库结构/数据变更记录。
+- `docs/frontend-change-guide-2026-05-23.md`：2026-05-23 后端改动对应的前端开发交接指南。
+- `docs/frontend-change-guide-2026-05-23.html`：同一份前端交接指南的 HTML 版本。
 - `AGENTS.md`：给编码代理使用的仓库操作指南。
 
 ## 注意事项
@@ -243,5 +260,5 @@ curl -I http://127.0.0.1:8080/v3/api-docs
 - 不要提交或粘贴真实密码、JWT secret、数据库凭据、OSS key。
 - `server-config.md` 被 Git 忽略，可能包含真实服务器信息，只在明确做生产/服务器操作时读取。
 - `target/`、`.uploads/`、`.test-uploads/`、`frontend/dist/`、`front/dist/`、`node_modules/` 都是生成或本地目录，不应提交。
-- 改数据库结构或生产初始化数据时，同步更新 `production-db-schema-change-list.md`。
+- 改数据库结构或生产初始化数据时，同步更新 `sql/mysql8/` 下的迁移脚本、`docs/production-db-schema-change-list.md` 和相关交接文档。
 - 改权限、菜单、角色或管理能力时，同时改后端鉴权、种子数据、管理后台菜单/按钮和测试。
