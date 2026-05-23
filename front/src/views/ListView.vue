@@ -3,7 +3,7 @@
     <div class="main-layout">
       <div class="content-left">
         <!-- 资讯看板 -->
-        <section class="portal-section">
+        <section class="portal-section news-section">
           <div class="section-header">
             <h3>最新资讯</h3>
             <router-link :to="{ name: 'newsList' }" class="more">更多 >></router-link>
@@ -224,35 +224,51 @@ watch(() => authState.token, loadList)
   color: var(--section-color);
 }
 
-/* 资讯栏 */
+/* 资讯栏（紧凑布局） */
+.news-section .section-header {
+  padding: 0.65rem 1rem;
+}
+
+.news-section .section-header h3 {
+  font-size: 1rem;
+}
+
+.news-section .section-header h3::before {
+  height: 14px;
+}
+
 .news-panel {
   display: flex;
-  gap: 1.25rem;
-  padding: 1.25rem;
+  gap: 0.75rem;
+  padding: 0.75rem 0.9rem;
 }
 
 .news-visual {
-  flex: 0 0 42%;
-  max-width: 42%;
+  flex: 0 0 30%;
+  max-width: 30%;
   position: relative;
   display: block;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
   border: 1px solid #e2e8f0;
-  min-height: 220px;
+  min-height: 140px;
+  max-height: 160px;
   background: #e2e8f0;
   text-decoration: none;
 }
 
 .news-visual--static {
-  flex: 0 0 42%;
-  max-width: 42%;
+  flex: 0 0 30%;
+  max-width: 30%;
+  min-height: 140px;
+  max-height: 160px;
 }
 
 .news-image {
   width: 100%;
   height: 100%;
-  min-height: 220px;
+  min-height: 140px;
+  max-height: 160px;
   object-fit: cover;
   display: block;
   transition: transform 0.35s ease;
@@ -263,24 +279,24 @@ watch(() => authState.token, loadList)
   left: 0;
   right: 0;
   bottom: 0;
-  padding: 1rem 1rem 0.85rem;
+  padding: 0.55rem 0.65rem 0.5rem;
   background: linear-gradient(180deg, transparent 0%, rgba(15, 23, 42, 0.82) 100%);
   color: #fff;
 }
 
 .news-visual-tag {
   display: inline-block;
-  margin-bottom: 0.35rem;
-  padding: 0.1rem 0.45rem;
-  font-size: 0.72rem;
+  margin-bottom: 0.2rem;
+  padding: 0.05rem 0.35rem;
+  font-size: 0.65rem;
   background: rgba(26, 95, 180, 0.9);
-  border-radius: 4px;
+  border-radius: 3px;
 }
 
 .news-visual-title {
-  margin: 0 0 0.35rem;
-  font-size: 0.95rem;
-  line-height: 1.45;
+  margin: 0 0 0.2rem;
+  font-size: 0.8rem;
+  line-height: 1.35;
   display: -webkit-box;
   -webkit-line-clamp: 2;
   line-clamp: 2;
@@ -290,12 +306,12 @@ watch(() => authState.token, loadList)
 
 .news-visual-summary {
   margin: 0;
-  font-size: 0.82rem;
-  line-height: 1.5;
+  font-size: 0.72rem;
+  line-height: 1.4;
   opacity: 0.92;
   display: -webkit-box;
-  -webkit-line-clamp: 2;
-  line-clamp: 2;
+  -webkit-line-clamp: 1;
+  line-clamp: 1;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
@@ -307,14 +323,14 @@ watch(() => authState.token, loadList)
   flex-direction: column;
   background: #fff;
   border: 1px solid #e2e8f0;
-  border-radius: 8px;
+  border-radius: 6px;
   overflow: hidden;
 }
 
 .news-list {
   list-style: none;
   margin: 0;
-  padding: 0.35rem 0;
+  padding: 0.2rem 0;
   flex: 1;
   overflow: auto;
 }
@@ -334,9 +350,9 @@ watch(() => authState.token, loadList)
 .news-item-link {
   display: flex;
   align-items: center;
-  gap: 0.5rem;
+  gap: 0.4rem;
   width: 100%;
-  padding: 0.65rem 1rem;
+  padding: 0.45rem 0.75rem;
   text-decoration: none;
   color: #334155;
   min-width: 0;
@@ -360,7 +376,7 @@ watch(() => authState.token, loadList)
 .news-title {
   flex: 1;
   min-width: 0;
-  font-size: 0.9rem;
+  font-size: 0.82rem;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -368,7 +384,7 @@ watch(() => authState.token, loadList)
 
 .news-date {
   flex-shrink: 0;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   color: #94a3b8;
   font-family: monospace;
 }
@@ -466,6 +482,13 @@ watch(() => authState.token, loadList)
     flex: none;
     max-width: 100%;
     width: 100%;
+    min-height: 120px;
+    max-height: 140px;
+  }
+
+  .news-image {
+    min-height: 120px;
+    max-height: 140px;
   }
 }
 </style>
