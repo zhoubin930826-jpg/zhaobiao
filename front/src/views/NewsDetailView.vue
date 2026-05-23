@@ -1,6 +1,10 @@
 <template>
   <div class="news-detail-page">
-    <p v-if="!item" class="not-found">
+    <p v-if="loading" class="not-found">正在加载资讯详情…</p>
+    <p v-else-if="error" class="not-found">
+      {{ error }}，<router-link :to="{ name: 'list' }">返回首页</router-link>
+    </p>
+    <p v-else-if="!item" class="not-found">
       未找到该资讯，<router-link :to="{ name: 'list' }">返回首页</router-link>
     </p>
 
@@ -17,27 +21,28 @@
         <div class="article-body">
           <div class="meta">
             <span class="tag">{{ item.category }}</span>
-            <span class="date">{{ item.publishDate }}</span>
+            <span class="date">{{ formatDate(item.publishAt) }}</span>
           </div>
           <h1>{{ item.title }}</h1>
           <dl class="facts">
             <div>
               <dt>发布日期</dt>
-              <dd>{{ item.publishDate }}</dd>
+              <dd>{{ formatDate(item.publishAt) }}</dd>
             </div>
             <div>
               <dt>信息来源</dt>
               <dd>{{ item.source }}</dd>
             </div>
           </dl>
-          <p class="lead">{{ item.summary }}</p>
+          <p v-if="item.summary" class="lead">{{ item.summary }}</p>
           <section class="block content-block">
             <h2>正文</h2>
             <div class="body">
-              <figure class="body-figure">
+              <figure v-if="coverImage" class="body-figure">
                 <img :src="coverImage" :alt="item.title" class="body-image" />
               </figure>
-              <p v-for="(para, index) in item.content" :key="index">{{ para }}</p>
+              <div v-if="item.content" class="body-html" v-html="item.content"></div>
+              <p v-else class="body-empty">暂无正文内容</p>
             </div>
           </section>
           <router-link :to="{ name: 'list' }" class="back">← 返回首页</router-link>
@@ -48,20 +53,39 @@
 </template>
 
 <script setup>
-import { computed } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute } from 'vue-router'
-import { getNewsById } from '@/data/news'
+import { getPortalNewsDetail } from '@/api/portal'
+import { formatDate } from '@/utils/format'
 import newsBanner from '@/assets/banner-greatwall.png'
 
 const route = useRoute()
 
-const item = computed(() => getNewsById(route.params.id))
+const loading = ref(false)
+const error = ref('')
+const item = ref(null)
 
 const coverImage = computed(() => {
   const news = item.value
-  if (!news) return newsBanner
-  return news.coverImage || newsBanner
+  if (!news) return ''
+  return news.coverUrl || newsBanner
 })
+
+async function loadDetail() {
+  loading.value = true
+  error.value = ''
+  item.value = null
+  try {
+    item.value = await getPortalNewsDetail(route.params.id)
+  } catch (e) {
+    error.value = (e && e.message) || '加载详情失败'
+  } finally {
+    loading.value = false
+  }
+}
+
+onMounted(loadDetail)
+watch(() => route.params.id, loadDetail)
 </script>
 
 <style scoped>
@@ -129,6 +153,28 @@ const coverImage = computed(() => {
   max-height: 320px;
   object-fit: cover;
   vertical-align: middle;
+}
+
+.body-html :deep(p) {
+  margin: 0 0 1rem;
+  font-size: 0.95rem;
+  line-height: 1.85;
+  color: #334155;
+}
+
+.body-html :deep(p:last-child) {
+  margin-bottom: 0;
+}
+
+.body-html :deep(img) {
+  max-width: 100%;
+  height: auto;
+}
+
+.body-empty {
+  margin: 0;
+  font-size: 0.95rem;
+  color: #64748b;
 }
 
 .meta {
@@ -203,18 +249,6 @@ const coverImage = computed(() => {
   margin: 0 0 0.85rem;
   font-size: 1.05rem;
   color: #1a5fb4;
-}
-
-.content-block .body p {
-  margin: 0 0 1rem;
-  font-size: 0.95rem;
-  line-height: 1.85;
-  color: #334155;
-  text-indent: 2em;
-}
-
-.content-block .body p:last-child {
-  margin-bottom: 0;
 }
 
 .back {

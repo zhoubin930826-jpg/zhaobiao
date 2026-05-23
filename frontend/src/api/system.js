@@ -208,6 +208,77 @@ export function deleteTender (tenderId) {
     });
 }
 
+export function updateTenderStatus (tenderId, data) {
+    return request({
+        url: `/admin/tenders/${tenderId}/status`,
+        method: 'put',
+        data
+    });
+}
+
+export function addTenderAttachments (tenderId, fileIds) {
+    return request({
+        url: `/admin/tenders/${tenderId}/attachments`,
+        method: 'post',
+        data: { fileIds }
+    });
+}
+
+export function removeTenderAttachment (tenderId, attachmentId) {
+    return request({
+        url: `/admin/tenders/${tenderId}/attachments/${attachmentId}`,
+        method: 'delete'
+    });
+}
+
+/* ========== 资讯管理 ========== */
+
+export function listNews (params) {
+    return request({
+        url: '/admin/news',
+        method: 'get',
+        params
+    });
+}
+
+export function getNewsDetail (newsId) {
+    return request({
+        url: `/admin/news/${newsId}`,
+        method: 'get'
+    });
+}
+
+export function createNews (data) {
+    return request({
+        url: '/admin/news',
+        method: 'post',
+        data
+    });
+}
+
+export function updateNews (newsId, data) {
+    return request({
+        url: `/admin/news/${newsId}`,
+        method: 'put',
+        data
+    });
+}
+
+export function updateNewsStatus (newsId, data) {
+    return request({
+        url: `/admin/news/${newsId}/status`,
+        method: 'put',
+        data
+    });
+}
+
+export function deleteNews (newsId) {
+    return request({
+        url: `/admin/news/${newsId}`,
+        method: 'delete'
+    });
+}
+
 export function uploadTenderFiles (files) {
     const formData = new FormData();
     files.forEach(file => formData.append('files', file));
@@ -234,6 +305,11 @@ export function uploadMemberProfileFiles (files) {
             'Content-Type': 'multipart/form-data'
         }
     });
+}
+
+/** 后台通用文件上传（招标附件、资讯封面等） */
+export function uploadAdminFiles (files) {
+    return uploadTenderFiles(files);
 }
 
 function extractFilename (contentDisposition) {
@@ -287,13 +363,13 @@ async function fetchAdminFileBlob (fileId, downloadPath, fallbackFilename, actio
     return { blob, objectUrl, filename, contentType };
 }
 
-/** 管理员下载/预览会员资料文件（返回 blob、objectUrl、文件名与类型） */
+/** 会员资料文件下载（与招标附件共用 biz_file_storage，走统一文件下载接口） */
 export function fetchMemberProfileFile (fileId, fallbackFilename = '文件') {
     return fetchAdminFileBlob(
         fileId,
-        `/admin/members/profile-files/${fileId}/download`,
+        `/admin/files/${fileId}/download`,
         fallbackFilename,
-        '获取文件'
+        '下载'
     );
 }
 
@@ -304,6 +380,16 @@ export function fetchAdminStoredFile (fileId, fallbackFilename = '文件') {
         `/admin/files/${fileId}/download`,
         fallbackFilename,
         '下载'
+    );
+}
+
+/** 管理员页内预览已上传文件（inline） */
+export function fetchAdminFileView (fileId, fallbackFilename = '文件') {
+    return fetchAdminFileBlob(
+        fileId,
+        `/admin/files/${fileId}/view`,
+        fallbackFilename,
+        '预览'
     );
 }
 

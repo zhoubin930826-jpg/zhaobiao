@@ -26,8 +26,8 @@
 - 超级管理员管理后台管理员账号：`/api/admin/admin-users`，仅 `SUPER_ADMIN` 可用。
 - 会员管理：后台创建会员、修改资料、启停账号、重置密码、控制附件下载权限、分配可访问业务类型。
 - 业务类型管理：工程、货物、服务是默认种子数据，后续可在后台维护。
-- 招标管理：分页查询、新增、编辑、删除招标，绑定和删除附件；新增招标默认 `DRAFT`，发布和改为未发布必须走 `PUT /api/admin/tenders/{tenderId}/status`，并要求 `TENDER_PUBLISH_BUTTON`。
-- 资讯管理：`/api/admin/news`，支持分页、详情、新增、编辑、删除、发布、改为未发布和封面上传；新增资讯默认 `DRAFT`，发布和改为未发布要求 `NEWS_PUBLISH_BUTTON`。
+- 招标管理：分页查询、新增、编辑、删除招标，绑定和删除附件；新增招标默认 `DRAFT`，发布和取消发布必须走 `PUT /api/admin/tenders/{tenderId}/status`，并要求 `TENDER_PUBLISH_BUTTON`。
+- 资讯管理：`/api/admin/news`，支持分页、详情、新增、编辑、删除、发布、取消发布和封面上传；新增资讯默认 `DRAFT`，发布和取消发布要求 `NEWS_PUBLISH_BUTTON`。
 - 文件上传、下载和查看：`/api/admin/files/upload`、`/api/admin/files/{fileId}/download`、`/api/admin/files/{fileId}/view`，支持本地和 OSS 存储，并按文件内容哈希去重。
 - 角色、权限、菜单和操作日志管理。
 - 个人中心维护。
@@ -56,9 +56,9 @@
 - 旧接口 `/api/admin/users` 已停用，返回业务码 `410`，不要再用于提权或用户管理。
 - 初始 `admin` 用户不能被禁用，也必须保留 `SUPER_ADMIN`。
 - 普通管理员不能管理其他管理员账号；管理员账号也不能分配 `NORMAL_USER`。
-- 发布权限独立于新增/编辑权限：只有 `TENDER_PUBLISH_BUTTON` 才能发布/改为未发布招标，只有 `NEWS_PUBLISH_BUTTON` 才能发布/改为未发布资讯。
-- 已发布招标不能编辑、删除、增删附件；必须先由有发布权限的管理员改为未发布。
-- 已发布资讯不能编辑、删除；必须先由有发布权限的管理员改为未发布。
+- 发布权限独立于新增/编辑权限：只有 `TENDER_PUBLISH_BUTTON` 才能发布/取消发布招标，只有 `NEWS_PUBLISH_BUTTON` 才能发布/取消发布资讯。
+- 已发布招标不能编辑、删除、增删附件；必须先由有发布权限的管理员取消发布。
+- 已发布资讯不能编辑、删除；必须先由有发布权限的管理员取消发布。
 
 ## 后端运行
 

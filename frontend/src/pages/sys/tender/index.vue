@@ -23,7 +23,7 @@
       </Form>
 
       <div class="ivu-mt-8 ivu-mb-8">
-        <Button type="primary" @click="handleAdd">
+        <Button v-auth="['TENDER_CREATE_BUTTON']" type="primary" @click="handleAdd">
           <Icon type="md-add" /> 新增招标
         </Button>
       </div>
@@ -34,18 +34,29 @@
         </template>
         <template slot="status" slot-scope="{ row }">
           <Badge v-if="row.status === 'PUBLISHED'" color="green" text="已发布" />
+          <Badge v-else-if="row.status === 'DRAFT'" color="default" text="草稿" />
           <Badge v-else-if="row.status === 'CLOSED'" color="default" text="已关闭" />
           <span v-else>{{ row.status }}</span>
         </template>
         <template slot="action" slot-scope="{ row }">
           <div @click.stop.prevent>
-            <a @click="handleEdit(row)">编辑</a>
-            <span v-if="row.status === 'CLOSED'" v-auth="['TENDER_EDIT_BUTTON']">
-              <Divider type="vertical" />
-              <a @click="handlePublish(row)">发布</a>
-            </span>
-            <Divider type="vertical" />
-            <a style="color: #ed4014" @click="handleDelete(row)">删除</a>
+            <template v-if="isEditableStatus(row.status)">
+              <a v-auth="['TENDER_EDIT_BUTTON']" @click="handleEdit(row)">编辑</a>
+              <span v-auth="['TENDER_PUBLISH_BUTTON']">
+                <Divider type="vertical" />
+                <a @click="handlePublish(row)">发布</a>
+              </span>
+              <span v-auth="['TENDER_DELETE_BUTTON']">
+                <Divider type="vertical" />
+                <a style="color: #ed4014" @click="handleDelete(row)">删除</a>
+              </span>
+            </template>
+            <template v-else-if="row.status === 'PUBLISHED'">
+              <span v-auth="['TENDER_PUBLISH_BUTTON']">
+                <a @click="handleUnpublish(row)">取消发布</a>
+              </span>
+              <span v-if="!hasPublishPermission" class="action-muted">已发布（不可编辑）</span>
+            </template>
           </div>
         </template>
       </Table>
@@ -176,6 +187,7 @@
           </FormItem>
           <FormItem label="附件上传">
             <Upload
+              v-if="canEditAttachments"
               multiple
               type="drag"
               :before-upload="handleBeforeUpload"
@@ -227,6 +239,7 @@
                     >查看</Button
                   >
                   <Button
+                    v-if="canEditAttachments"
                     type="error"
                     ghost
                     size="small"
@@ -256,10 +269,12 @@
         getTenderDetail,
         createTender,
         updateTender,
+        updateTenderStatus,
         deleteTender,
         listBusinessTypeOptions,
         uploadTenderFiles,
-        fetchAdminStoredFile
+        fetchAdminStoredFile,
+        fetchAdminFileView
     } from '@api/system';
     import { downloadFile } from '@/utils';
 
@@ -385,7 +400,7 @@
                     deadline: '',
                     projectCode: '',
                     signupDeadline: '',
-                    status: 'CLOSED',
+                    status: 'DRAFT',
                     attachmentFileIds: []
                 },
                 attachments: [],
@@ -405,11 +420,24 @@
                 }
             };
         },
+        computed: {
+            canEditAttachments () {
+                return this.modal.show && (this.modal.type === 'add' || this.isEditableStatus(this.formData.status));
+            },
+            hasPublishPermission () {
+                const info = this.$store.state.admin.user.info || {};
+                const access = info.access || info.permissions || [];
+                return access.includes('TENDER_PUBLISH_BUTTON');
+            }
+        },
         mounted () {
             this.loadBusinessTypeOptions();
             this.getData();
         },
         methods: {
+            isEditableStatus (status) {
+                return status === 'DRAFT' || status === 'CLOSED';
+            },
             apiErrorMessage (err) {
                 if (!err) return '';
                 const data = err.response && err.response.data;
@@ -498,13 +526,17 @@
                     deadline: null,
                     projectCode: '',
                     signupDeadline: null,
-                    status: 'CLOSED',
+                    status: 'DRAFT',
                     attachmentFileIds: []
                 };
                 this.clearAttachments();
                 this.$nextTick(() => this.$refs.tenderForm && this.$refs.tenderForm.resetFields());
             },
             handleEdit (row) {
+                if (row.status === 'PUBLISHED') {
+                    this.$Message.warning('已发布招标请先取消发布后再编辑');
+                    return;
+                }
                 getTenderDetail(row.id).then(res => {
                     this.tenderEditorKey += 1;
                     this.modal = { show: true, type: 'edit' };
@@ -522,7 +554,7 @@
                         deadline: this.parseBackendDateTime(res.deadline),
                         projectCode: res.projectCode || '',
                         signupDeadline: this.parseBackendDateTime(res.signupDeadline),
-                        status: res.status || 'PUBLISHED',
+                        status: res.status || 'DRAFT',
                         attachmentFileIds: Array.isArray(res.attachments) ? res.attachments.map(item => item.fileId) : []
                     };
                     this.revokeAllAttachmentLocalUrls();
@@ -535,8 +567,8 @@
                     if (msg) this.$Message.error(msg);
                 });
             },
-            buildTenderPayload (data, status) {
-                return {
+            buildTenderPayload (data, includeStatus) {
+                const payload = {
                     title: data.title,
                     region: data.region,
                     businessTypeId: data.businessTypeId,
@@ -549,44 +581,27 @@
                     deadline: this.formatDateTime(data.deadline),
                     projectCode: data.projectCode,
                     signupDeadline: this.formatDateTime(data.signupDeadline),
-                    status: status,
                     attachmentFileIds: data.attachmentFileIds
                 };
-            },
-            buildTenderPayloadFromDetail (detail, status) {
-                return {
-                    title: detail.title || '',
-                    region: detail.region || '',
-                    businessTypeId: detail.businessType ? detail.businessType.id : null,
-                    publishAt: detail.publishAt || '',
-                    content: detail.content || '',
-                    contactPerson: detail.contactPerson || '',
-                    budget: detail.budget || '',
-                    contactPhone: detail.contactPhone || '',
-                    tenderUnit: detail.tenderUnit || '',
-                    deadline: detail.deadline || '',
-                    projectCode: detail.projectCode || '',
-                    signupDeadline: detail.signupDeadline || '',
-                    status: status,
-                    attachmentFileIds: Array.isArray(detail.attachments)
-                        ? detail.attachments.map(item => item.fileId)
-                        : []
-                };
+                if (includeStatus) {
+                    payload.status = data.status;
+                }
+                return payload;
             },
             handleSubmit () {
                 this.$refs.tenderForm.validate(valid => {
                     if (!valid) return;
                     this.submitting = true;
-                    const status = this.modal.type === 'add' ? 'CLOSED' : this.formData.status;
-                    const payload = this.buildTenderPayload(this.formData, status);
-                    const req = this.modal.type === 'add'
-                        ? createTender(payload)
-                        : updateTender(this.formData.id, payload);
-                    const wasAdd = this.modal.type === 'add';
+                    const isEdit = this.modal.type === 'edit';
+                    const payload = this.buildTenderPayload(this.formData, isEdit);
+                    const req = isEdit
+                        ? updateTender(this.formData.id, payload)
+                        : createTender(payload);
+                    const wasAdd = !isEdit;
                     req.then(() => {
                         this.submitting = false;
                         this.modal.show = false;
-                        this.$Message.success(wasAdd ? '新增招标成功' : '更新招标成功');
+                        this.$Message.success(wasAdd ? '新增招标成功（草稿）' : '更新招标成功');
                         this.getData();
                     }).catch(err => {
                         this.submitting = false;
@@ -599,10 +614,7 @@
                 this.$Modal.confirm({
                     title: '确认发布',
                     content: `确定发布招标「${row.title}」吗？`,
-                    onOk: () => getTenderDetail(row.id).then(res => {
-                        const payload = this.buildTenderPayloadFromDetail(res, 'PUBLISHED');
-                        return updateTender(row.id, payload);
-                    }).then(() => {
+                    onOk: () => updateTenderStatus(row.id, { status: 'PUBLISHED' }).then(() => {
                         this.$Message.success('发布成功');
                         this.getData();
                     }).catch(err => {
@@ -612,7 +624,25 @@
                     })
                 });
             },
+            handleUnpublish (row) {
+                this.$Modal.confirm({
+                    title: '确认取消发布',
+                    content: `确定将招标「${row.title}」取消发布吗？取消发布后可再次编辑。`,
+                    onOk: () => updateTenderStatus(row.id, { status: 'DRAFT' }).then(() => {
+                        this.$Message.success('已取消发布');
+                        this.getData();
+                    }).catch(err => {
+                        const msg = this.apiErrorMessage(err);
+                        if (msg) this.$Message.error(msg);
+                        return Promise.reject(err);
+                    })
+                });
+            },
             handleDelete (row) {
+                if (row.status === 'PUBLISHED') {
+                    this.$Message.warning('已发布招标请先取消发布后再删除');
+                    return;
+                }
                 this.$Modal.confirm({
                     title: '确认删除',
                     content: `确定删除招标「${row.title}」吗？`,
@@ -737,13 +767,29 @@
                 });
                 return false;
             },
-            previewAttachment (item) {
+            async previewAttachment (item) {
                 if (!item || item.fileId == null) {
                     this.$Message.info('暂无可预览的文件');
                     return;
                 }
                 if (item.localUrl) {
                     window.open(item.localUrl, '_blank');
+                    return;
+                }
+                const filename = item.fileName || `文件-${item.fileId}`;
+                const type = String(item.contentType || '').toLowerCase();
+                const name = String(item.fileName || '').toLowerCase();
+                const isImage = type.indexOf('image/') === 0 || /\.(png|jpe?g|gif|webp|bmp)$/.test(name);
+                const isPdf = type.indexOf('pdf') >= 0 || name.endsWith('.pdf');
+                try {
+                    if (isImage || isPdf) {
+                        const result = await fetchAdminFileView(item.fileId, filename);
+                        window.open(result.objectUrl, '_blank');
+                        window.setTimeout(() => window.URL.revokeObjectURL(result.objectUrl), 60000);
+                        return;
+                    }
+                } catch (err) {
+                    this.$Message.error((err && err.message) || '预览失败');
                     return;
                 }
                 const previewUrl = this.resolvePreviewUrl(item);
@@ -853,6 +899,11 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
+  }
+
+  .action-muted {
+    color: #808695;
+    font-size: 12px;
   }
 
   /* 让弹窗表单区域滚动，而不是触发全屏滚动（iView Modal 内部 DOM 需要穿透样式） */

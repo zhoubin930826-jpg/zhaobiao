@@ -14,7 +14,7 @@
               :to="{ name: 'newsDetail', params: { id: activeNews.id } }"
               class="news-visual"
             >
-              <img :src="newsBanner" alt="资讯配图" class="news-image" />
+              <img :src="activeNewsCover" alt="资讯配图" class="news-image" />
               <div class="news-visual-mask">
                 <span class="news-visual-tag">{{ activeNews.category }}</span>
                 <p class="news-visual-title">{{ activeNews.title }}</p>
@@ -22,7 +22,7 @@
               </div>
             </router-link>
             <div v-else class="news-visual news-visual--static">
-              <img :src="newsBanner" alt="资讯配图" class="news-image" />
+              <img :src="activeNewsCover" alt="资讯配图" class="news-image" />
             </div>
 
             <div class="news-list-panel">
@@ -39,7 +39,7 @@
                   >
                     <span class="news-type">{{ item.category }}</span>
                     <span class="news-title" :title="item.title">{{ item.title }}</span>
-                    <span class="news-date">{{ item.date }}</span>
+                    <span class="news-date">{{ formatDate(item.publishAt, 'MM-DD') }}</span>
                   </router-link>
                 </li>
               </ul>
@@ -72,16 +72,15 @@
 
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue'
-import { listLatestPortalTenders, listPortalTenders } from '@/api/portal'
+import { listLatestPortalNews, listLatestPortalTenders, listPortalTenders } from '@/api/portal'
 import { authState } from '@/auth'
 import { formatDate } from '@/utils/format'
-import { getNewsList } from '@/data/news'
 import newsBanner from '@/assets/banner-greatwall.png'
 
 const NEWS_PREVIEW_LIMIT = 4
 
-const newsList = computed(() => getNewsList().slice(0, NEWS_PREVIEW_LIMIT))
-const activeNewsId = ref(newsList.value[0]?.id ?? null)
+const newsList = ref([])
+const activeNewsId = ref(null)
 
 const PREVIEW_LIMIT = 6
 const MORE_CATEGORY = '全部'
@@ -103,6 +102,12 @@ const activeNews = computed(() =>
   newsList.value.find(item => item.id === activeNewsId.value) || newsList.value[0] || null
 )
 
+const activeNewsCover = computed(() => {
+  const news = activeNews.value
+  if (news && news.coverUrl) return news.coverUrl
+  return newsBanner
+})
+
 watch(newsList, items => {
   if (!items.length) {
     activeNewsId.value = null
@@ -111,7 +116,20 @@ watch(newsList, items => {
   if (!items.some(item => item.id === activeNewsId.value)) {
     activeNewsId.value = items[0].id
   }
-}, { immediate: true })
+})
+
+async function loadNews() {
+  try {
+    const res = await listLatestPortalNews(NEWS_PREVIEW_LIMIT)
+    newsList.value = Array.isArray(res.list) ? res.list : []
+    if (newsList.value.length && !newsList.value.some(item => item.id === activeNewsId.value)) {
+      activeNewsId.value = newsList.value[0].id
+    }
+  } catch (_) {
+    newsList.value = []
+    activeNewsId.value = null
+  }
+}
 
 async function loadList() {
   try {
@@ -127,7 +145,10 @@ async function loadList() {
   }
 }
 
-onMounted(loadList)
+onMounted(() => {
+  loadNews()
+  loadList()
+})
 watch(() => authState.token, loadList)
 </script>
 

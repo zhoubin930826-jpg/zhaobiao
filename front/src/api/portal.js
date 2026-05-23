@@ -203,6 +203,48 @@ function extractFilename(contentDisposition) {
   return plainMatch && plainMatch[1] ? plainMatch[1] : ''
 }
 
+export function resolveApiUrl(path) {
+  if (!path) return ''
+  if (/^https?:\/\//i.test(path)) return path
+  return new URL(path.startsWith('/') ? path : `${API_BASE_URL}/${path}`, window.location.origin).href
+}
+
+export function mapNewsListItem(item) {
+  return {
+    id: String(item.id),
+    category: item.categoryLabel || item.category || '未分类',
+    categoryCode: item.category || '',
+    title: item.title || '',
+    summary: item.summary || '',
+    publishAt: item.publishAt || '',
+    source: item.source || '-',
+    coverUrl: item.coverUrl ? resolveApiUrl(item.coverUrl) : ''
+  }
+}
+
+export async function listPortalNews(params) {
+  const page = await request('/portal/news', { withAuth: false, params })
+  const list = Array.isArray(page.list) ? page.list.map(mapNewsListItem) : []
+  return { ...page, list }
+}
+
+export async function listLatestPortalNews(limit = 6) {
+  const list = await request('/portal/news/latest', {
+    withAuth: false,
+    params: { limit }
+  })
+  const items = Array.isArray(list) ? list.map(mapNewsListItem) : []
+  return { list: items, total: items.length }
+}
+
+export async function getPortalNewsDetail(newsId) {
+  const data = await request(`/portal/news/${newsId}`, { withAuth: false })
+  return {
+    ...mapNewsListItem(data),
+    content: data.content || ''
+  }
+}
+
 export async function downloadPortalAttachment(tenderId, attachmentId, fallbackFilename = '') {
   const url = new URL(buildAttachmentDownloadUrl(tenderId, attachmentId), window.location.origin)
   const headers = {}

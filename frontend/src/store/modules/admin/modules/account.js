@@ -3,7 +3,7 @@
  * */
 import util from '@/libs/util';
 import router from '@/router';
-import { AccountLogin } from '@api/account';
+import { AccountLogin, getUserInfo } from '@api/account';
 import { listMenus } from '@api/system';
 import { menuDtosToAuthTree } from '@/libs/bid-menu';
 
@@ -33,7 +33,7 @@ export default {
          * @param {Object} param password {String} 密码
          * @param {Object} param route {Object} 登录成功后定向的路由对象 任何 vue-router 支持的格式
          */
-        login({ dispatch }, {
+        login ({ dispatch }, {
             username = '',
             password = ''
         } = {}) {
@@ -49,471 +49,15 @@ export default {
                         const profile = res.user || {};
                         const info = {
                             ...profile,
+                            access: profile.permissions || profile.access || [],
                             name: profile.realName || profile.username,
                             nickname: profile.realName || profile.username
                         };
                         await dispatch('admin/user/set', info, { root: true });
                         let tree = [];
                         // 登录返回的 user 信息里通常已经带有角色菜单树（避免额外请求 /admin/menus）
-
                         if (profile.menus && profile.menus.length) {
-                            tree = menuDtosToAuthTree([
-                                {
-                                    "id": 4,
-                                    "code": "DASHBOARD",
-                                    "name": "工作台",
-                                    "type": "MENU",
-                                    "routePath": "/dashboard/console",
-                                    "component": "dashboard/console",
-                                    "icon": "House",
-                                    "sortOrder": 10,
-                                    "visible": true,
-                                    "enabled": true,
-                                    "description": "系统首页",
-                                    "children": []
-                                },
-                                {
-                                    "id": 6,
-                                    "code": "SYSTEM_ROOT",
-                                    "name": "系统管理",
-                                    "type": "DIRECTORY",
-                                    "routePath": "/system",
-                                    "component": "",
-                                    "icon": "Setting",
-                                    "sortOrder": 30,
-                                    "visible": true,
-                                    "enabled": true,
-                                    "description": "系统管理目录",
-                                    "children": [
-                                        {
-                                            "id": 7,
-                                            "code": "SYSTEM_ADMIN_USER",
-                                            "name": "管理员管理",
-                                            "type": "MENU",
-                                            "parentId": 6,
-                                            "routePath": "/system/user",
-                                            "component": "sys/user",
-                                            "icon": "UserFilled",
-                                            "sortOrder": 10,
-                                            "visible": true,
-                                            "enabled": true,
-                                            "description": "管理员账号管理页面",
-                                            "children": [
-                                                {
-                                                    "id": 19,
-                                                    "code": "ADMIN_USER_CREATE_BUTTON",
-                                                    "name": "新增管理员按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 7,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 10,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "新增管理员按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 20,
-                                                    "code": "ADMIN_USER_EDIT_BUTTON",
-                                                    "name": "编辑管理员按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 7,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 20,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "编辑管理员按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 21,
-                                                    "code": "ADMIN_USER_STATUS_BUTTON",
-                                                    "name": "管理员状态按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 7,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 30,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "修改管理员状态按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 22,
-                                                    "code": "ADMIN_USER_PASSWORD_BUTTON",
-                                                    "name": "管理员重置密码按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 7,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 40,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "管理员重置密码按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 23,
-                                                    "code": "ADMIN_USER_ROLE_BUTTON",
-                                                    "name": "管理员角色按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 7,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 50,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "管理员角色按钮",
-                                                    "children": []
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 8,
-                                            "code": "SYSTEM_MEMBER_USER",
-                                            "name": "会员管理",
-                                            "type": "MENU",
-                                            "parentId": 6,
-                                            "routePath": "/system/member",
-                                            "component": "sys/member",
-                                            "icon": "User",
-                                            "sortOrder": 20,
-                                            "visible": true,
-                                            "enabled": true,
-                                            "description": "会员账号管理页面",
-                                            "children": [
-                                                {
-                                                    "id": 17,
-                                                    "code": "MEMBER_CREATE_BUTTON",
-                                                    "name": "新增会员按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 8,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 5,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "新增会员按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 18,
-                                                    "code": "MEMBER_EDIT_BUTTON",
-                                                    "name": "编辑会员按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 8,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 8,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "编辑会员按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 24,
-                                                    "code": "MEMBER_DOWNLOAD_BUTTON",
-                                                    "name": "会员下载权限按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 8,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 10,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "会员下载权限按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 25,
-                                                    "code": "MEMBER_STATUS_BUTTON",
-                                                    "name": "会员状态按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 8,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 20,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "会员状态按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 26,
-                                                    "code": "MEMBER_PASSWORD_BUTTON",
-                                                    "name": "会员重置密码按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 8,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 30,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "会员重置密码按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 41,
-                                                    "code": "MEMBER_DELETE_BUTTON",
-                                                    "name": "删除会员按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 8,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 40,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "删除会员按钮",
-                                                    "children": []
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 9,
-                                            "code": "SYSTEM_BUSINESS_TYPE",
-                                            "name": "类型管理",
-                                            "type": "MENU",
-                                            "parentId": 6,
-                                            "routePath": "/system/business-type",
-                                            "component": "sys/business-type",
-                                            "icon": "Collection",
-                                            "sortOrder": 30,
-                                            "visible": true,
-                                            "enabled": true,
-                                            "description": "业务类型管理页面",
-                                            "children": [
-                                                {
-                                                    "id": 27,
-                                                    "code": "BUSINESS_TYPE_CREATE_BUTTON",
-                                                    "name": "新增类型按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 9,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 10,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "新增类型按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 28,
-                                                    "code": "BUSINESS_TYPE_EDIT_BUTTON",
-                                                    "name": "编辑类型按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 9,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 20,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "编辑类型按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 29,
-                                                    "code": "BUSINESS_TYPE_STATUS_BUTTON",
-                                                    "name": "类型状态按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 9,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 30,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "类型状态按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 30,
-                                                    "code": "BUSINESS_TYPE_DELETE_BUTTON",
-                                                    "name": "删除类型按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 9,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 40,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "删除类型按钮",
-                                                    "children": []
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 10,
-                                            "code": "SYSTEM_TENDER",
-                                            "name": "招标管理",
-                                            "type": "MENU",
-                                            "parentId": 6,
-                                            "routePath": "/tenders",
-                                            "component": "sys/tender",
-                                            "icon": "Document",
-                                            "sortOrder": 40,
-                                            "visible": true,
-                                            "enabled": true,
-                                            "description": "招标信息管理页面",
-                                            "children": [
-                                                {
-                                                    "id": 31,
-                                                    "code": "TENDER_CREATE_BUTTON",
-                                                    "name": "新增招标按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 10,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 10,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "新增招标按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 32,
-                                                    "code": "TENDER_EDIT_BUTTON",
-                                                    "name": "编辑招标按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 10,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 20,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "编辑招标按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 33,
-                                                    "code": "TENDER_DELETE_BUTTON",
-                                                    "name": "删除招标按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 10,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 30,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "删除招标按钮",
-                                                    "children": []
-                                                },
-                                                {
-                                                    "id": 34,
-                                                    "code": "TENDER_UPLOAD_BUTTON",
-                                                    "name": "上传附件按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 10,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 40,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "上传招标附件按钮",
-                                                    "children": []
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 13,
-                                            "code": "SYSTEM_ROLE",
-                                            "name": "角色管理",
-                                            "type": "MENU",
-                                            "parentId": 6,
-                                            "routePath": "/system/role",
-                                            "component": "sys/role",
-                                            "icon": "Avatar",
-                                            "sortOrder": 70,
-                                            "visible": true,
-                                            "enabled": true,
-                                            "description": "角色管理页面",
-                                            "children": [
-                                                {
-                                                    "id": 37,
-                                                    "code": "ROLE_EDIT_BUTTON",
-                                                    "name": "角色维护按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 13,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 10,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "角色维护按钮",
-                                                    "children": []
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 15,
-                                            "code": "SYSTEM_MENU",
-                                            "name": "菜单管理",
-                                            "type": "MENU",
-                                            "parentId": 6,
-                                            "routePath": "/system/menu",
-                                            "component": "sys/menu",
-                                            "icon": "Menu",
-                                            "sortOrder": 90,
-                                            "visible": true,
-                                            "enabled": true,
-                                            "description": "菜单管理页面",
-                                            "children": [
-                                                {
-                                                    "id": 39,
-                                                    "code": "MENU_EDIT_BUTTON",
-                                                    "name": "菜单维护按钮",
-                                                    "type": "BUTTON",
-                                                    "parentId": 15,
-                                                    "routePath": "",
-                                                    "component": "",
-                                                    "icon": "",
-                                                    "sortOrder": 10,
-                                                    "visible": false,
-                                                    "enabled": true,
-                                                    "description": "菜单维护按钮",
-                                                    "children": []
-                                                }
-                                            ]
-                                        },
-                                        {
-                                            "id": 16,
-                                            "code": "SYSTEM_OPERATION_LOG",
-                                            "name": "操作日志",
-                                            "type": "MENU",
-                                            "parentId": 6,
-                                            "routePath": "/log",
-                                            "component": "system/log",
-                                            "icon": "Tickets",
-                                            "sortOrder": 100,
-                                            "visible": true,
-                                            "enabled": true,
-                                            "description": "操作日志页面",
-                                            "children": []
-                                        }
-                                    ]
-                                }
-                            ]);
+                            tree = menuDtosToAuthTree(profile.menus);
                         } else {
                             try {
                                 const resMenus = await listMenus();
@@ -540,8 +84,8 @@ export default {
         /**
          * @description 退出登录
          * */
-        logout({ commit, dispatch }, { confirm = false, vm } = {}) {
-            async function logout() {
+        logout ({ commit, dispatch }, { confirm = false, vm } = {}) {
+            async function logout () {
                 // 删除cookie
                 util.cookies.remove('token');
                 util.cookies.remove('uuid');
@@ -568,7 +112,7 @@ export default {
                 Modal.confirm({
                     title: vm.$t('basicLayout.logout.confirmTitle'),
                     content: vm.$t('basicLayout.logout.confirmContent'),
-                    onOk() {
+                    onOk () {
                         logout();
                     }
                 });
@@ -581,10 +125,32 @@ export default {
          * @param {Object} state vuex state
          * @param {Object} dispatch vuex dispatch
          */
-        load({ state, dispatch }) {
+        load ({ dispatch, rootState }) {
             return new Promise(async resolve => {
                 // 加载用户登录信息
                 await dispatch('admin/user/load', null, { root: true });
+                const token = util.cookies.get('token');
+                if (token) {
+                    try {
+                        const profile = await getUserInfo();
+                        if (profile && typeof profile === 'object') {
+                            const current = (rootState.admin && rootState.admin.user && rootState.admin.user.info) || {};
+                            const info = {
+                                ...current,
+                                ...profile,
+                                access: profile.permissions || profile.access || current.access || [],
+                                name: profile.realName || profile.username || current.name,
+                                nickname: profile.realName || profile.username || current.nickname
+                            };
+                            await dispatch('admin/user/set', info, { root: true });
+                            if (profile.menus && profile.menus.length) {
+                                await dispatch('admin/user/setTree', menuDtosToAuthTree(profile.menus), { root: true });
+                            }
+                        }
+                    } catch (_) {
+                        // 忽略刷新失败，继续使用本地缓存
+                    }
+                }
                 // 持久化数据加载上次退出时的多页列表
                 await dispatch('admin/page/openedLoad', null, { root: true });
                 // end

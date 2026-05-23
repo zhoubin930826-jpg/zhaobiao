@@ -653,6 +653,7 @@ import {
   deleteMember,
   uploadMemberProfileFiles,
   fetchMemberProfileFile,
+  fetchAdminFileView,
 } from "@api/system";
 import { downloadFile } from "@/utils";
 
@@ -1334,9 +1335,32 @@ export default {
         window.open(file.localUrl, "_blank");
         return;
       }
+      const filename = file.fileName || fallbackName || `文件-${file.fileId}`;
+      const type = String(file.contentType || "").toLowerCase();
+      const name = String(file.fileName || "").toLowerCase();
+      const isImage =
+        type.indexOf("image/") === 0 ||
+        /\.(png|jpe?g|gif|webp|bmp)$/.test(name);
+      const isPdf = type.indexOf("pdf") >= 0 || name.endsWith(".pdf");
+      try {
+        if (isImage || isPdf) {
+          const result = await fetchAdminFileView(file.fileId, filename);
+          window.open(result.objectUrl, "_blank");
+          window.setTimeout(
+            () => window.URL.revokeObjectURL(result.objectUrl),
+            60000
+          );
+          return;
+        }
+      } catch (err) {
+        this.$Message.error(
+          (err && err.message) || `查看${fallbackName || "文件"}失败`
+        );
+        return;
+      }
       const previewUrl = this.resolvePreviewUrl(file);
       if (!previewUrl) {
-        this.$Message.error(`查看${fallbackName || "文件"}失败`);
+        this.$Message.info("当前文件类型暂不支持在线预览，请使用下载");
         return;
       }
       window.open(previewUrl, "_blank");
@@ -1354,10 +1378,15 @@ export default {
           return;
         }
         const result = await fetchMemberProfileFile(file.fileId, filename);
-        downloadFile(result.objectUrl, result.filename);
+        downloadFile(result.objectUrl, result.filename || filename);
         window.URL.revokeObjectURL(result.objectUrl);
       } catch (err) {
-        this.$Message.error(err.message || "下载失败");
+        this.$Message.error(
+          (err && err.message) ||
+            (err && err.status === 403
+              ? "当前账号暂无下载该文件的权限"
+              : "下载失败")
+        );
       }
     },
     withApiBase(path) {

@@ -43,6 +43,15 @@ export default {
             component: () => import('@/pages/sys/business-type')
         },
         {
+            path: 'news',
+            name: `${pre}news`,
+            meta: {
+                ...meta,
+                title: '资讯管理'
+            },
+            component: () => import('@/pages/sys/news')
+        },
+        {
             path: 'menu',
             name: `${pre}menu`,
             meta: {

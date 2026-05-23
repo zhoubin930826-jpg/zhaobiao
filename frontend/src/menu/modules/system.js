@@ -23,6 +23,10 @@ export default {
             title: '招标管理'
         },
         {
+            path: `${pre}news`,
+            title: '资讯管理'
+        },
+        {
             path: `${pre}menu`,
             title: '权限管理'
         },
