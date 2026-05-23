@@ -43,7 +43,8 @@ public interface TenderRepository extends JpaRepository<Tender, Long> {
             "and (:keyword is null or lower(t.title) like lower(concat('%', :keyword, '%')) " +
             "or lower(t.tenderUnit) like lower(concat('%', :keyword, '%')) " +
             "or lower(t.projectCode) like lower(concat('%', :keyword, '%'))) " +
-            "and (:region is null or t.region = :region)",
+            "and (:region is null or t.region = :region) " +
+            "and (:businessTypeName is null or bt.name = :businessTypeName)",
             countQuery = "select count(t) from Tender t " +
                     "where t.status = :status " +
                     "and t.publishAt <= :now " +
@@ -51,9 +52,11 @@ public interface TenderRepository extends JpaRepository<Tender, Long> {
                     "and (:keyword is null or lower(t.title) like lower(concat('%', :keyword, '%')) " +
                     "or lower(t.tenderUnit) like lower(concat('%', :keyword, '%')) " +
                     "or lower(t.projectCode) like lower(concat('%', :keyword, '%'))) " +
-                    "and (:region is null or t.region = :region)")
+                    "and (:region is null or t.region = :region) " +
+                    "and (:businessTypeName is null or t.businessType.name = :businessTypeName)")
     Page<Tender> searchPortal(@Param("keyword") String keyword,
                               @Param("region") String region,
+                              @Param("businessTypeName") String businessTypeName,
                               @Param("status") TenderStatus status,
                               @Param("now") LocalDateTime now,
                               @Param("businessTypeIds") Collection<Long> businessTypeIds,

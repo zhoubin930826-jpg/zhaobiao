@@ -61,6 +61,8 @@ public class DataInitializer implements ApplicationRunner {
                 "/system/business-type", "sys/business-type", "Collection", 30, true, true, "业务类型管理页面");
         Menu tenderManage = upsertMenu("SYSTEM_TENDER", "招标管理", MenuType.MENU, systemRoot.getId(),
                 "/tenders", "sys/tender", "Document", 40, true, true, "招标信息管理页面");
+        Menu newsManage = upsertMenu("SYSTEM_NEWS", "资讯管理", MenuType.MENU, systemRoot.getId(),
+                "/system/news", "sys/news", "Document", 45, true, true, "资讯管理页面");
         Menu userManage = upsertMenu("SYSTEM_USER", "旧用户管理", MenuType.MENU, systemRoot.getId(),
                 "/users", "users/index", "UserFilled", 50, false, false, "历史用户管理页面（已停用）");
         Menu auditRecord = upsertMenu("SYSTEM_AUDIT_RECORD", "审核记录", MenuType.MENU, systemRoot.getId(),
@@ -110,8 +112,20 @@ public class DataInitializer implements ApplicationRunner {
                 "", "", "", 20, false, true, "编辑招标按钮");
         upsertMenu("TENDER_DELETE_BUTTON", "删除招标按钮", MenuType.BUTTON, tenderManage.getId(),
                 "", "", "", 30, false, true, "删除招标按钮");
+        upsertMenu("TENDER_PUBLISH_BUTTON", "发布招标按钮", MenuType.BUTTON, tenderManage.getId(),
+                "", "", "", 35, false, true, "发布/改为未发布招标按钮");
         upsertMenu("TENDER_UPLOAD_BUTTON", "上传附件按钮", MenuType.BUTTON, tenderManage.getId(),
                 "", "", "", 40, false, true, "上传招标附件按钮");
+        upsertMenu("NEWS_CREATE_BUTTON", "新增资讯按钮", MenuType.BUTTON, newsManage.getId(),
+                "", "", "", 10, false, true, "新增资讯按钮");
+        upsertMenu("NEWS_EDIT_BUTTON", "编辑资讯按钮", MenuType.BUTTON, newsManage.getId(),
+                "", "", "", 20, false, true, "编辑资讯按钮");
+        upsertMenu("NEWS_DELETE_BUTTON", "删除资讯按钮", MenuType.BUTTON, newsManage.getId(),
+                "", "", "", 30, false, true, "删除资讯按钮");
+        upsertMenu("NEWS_PUBLISH_BUTTON", "发布资讯按钮", MenuType.BUTTON, newsManage.getId(),
+                "", "", "", 35, false, true, "发布/下架资讯按钮");
+        upsertMenu("NEWS_UPLOAD_BUTTON", "上传资讯封面按钮", MenuType.BUTTON, newsManage.getId(),
+                "", "", "", 40, false, true, "上传资讯封面按钮");
         upsertMenu("USER_AUDIT_BUTTON", "审核按钮", MenuType.BUTTON, userManage.getId(),
                 "", "", "", 10, false, false, "旧用户审核按钮（已停用）");
         upsertMenu("USER_ROLE_BUTTON", "分配角色按钮", MenuType.BUTTON, userManage.getId(),
@@ -141,7 +155,7 @@ public class DataInitializer implements ApplicationRunner {
                 "系统管理员",
                 "负责会员、招标、角色、菜单和日志管理",
                 true,
-                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_MEMBER_USER", "SYSTEM_BUSINESS_TYPE", "SYSTEM_TENDER", "SYSTEM_ROLE", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "MEMBER_CREATE_BUTTON", "MEMBER_EDIT_BUTTON", "MEMBER_DOWNLOAD_BUTTON", "MEMBER_STATUS_BUTTON", "MEMBER_PASSWORD_BUTTON", "MEMBER_DELETE_BUTTON", "BUSINESS_TYPE_CREATE_BUTTON", "BUSINESS_TYPE_EDIT_BUTTON", "BUSINESS_TYPE_STATUS_BUTTON", "BUSINESS_TYPE_DELETE_BUTTON", "TENDER_CREATE_BUTTON", "TENDER_EDIT_BUTTON", "TENDER_DELETE_BUTTON", "TENDER_UPLOAD_BUTTON", "ROLE_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
+                new String[]{"DASHBOARD", "PROFILE", "SYSTEM_ROOT", "SYSTEM_MEMBER_USER", "SYSTEM_BUSINESS_TYPE", "SYSTEM_TENDER", "SYSTEM_NEWS", "SYSTEM_ROLE", "SYSTEM_MENU", "SYSTEM_OPERATION_LOG", "MEMBER_CREATE_BUTTON", "MEMBER_EDIT_BUTTON", "MEMBER_DOWNLOAD_BUTTON", "MEMBER_STATUS_BUTTON", "MEMBER_PASSWORD_BUTTON", "MEMBER_DELETE_BUTTON", "BUSINESS_TYPE_CREATE_BUTTON", "BUSINESS_TYPE_EDIT_BUTTON", "BUSINESS_TYPE_STATUS_BUTTON", "BUSINESS_TYPE_DELETE_BUTTON", "TENDER_CREATE_BUTTON", "TENDER_EDIT_BUTTON", "TENDER_DELETE_BUTTON", "TENDER_PUBLISH_BUTTON", "TENDER_UPLOAD_BUTTON", "NEWS_CREATE_BUTTON", "NEWS_EDIT_BUTTON", "NEWS_DELETE_BUTTON", "NEWS_PUBLISH_BUTTON", "NEWS_UPLOAD_BUTTON", "ROLE_EDIT_BUTTON", "MENU_EDIT_BUTTON", "PROFILE_EDIT_BUTTON"}
         );
 
         upsertRole(

@@ -115,7 +115,7 @@ mvn clean package -DskipTests
 生成的后端包为：
 
 ```text
-target/zhaobiao-admin-0.0.6-SNAPSHOT.jar
+target/zhaobiao-admin-0.0.7-SNAPSHOT.jar
 ```
 
 ## 前端运行

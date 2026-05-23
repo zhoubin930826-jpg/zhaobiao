@@ -72,7 +72,7 @@ public class TenderUpsertRequest {
     @Schema(description = "报名截止时间", example = "2026-04-28 18:00:00")
     private LocalDateTime signupDeadline;
 
-    @Schema(description = "状态，默认 PUBLISHED", example = "PUBLISHED")
+    @Schema(description = "状态兼容字段；新增固定为 DRAFT，发布状态请使用发布状态接口", example = "DRAFT")
     private TenderStatus status;
 
     @Schema(description = "附件文件ID列表")

@@ -28,6 +28,7 @@ INSERT IGNORE INTO sys_menu (code, name, type, parent_id, route_path, component,
     ('SYSTEM_MEMBER_USER', CONVERT(0xE4BC9AE59198E7AEA1E79086 USING utf8mb4), 'MENU', @menu_system_root, '/system/member', 'sys/member', 'User', 20, 1, 1, NULL, CONVERT(0xE4BC9AE59198E8B4A6E58FB7E7AEA1E79086E9A1B5E99DA2 USING utf8mb4), @seed_now, @seed_now),
     ('SYSTEM_BUSINESS_TYPE', CONVERT(0xE7B1BBE59E8BE7AEA1E79086 USING utf8mb4), 'MENU', @menu_system_root, '/system/business-type', 'sys/business-type', 'Collection', 30, 1, 1, NULL, CONVERT(0xE4B89AE58AA1E7B1BBE59E8BE7AEA1E79086E9A1B5E99DA2 USING utf8mb4), @seed_now, @seed_now),
     ('SYSTEM_TENDER', CONVERT(0xE68B9BE6A087E7AEA1E79086 USING utf8mb4), 'MENU', @menu_system_root, '/tenders', 'sys/tender', 'Document', 40, 1, 1, NULL, CONVERT(0xE68B9BE6A087E4BFA1E681AFE7AEA1E79086E9A1B5E99DA2 USING utf8mb4), @seed_now, @seed_now),
+    ('SYSTEM_NEWS', CONVERT(0xE8B584E8AEAFE7AEA1E79086 USING utf8mb4), 'MENU', @menu_system_root, '/system/news', 'sys/news', 'Document', 45, 1, 1, NULL, CONVERT(0xE8B584E8AEAFE7AEA1E79086E9A1B5E99DA2 USING utf8mb4), @seed_now, @seed_now),
     ('SYSTEM_USER', CONVERT(0xE697A7E794A8E688B7E7AEA1E79086 USING utf8mb4), 'MENU', @menu_system_root, '/users', 'users/index', 'UserFilled', 50, 0, 0, NULL, CONVERT(0xE58E86E58FB2E794A8E688B7E7AEA1E79086E9A1B5E99DA2EFBC88E5B7B2E5819CE794A8EFBC89 USING utf8mb4), @seed_now, @seed_now),
     ('SYSTEM_AUDIT_RECORD', CONVERT(0xE5AEA1E6A0B8E8AEB0E5BD95 USING utf8mb4), 'MENU', @menu_system_root, '/audit-records', 'audit-records/index', 'Document', 60, 0, 0, NULL, CONVERT(0xE58E86E58FB2E794A8E688B7E5AEA1E6A0B8E8AEB0E5BD95E9A1B5E99DA2EFBC88E5B7B2E5819CE794A8EFBC89 USING utf8mb4), @seed_now, @seed_now),
     ('SYSTEM_ROLE', CONVERT(0xE8A792E889B2E7AEA1E79086 USING utf8mb4), 'MENU', @menu_system_root, '/system/role', 'sys/role', 'Avatar', 70, 1, 1, NULL, CONVERT(0xE8A792E889B2E7AEA1E79086E9A1B5E99DA2 USING utf8mb4), @seed_now, @seed_now),
@@ -42,6 +43,7 @@ UPDATE sys_menu SET route_path = '/system/user', component = 'sys/user', visible
 UPDATE sys_menu SET route_path = '/system/member', component = 'sys/member', visible = 1, enabled = 1, updated_at = @seed_now WHERE code = 'SYSTEM_MEMBER_USER';
 UPDATE sys_menu SET route_path = '/system/business-type', component = 'sys/business-type', visible = 1, enabled = 1, updated_at = @seed_now WHERE code = 'SYSTEM_BUSINESS_TYPE';
 UPDATE sys_menu SET route_path = '/tenders', component = 'sys/tender', visible = 1, enabled = 1, updated_at = @seed_now WHERE code = 'SYSTEM_TENDER';
+UPDATE sys_menu SET route_path = '/system/news', component = 'sys/news', visible = 1, enabled = 1, updated_at = @seed_now WHERE code = 'SYSTEM_NEWS';
 UPDATE sys_menu SET visible = 0, enabled = 0, updated_at = @seed_now WHERE code IN ('SYSTEM_USER', 'SYSTEM_AUDIT_RECORD', 'USER_AUDIT_BUTTON', 'USER_ROLE_BUTTON', 'SYSTEM_PERMISSION', 'PERMISSION_EDIT_BUTTON');
 UPDATE sys_menu SET route_path = '/system/role', component = 'sys/role', visible = 1, enabled = 1, updated_at = @seed_now WHERE code = 'SYSTEM_ROLE';
 UPDATE sys_menu SET route_path = '/system/permissions', component = 'sys/permissions', visible = 0, enabled = 0, updated_at = @seed_now WHERE code = 'SYSTEM_PERMISSION';
@@ -52,6 +54,7 @@ SET @menu_system_member_user = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_MEM
 SET @menu_system_admin_user = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_ADMIN_USER');
 SET @menu_system_business_type = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_BUSINESS_TYPE');
 SET @menu_system_tender = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_TENDER');
+SET @menu_system_news = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_NEWS');
 SET @menu_system_user = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_USER');
 SET @menu_system_role = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_ROLE');
 SET @menu_system_permission = (SELECT id FROM sys_menu WHERE code = 'SYSTEM_PERMISSION');
@@ -78,7 +81,13 @@ INSERT IGNORE INTO sys_menu (code, name, type, parent_id, route_path, component,
     ('TENDER_CREATE_BUTTON', CONVERT(0xE696B0E5A29EE68B9BE6A087E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_tender, '', '', '', 10, 0, 1, NULL, CONVERT(0xE696B0E5A29EE68B9BE6A087E68C89E992AE USING utf8mb4), @seed_now, @seed_now),
     ('TENDER_EDIT_BUTTON', CONVERT(0xE7BC96E8BE91E68B9BE6A087E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_tender, '', '', '', 20, 0, 1, NULL, CONVERT(0xE7BC96E8BE91E68B9BE6A087E68C89E992AE USING utf8mb4), @seed_now, @seed_now),
     ('TENDER_DELETE_BUTTON', CONVERT(0xE588A0E999A4E68B9BE6A087E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_tender, '', '', '', 30, 0, 1, NULL, CONVERT(0xE588A0E999A4E68B9BE6A087E68C89E992AE USING utf8mb4), @seed_now, @seed_now),
+    ('TENDER_PUBLISH_BUTTON', '发布招标按钮', 'BUTTON', @menu_system_tender, '', '', '', 35, 0, 1, NULL, '发布/改为未发布招标按钮', @seed_now, @seed_now),
     ('TENDER_UPLOAD_BUTTON', CONVERT(0xE4B88AE4BCA0E99984E4BBB6E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_tender, '', '', '', 40, 0, 1, NULL, CONVERT(0xE4B88AE4BCA0E68B9BE6A087E99984E4BBB6E68C89E992AE USING utf8mb4), @seed_now, @seed_now),
+    ('NEWS_CREATE_BUTTON', CONVERT(0xE696B0E5A29EE8B584E8AEAFE68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_news, '', '', '', 10, 0, 1, NULL, CONVERT(0xE696B0E5A29EE8B584E8AEAFE68C89E992AE USING utf8mb4), @seed_now, @seed_now),
+    ('NEWS_EDIT_BUTTON', CONVERT(0xE7BC96E8BE91E8B584E8AEAFE68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_news, '', '', '', 20, 0, 1, NULL, CONVERT(0xE7BC96E8BE91E8B584E8AEAFE68C89E992AE USING utf8mb4), @seed_now, @seed_now),
+    ('NEWS_DELETE_BUTTON', CONVERT(0xE588A0E999A4E8B584E8AEAFE68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_news, '', '', '', 30, 0, 1, NULL, CONVERT(0xE588A0E999A4E8B584E8AEAFE68C89E992AE USING utf8mb4), @seed_now, @seed_now),
+    ('NEWS_PUBLISH_BUTTON', '发布资讯按钮', 'BUTTON', @menu_system_news, '', '', '', 35, 0, 1, NULL, '发布/下架资讯按钮', @seed_now, @seed_now),
+    ('NEWS_UPLOAD_BUTTON', CONVERT(0xE4B88AE4BCA0E8B584E8AEAFE5B081E99DA2E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_news, '', '', '', 40, 0, 1, NULL, CONVERT(0xE4B88AE4BCA0E8B584E8AEAFE5B081E99DA2E68C89E992AE USING utf8mb4), @seed_now, @seed_now),
     ('USER_AUDIT_BUTTON', CONVERT(0xE5AEA1E6A0B8E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_user, '', '', '', 10, 0, 0, NULL, CONVERT(0xE697A7E794A8E688B7E5AEA1E6A0B8E68C89E992AEEFBC88E5B7B2E5819CE794A8EFBC89 USING utf8mb4), @seed_now, @seed_now),
     ('USER_ROLE_BUTTON', CONVERT(0xE58886E9858DE8A792E889B2E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_user, '', '', '', 20, 0, 0, NULL, CONVERT(0xE697A7E794A8E688B7E58886E9858DE8A792E889B2E68C89E992AEEFBC88E5B7B2E5819CE794A8EFBC89 USING utf8mb4), @seed_now, @seed_now),
     ('ROLE_EDIT_BUTTON', CONVERT(0xE8A792E889B2E7BBB4E68AA4E68C89E992AE USING utf8mb4), 'BUTTON', @menu_system_role, '', '', '', 10, 0, 1, NULL, CONVERT(0xE8A792E889B2E7BBB4E68AA4E68C89E992AE USING utf8mb4), @seed_now, @seed_now),
@@ -90,12 +99,13 @@ UPDATE sys_menu
 SET permission_code = NULL, updated_at = @seed_now
 WHERE code IN (
     'DASHBOARD', 'PROFILE', 'SYSTEM_ROOT', 'SYSTEM_ADMIN_USER', 'SYSTEM_MEMBER_USER', 'SYSTEM_BUSINESS_TYPE',
-    'SYSTEM_TENDER', 'SYSTEM_USER', 'SYSTEM_AUDIT_RECORD', 'SYSTEM_ROLE', 'SYSTEM_PERMISSION', 'SYSTEM_MENU',
+    'SYSTEM_TENDER', 'SYSTEM_NEWS', 'SYSTEM_USER', 'SYSTEM_AUDIT_RECORD', 'SYSTEM_ROLE', 'SYSTEM_PERMISSION', 'SYSTEM_MENU',
     'SYSTEM_OPERATION_LOG', 'MEMBER_CREATE_BUTTON', 'MEMBER_EDIT_BUTTON', 'ADMIN_USER_CREATE_BUTTON',
     'ADMIN_USER_EDIT_BUTTON', 'ADMIN_USER_STATUS_BUTTON', 'ADMIN_USER_PASSWORD_BUTTON', 'ADMIN_USER_ROLE_BUTTON',
     'MEMBER_DOWNLOAD_BUTTON', 'MEMBER_STATUS_BUTTON', 'MEMBER_PASSWORD_BUTTON', 'MEMBER_DELETE_BUTTON', 'BUSINESS_TYPE_CREATE_BUTTON',
     'BUSINESS_TYPE_EDIT_BUTTON', 'BUSINESS_TYPE_STATUS_BUTTON', 'BUSINESS_TYPE_DELETE_BUTTON', 'TENDER_CREATE_BUTTON',
-    'TENDER_EDIT_BUTTON', 'TENDER_DELETE_BUTTON', 'TENDER_UPLOAD_BUTTON', 'USER_AUDIT_BUTTON', 'USER_ROLE_BUTTON',
+    'TENDER_EDIT_BUTTON', 'TENDER_DELETE_BUTTON', 'TENDER_PUBLISH_BUTTON', 'TENDER_UPLOAD_BUTTON', 'NEWS_CREATE_BUTTON', 'NEWS_EDIT_BUTTON',
+    'NEWS_DELETE_BUTTON', 'NEWS_PUBLISH_BUTTON', 'NEWS_UPLOAD_BUTTON', 'USER_AUDIT_BUTTON', 'USER_ROLE_BUTTON',
     'ROLE_EDIT_BUTTON', 'PERMISSION_EDIT_BUTTON', 'MENU_EDIT_BUTTON', 'PROFILE_EDIT_BUTTON'
 );
 UPDATE sys_menu
@@ -130,6 +140,7 @@ INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'SYSTEM_MEMBER_USER')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'SYSTEM_BUSINESS_TYPE')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'SYSTEM_TENDER')),
+    ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'SYSTEM_NEWS')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'SYSTEM_ROLE')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'SYSTEM_MENU')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'SYSTEM_OPERATION_LOG')),
@@ -146,7 +157,13 @@ INSERT IGNORE INTO sys_role_menu (role_id, menu_id) VALUES
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'TENDER_CREATE_BUTTON')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'TENDER_EDIT_BUTTON')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'TENDER_DELETE_BUTTON')),
+    ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'TENDER_PUBLISH_BUTTON')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'TENDER_UPLOAD_BUTTON')),
+    ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'NEWS_CREATE_BUTTON')),
+    ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'NEWS_EDIT_BUTTON')),
+    ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'NEWS_DELETE_BUTTON')),
+    ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'NEWS_PUBLISH_BUTTON')),
+    ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'NEWS_UPLOAD_BUTTON')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'ROLE_EDIT_BUTTON')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'MENU_EDIT_BUTTON')),
     ((SELECT id FROM sys_role WHERE code = 'SYSTEM_ADMIN'), (SELECT id FROM sys_menu WHERE code = 'PROFILE_EDIT_BUTTON')),

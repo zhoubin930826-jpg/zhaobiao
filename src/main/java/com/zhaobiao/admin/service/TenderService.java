@@ -15,6 +15,7 @@ import com.zhaobiao.admin.entity.TenderStatus;
 import com.zhaobiao.admin.mapper.ViewMapper;
 import com.zhaobiao.admin.repository.BusinessTypeRepository;
 import com.zhaobiao.admin.repository.MemberUserRepository;
+import com.zhaobiao.admin.repository.NewsRepository;
 import com.zhaobiao.admin.repository.TenderAttachmentRepository;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
 import com.zhaobiao.admin.repository.TenderRepository;
@@ -48,6 +49,7 @@ public class TenderService {
     private final FileStorageService fileStorageService;
     private final BusinessTypeRepository businessTypeRepository;
     private final MemberUserRepository memberUserRepository;
+    private final NewsRepository newsRepository;
     private final ViewMapper viewMapper;
 
     public TenderService(TenderRepository tenderRepository,
@@ -56,6 +58,7 @@ public class TenderService {
                          FileStorageService fileStorageService,
                          BusinessTypeRepository businessTypeRepository,
                          MemberUserRepository memberUserRepository,
+                         NewsRepository newsRepository,
                          ViewMapper viewMapper) {
         this.tenderRepository = tenderRepository;
         this.tenderAttachmentRepository = tenderAttachmentRepository;
@@ -63,6 +66,7 @@ public class TenderService {
         this.fileStorageService = fileStorageService;
         this.businessTypeRepository = businessTypeRepository;
         this.memberUserRepository = memberUserRepository;
+        this.newsRepository = newsRepository;
         this.viewMapper = viewMapper;
     }
 
@@ -100,6 +104,8 @@ public class TenderService {
     public TenderDto updateTender(Long tenderId, TenderUpsertRequest request) {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标不存在"));
+        ensureEditable(tender);
+        ensureStatusNotChanged(tender, request);
         validateRequest(request, tenderId);
         applyRequest(tender, request, false);
         tender = tenderRepository.save(tender);
@@ -110,9 +116,28 @@ public class TenderService {
     }
 
     @Transactional
+    public TenderDto updateTenderStatus(Long tenderId, TenderStatus status) {
+        Tender tender = tenderRepository.findById(tenderId)
+                .orElseThrow(() -> new BusinessException(404, "招标不存在"));
+        if (status == null) {
+            throw new BusinessException(400, "状态不能为空");
+        }
+        if (status == TenderStatus.CLOSED) {
+            throw new BusinessException(400, "仅支持发布或改为未发布");
+        }
+        if (tender.getStatus() != status) {
+            tender.setStatus(status);
+            tender.setUpdatedBy(currentOperatorUsername());
+            tenderRepository.save(tender);
+        }
+        return getTender(tenderId);
+    }
+
+    @Transactional
     public void deleteTender(Long tenderId) {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标不存在"));
+        ensureEditable(tender);
         List<TenderAttachment> attachments = tenderAttachmentRepository.findDetailsByTenderId(tenderId);
         tenderAttachmentRepository.deleteAll(attachments);
         cleanupUnreferencedFiles(attachments);
@@ -123,6 +148,7 @@ public class TenderService {
     public TenderDto addAttachments(Long tenderId, List<Long> fileIds) {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标不存在"));
+        ensureEditable(tender);
         List<TenderAttachment> existing = tenderAttachmentRepository.findDetailsByTenderId(tenderId);
         List<Long> mergedFileIds = new ArrayList<>();
         for (TenderAttachment item : existing) {
@@ -141,6 +167,7 @@ public class TenderService {
     public TenderDto removeAttachment(Long tenderId, Long attachmentId) {
         Tender tender = tenderRepository.findById(tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标不存在"));
+        ensureEditable(tender);
         TenderAttachment attachment = tenderAttachmentRepository.findDetailByIdAndTenderId(attachmentId, tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标附件不存在"));
         tenderAttachmentRepository.delete(attachment);
@@ -181,11 +208,23 @@ public class TenderService {
         tender.setDeadline(request.getDeadline());
         tender.setProjectCode(request.getProjectCode());
         tender.setSignupDeadline(request.getSignupDeadline());
-        tender.setStatus(request.getStatus() == null ? TenderStatus.PUBLISHED : request.getStatus());
         if (creating) {
+            tender.setStatus(TenderStatus.DRAFT);
             tender.setCreatedBy(operator);
         }
         tender.setUpdatedBy(operator);
+    }
+
+    private void ensureEditable(Tender tender) {
+        if (tender.getStatus() == TenderStatus.PUBLISHED) {
+            throw new BusinessException(400, "已发布招标请先改为未发布后再操作");
+        }
+    }
+
+    private void ensureStatusNotChanged(Tender tender, TenderUpsertRequest request) {
+        if (request.getStatus() != null && request.getStatus() != tender.getStatus()) {
+            throw new BusinessException(400, "招标发布状态请通过发布状态接口调整");
+        }
     }
 
     private void syncAttachments(Tender tender, List<Long> fileIds) {
@@ -229,7 +268,8 @@ public class TenderService {
         for (TenderAttachment attachment : attachments) {
             TenderFileStorage fileStorage = attachment.getFileStorage();
             if (tenderAttachmentRepository.countByFileStorage_Id(fileStorage.getId()) == 0
-                    && memberUserRepository.countProfileFileReferences(fileStorage.getId()) == 0) {
+                    && memberUserRepository.countProfileFileReferences(fileStorage.getId()) == 0
+                    && newsRepository.countByCoverFile_Id(fileStorage.getId()) == 0) {
                 fileStorageService.deleteStoredFile(fileStorage);
                 tenderFileStorageRepository.delete(fileStorage);
             }

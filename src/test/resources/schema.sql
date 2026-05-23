@@ -7,6 +7,7 @@ DROP TABLE IF EXISTS
   portal_member_business_type_rel,
   biz_tender_attachment,
   sys_user_audit_record,
+  biz_news,
   biz_tender,
   biz_file_storage,
   portal_member_user,

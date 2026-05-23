@@ -118,6 +118,7 @@ class FullApiIntegrationTests {
         exerciseAdminAccountApis(superAdminToken, tag);
         exerciseMemberAdminApis(superAdminToken, tag);
         exerciseTenderAndFileApis(superAdminToken, tag);
+        exerciseNewsApis(superAdminToken, tag);
 
         mockMvc.perform(get("/api/admin/users")
                         .header("Authorization", bearer(superAdminToken)))
@@ -496,7 +497,7 @@ class FullApiIntegrationTests {
                 LocalDateTime.now().plusDays(3),
                 "FULL-" + tag,
                 firstFileId,
-                "PUBLISHED");
+                "DRAFT");
 
         mockMvc.perform(get("/api/admin/tenders")
                         .header("Authorization", bearer(adminToken))
@@ -542,7 +543,7 @@ class FullApiIntegrationTests {
                                 LocalDateTime.now().plusDays(4),
                                 "FULL-UPDATED-" + tag,
                                 firstFileId,
-                                "PUBLISHED")))
+                                "DRAFT")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andExpect(jsonPath("$.data.title").value("全量接口测试项目更新-" + tag));
@@ -553,6 +554,114 @@ class FullApiIntegrationTests {
                 .andExpect(jsonPath("$.code").value(0));
 
         mockMvc.perform(get("/api/admin/tenders/{tenderId}", tenderId)
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(404));
+    }
+
+    private void exerciseNewsApis(String adminToken, String tag) throws Exception {
+        Long coverFileId = uploadFile(adminToken, "full-news-cover-" + tag + ".jpg", "news cover " + tag);
+        MvcResult createResult = mockMvc.perform(post("/api/admin/news")
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newsBody(
+                                "全量资讯-" + tag,
+                                coverFileId,
+                                "<p>全量资讯正文 " + tag + "</p>",
+                                LocalDateTime.now().minusHours(1),
+                                "平台综合管理部",
+                                "全量资讯摘要 " + tag,
+                                "PLATFORM_NOTICE",
+                                "PUBLISHED")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.title").value("全量资讯-" + tag))
+                .andExpect(jsonPath("$.data.coverFileId").value(coverFileId))
+                .andExpect(jsonPath("$.data.coverUrl").value("/api/files/" + coverFileId + "/thumbnail"))
+                .andExpect(jsonPath("$.data.categoryLabel").value("平台公告"))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andReturn();
+        Long newsId = dataId(createResult);
+
+        mockMvc.perform(get("/api/admin/news")
+                        .header("Authorization", bearer(adminToken))
+                        .param("keyword", tag)
+                        .param("pageNum", "1")
+                        .param("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.list[0].id").value(newsId))
+                .andExpect(jsonPath("$.data.list[0].content").doesNotExist());
+
+        mockMvc.perform(get("/api/admin/news/{newsId}", newsId)
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.content").value("<p>全量资讯正文 " + tag + "</p>"));
+
+        mockMvc.perform(put("/api/admin/news/{newsId}/status", newsId)
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("PUBLISHED"));
+
+        mockMvc.perform(get("/api/portal/news")
+                        .param("keyword", tag)
+                        .param("pageNum", "1")
+                        .param("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.list[0].id").value(newsId));
+
+        mockMvc.perform(get("/api/portal/news/latest")
+                        .param("limit", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(get("/api/portal/news/{newsId}", newsId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.id").value(newsId));
+
+        mockMvc.perform(put("/api/admin/news/{newsId}/status", newsId)
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DRAFT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        mockMvc.perform(put("/api/admin/news/{newsId}", newsId)
+                        .header("Authorization", bearer(adminToken))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(newsBody(
+                                "全量资讯更新-" + tag,
+                                coverFileId,
+                                "<p>更新后的资讯正文 " + tag + "</p>",
+                                LocalDateTime.now().minusMinutes(30),
+                                "平台综合管理部",
+                                "更新后的摘要 " + tag,
+                                "INDUSTRY_NEWS",
+                                "DRAFT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andExpect(jsonPath("$.data.categoryLabel").value("行业动态"));
+
+        mockMvc.perform(get("/api/portal/news/{newsId}", newsId))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(404));
+
+        mockMvc.perform(delete("/api/admin/news/{newsId}", newsId)
+                        .header("Authorization", bearer(adminToken)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(get("/api/admin/news/{newsId}", newsId)
                         .header("Authorization", bearer(adminToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(404));
@@ -586,6 +695,7 @@ class FullApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", containsString("attachment")))
                 .andExpect(content().string(expectedContent));
+
     }
 
     private void assertMemberPortalOperationsAreUnauthorized(String memberToken,
@@ -611,6 +721,7 @@ class FullApiIntegrationTests {
                         .header("Authorization", bearer(memberToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value(401));
+
     }
 
     private String loginAdmin(String username, String password) throws Exception {
@@ -727,7 +838,17 @@ class FullApiIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
-        return dataId(result);
+        Long tenderId = dataId(result);
+        if ("PUBLISHED".equals(statusValue)) {
+            mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
+                            .header("Authorization", bearer(adminToken))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PUBLISHED\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.status").value("PUBLISHED"));
+        }
+        return tenderId;
     }
 
     private String tenderBody(String title,
@@ -754,6 +875,26 @@ class FullApiIntegrationTests {
                 + "\"signupDeadline\":\"" + formatDateTime(signupDeadline) + "\","
                 + "\"status\":\"" + statusValue + "\","
                 + "\"attachmentFileIds\":[" + attachmentFileId + "]"
+                + "}";
+    }
+
+    private String newsBody(String title,
+                            Long coverFileId,
+                            String content,
+                            LocalDateTime publishAt,
+                            String source,
+                            String summary,
+                            String category,
+                            String statusValue) {
+        return "{"
+                + "\"title\":\"" + title + "\","
+                + "\"coverFileId\":" + coverFileId + ","
+                + "\"content\":\"" + content + "\","
+                + "\"publishAt\":\"" + formatDateTime(publishAt) + "\","
+                + "\"source\":\"" + source + "\","
+                + "\"summary\":\"" + summary + "\","
+                + "\"category\":\"" + category + "\","
+                + "\"status\":\"" + statusValue + "\""
                 + "}";
     }
 

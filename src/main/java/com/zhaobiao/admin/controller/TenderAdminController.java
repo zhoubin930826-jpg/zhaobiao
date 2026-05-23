@@ -5,6 +5,7 @@ import com.zhaobiao.admin.common.PageResult;
 import com.zhaobiao.admin.dto.tender.TenderAttachmentBindRequest;
 import com.zhaobiao.admin.dto.tender.TenderDto;
 import com.zhaobiao.admin.dto.tender.TenderListItemDto;
+import com.zhaobiao.admin.dto.tender.TenderStatusUpdateRequest;
 import com.zhaobiao.admin.dto.tender.TenderUpsertRequest;
 import com.zhaobiao.admin.logging.OperationLogRecord;
 import com.zhaobiao.admin.service.TenderService;
@@ -68,6 +69,15 @@ public class TenderAdminController {
     public ApiResponse<TenderDto> update(@PathVariable Long tenderId,
                                          @Valid @RequestBody TenderUpsertRequest request) {
         return ApiResponse.success(tenderService.updateTender(tenderId, request));
+    }
+
+    @Operation(summary = "发布或改为未发布招标")
+    @PreAuthorize("hasAuthority('TENDER_PUBLISH_BUTTON')")
+    @OperationLogRecord(module = "招标管理", action = "修改招标发布状态")
+    @PutMapping("/{tenderId}/status")
+    public ApiResponse<TenderDto> updateStatus(@PathVariable Long tenderId,
+                                               @Valid @RequestBody TenderStatusUpdateRequest request) {
+        return ApiResponse.success(tenderService.updateTenderStatus(tenderId, request.getStatus()));
     }
 
     @Operation(summary = "删除招标")

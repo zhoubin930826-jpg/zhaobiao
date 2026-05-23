@@ -1,7 +1,10 @@
 .idea/
+.codex-tmp/
+.playwright-cli/
 *.iml
 target/
 logs/
+docs/
 .run/
 .preview/
 .uploads/

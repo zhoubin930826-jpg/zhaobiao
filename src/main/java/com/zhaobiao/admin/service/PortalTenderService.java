@@ -20,16 +20,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-import java.io.UnsupportedEncodingException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -39,16 +34,16 @@ public class PortalTenderService {
 
     private final TenderRepository tenderRepository;
     private final TenderAttachmentRepository tenderAttachmentRepository;
-    private final FileStorageService fileStorageService;
+    private final FileResponseBuilder fileResponseBuilder;
     private final ViewMapper viewMapper;
 
     public PortalTenderService(TenderRepository tenderRepository,
                                TenderAttachmentRepository tenderAttachmentRepository,
-                               FileStorageService fileStorageService,
+                               FileResponseBuilder fileResponseBuilder,
                                ViewMapper viewMapper) {
         this.tenderRepository = tenderRepository;
         this.tenderAttachmentRepository = tenderAttachmentRepository;
-        this.fileStorageService = fileStorageService;
+        this.fileResponseBuilder = fileResponseBuilder;
         this.viewMapper = viewMapper;
     }
 
@@ -57,12 +52,14 @@ public class PortalTenderService {
                                                      int pageSize,
                                                      String keyword,
                                                      String region,
+                                                     String businessTypeName,
                                                      MemberLoginUser loginUser) {
         java.util.List<Long> businessTypeIds = getAccessibleBusinessTypeIds(loginUser);
         Pageable pageable = buildPageable(pageNum, pageSize);
         Page<Tender> page = tenderRepository.searchPortal(
                 normalize(keyword),
                 normalize(region),
+                normalize(businessTypeName),
                 TenderStatus.PUBLISHED,
                 LocalDateTime.now(),
                 businessTypeIds,
@@ -119,6 +116,12 @@ public class PortalTenderService {
     public ResponseEntity<Resource> downloadAttachment(Long tenderId,
                                                        Long attachmentId,
                                                        MemberLoginUser loginUser) {
+        return fileResponseBuilder.download(loadDownloadableAttachment(tenderId, attachmentId, loginUser).getFileStorage());
+    }
+
+    private TenderAttachment loadDownloadableAttachment(Long tenderId,
+                                                        Long attachmentId,
+                                                        MemberLoginUser loginUser) {
         Tender tender = tenderRepository.findPublicAccessible(
                         tenderId,
                         TenderStatus.PUBLISHED,
@@ -132,13 +135,7 @@ public class PortalTenderService {
         }
         TenderAttachment attachment = tenderAttachmentRepository.findDetailByIdAndTenderId(attachmentId, tenderId)
                 .orElseThrow(() -> new BusinessException(404, "招标附件不存在"));
-        TenderFileStorage fileStorage = attachment.getFileStorage();
-        Resource resource = fileStorageService.loadAsResource(fileStorage);
-        return ResponseEntity.ok()
-                .contentType(resolveMediaType(fileStorage.getContentType()))
-                .header(HttpHeaders.CONTENT_DISPOSITION, buildAttachmentDisposition(fileStorage.getOriginalName()))
-                .header(HttpHeaders.CONTENT_LENGTH, String.valueOf(fileStorage.getFileSize()))
-                .body(resource);
+        return attachment;
     }
 
     private Pageable buildPageable(int pageNum, int pageSize) {
@@ -183,26 +180,6 @@ public class PortalTenderService {
 
     private BusinessTypeOptionDto toBusinessTypeDto(Tender tender) {
         return tender.getBusinessType() == null ? null : viewMapper.toBusinessTypeOptionDto(tender.getBusinessType());
-    }
-
-    private MediaType resolveMediaType(String contentType) {
-        if (!StringUtils.hasText(contentType)) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-        try {
-            return MediaType.parseMediaType(contentType);
-        } catch (Exception ex) {
-            return MediaType.APPLICATION_OCTET_STREAM;
-        }
-    }
-
-    private String buildAttachmentDisposition(String fileName) {
-        try {
-            String encoded = URLEncoder.encode(fileName, StandardCharsets.UTF_8.name()).replace("+", "%20");
-            return "attachment; filename*=UTF-8''" + encoded;
-        } catch (UnsupportedEncodingException ex) {
-            return "attachment";
-        }
     }
 
     private String extractSummary(String content) {

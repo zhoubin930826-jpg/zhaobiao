@@ -44,8 +44,9 @@ public class PortalTenderController {
                                                            @RequestParam(defaultValue = "10") int pageSize,
                                                            @RequestParam(required = false) String keyword,
                                                            @RequestParam(required = false) String region,
+                                                           @RequestParam(required = false) String businessTypeName,
                                                            @AuthenticationPrincipal MemberLoginUser loginUser) {
-        return ApiResponse.success(portalTenderService.listTenders(pageNum, pageSize, keyword, region, loginUser));
+        return ApiResponse.success(portalTenderService.listTenders(pageNum, pageSize, keyword, region, businessTypeName, loginUser));
     }
 
     @Operation(summary = "查询门户招标详情")
@@ -63,4 +64,5 @@ public class PortalTenderController {
                                              @AuthenticationPrincipal MemberLoginUser loginUser) {
         return portalTenderService.downloadAttachment(tenderId, attachmentId, loginUser);
     }
+
 }

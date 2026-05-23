@@ -13,7 +13,7 @@ This file is the working guide for coding agents in this repository. Keep it cur
 
 - Project: 招标系统, with a Spring Boot backend, an admin frontend, and a public tender portal.
 - Backend: Java 8, Spring Boot 2.7.18, Maven, Spring Security + JWT, Spring Data JPA, MySQL 8, springdoc-openapi/Swagger UI.
-- Main backend artifact: `target/zhaobiao-admin-0.0.6-SNAPSHOT.jar`.
+- Main backend artifact: `target/zhaobiao-admin-0.0.7-SNAPSHOT.jar`.
 - Main backend package: `src/main/java/com/zhaobiao/admin`.
 - Backend tests: `src/test/java/com/zhaobiao/admin`.
 - Test DB: Docker MySQL 8 from `src/test/resources/application.yml`, defaulting to `zhaobiao_admin_test`.
@@ -196,7 +196,7 @@ Notes:
 - Tracked frontend deploy scripts default to host `114.55.166.12` and user `root`.
 - Nginx exposes the admin frontend at `/ztbgl/` and the public portal at `/ztbfb/`; `/` redirects to `/ztbfb/`.
 - Captured Nginx root paths are `/usr/share/nginx/ztbgl` and `/usr/share/nginx/ztbfb`.
-- Backend JAR name: `target/zhaobiao-admin-0.0.6-SNAPSHOT.jar`.
+- Backend JAR name: `target/zhaobiao-admin-0.0.7-SNAPSHOT.jar`.
 - Known backend deploy directory from prior operations: `/opt/zhaobiao/app`.
 - Runtime env file on the server is expected at `/opt/zhaobiao/app/app.env`.
 - `DEPLOY_LINUX.md` shows a generic `zhaobiao.service` unit. The real host has previously used `zhaobiao-admin.service`; always verify current units before restarting.

@@ -52,14 +52,16 @@ public class OpenApiConfig {
                     new Tag().name("管理员-会员管理").description("后台维护门户会员、会员业务类型、下载权限、有效期、状态和资料文件。"),
                     new Tag().name("管理员-业务类型管理").description("招标和会员共同使用的业务类型字典。"),
                     new Tag().name("管理员-招标管理").description("后台招标公告的列表、详情、新增、编辑、删除和附件绑定。"),
-                    new Tag().name("管理员-文件管理").description("后台招标附件上传，上传后返回文件 ID 和可直接展示的缩略图地址。"),
+                    new Tag().name("管理员-资讯管理").description("后台资讯的列表、详情、新增、编辑、删除和封面文件绑定。"),
+                    new Tag().name("管理员-文件管理").description("后台通用文件上传、下载和在线查看，上传后返回文件 ID 和可直接展示的缩略图地址。"),
                     new Tag().name("文件缩略图").description("公开读取上传文件缩略图。图片/PDF 会尽量生成预览，其他类型返回类型封面或失败状态。"),
                     new Tag().name("管理员-角色管理").description("后台角色和菜单授权管理。权限实体不再单独开放编辑，角色通过菜单树授权。"),
                     new Tag().name("管理员-菜单管理").description("后台菜单树维护，菜单被角色引用或存在子菜单时不能删除。"),
                     new Tag().name("管理员-权限管理（已停用）").description("权限维护接口已停用，保留路径并统一返回业务码 410。"),
                     new Tag().name("管理员-操作日志").description("查看后台变更动作和登录等操作日志。"),
                     new Tag().name("门户会员认证").description("门户会员验证码、登录、自助注册、当前会员信息、资料文件上传和资料更新。"),
-                    new Tag().name("门户-招标公告").description("门户公开招标展示、会员范围内招标列表、详情和附件下载。")
+                    new Tag().name("门户-招标公告").description("门户公开招标展示、会员范围内招标列表、详情和附件下载。"),
+                    new Tag().name("门户-资讯").description("门户公开资讯列表、最新资讯和资讯详情。")
             ));
 
             if (openApi.getPaths() == null) {
@@ -99,6 +101,8 @@ public class OpenApiConfig {
 
     private boolean isBinaryOperation(String key) {
         return "GET /api/portal/tenders/{tenderId}/attachments/{attachmentId}/download".equals(key)
+                || "GET /api/admin/files/{fileId}/download".equals(key)
+                || "GET /api/admin/files/{fileId}/view".equals(key)
                 || "GET /api/files/{fileId}/thumbnail".equals(key);
     }
 
@@ -109,6 +113,9 @@ public class OpenApiConfig {
         add(keys, "GET", "/api/portal/auth/captcha");
         add(keys, "POST", "/api/portal/auth/register");
         add(keys, "POST", "/api/portal/auth/login");
+        add(keys, "GET", "/api/portal/news");
+        add(keys, "GET", "/api/portal/news/latest");
+        add(keys, "GET", "/api/portal/news/{newsId}");
         add(keys, "GET", "/api/portal/tenders/latest");
         add(keys, "GET", "/api/portal/tenders/{tenderId}");
         add(keys, "GET", "/api/files/{fileId}/thumbnail");
@@ -155,7 +162,9 @@ public class OpenApiConfig {
         put(map, "DELETE", "/api/admin/business-types/{businessTypeId}", "功能：删除业务类型。\n输入：businessTypeId。\n输出：data=null。\n规则：如果已被会员或招标引用不能删除，只能先停用。权限：BUSINESS_TYPE_DELETE_BUTTON。");
 
         put(map, "GET", "/api/admin/files/upload", "功能：无 GET 接口。请使用 POST /api/admin/files/upload。");
-        put(map, "POST", "/api/admin/files/upload", "功能：上传招标附件文件。\n输入：multipart/form-data，字段名 files，可上传多个文件。\n输出：FileUploadResponse 数组。\n规则：上传成功即生成文件记录；图片和 PDF 尽量生成缩略图，前端可直接展示 thumbnailUrl。权限：TENDER_UPLOAD_BUTTON。");
+        put(map, "POST", "/api/admin/files/upload", "功能：上传后台文件，可用于招标附件和资讯封面。\n输入：multipart/form-data，字段名 files，可上传多个文件。\n输出：FileUploadResponse 数组。\n规则：上传成功即生成文件记录；图片和 PDF 尽量生成缩略图，前端可直接展示 thumbnailUrl。权限：TENDER_UPLOAD_BUTTON 或 NEWS_UPLOAD_BUTTON。");
+        put(map, "GET", "/api/admin/files/{fileId}/download", "功能：下载后台已上传文件。\n输入：fileId，管理员 token。\n输出：文件流，Content-Disposition=attachment。\n规则：用于管理员下载核对自己上传过的招标附件、资讯封面或会员资料文件；失败返回 ApiResponse JSON。权限：TENDER_UPLOAD_BUTTON、NEWS_UPLOAD_BUTTON、MEMBER_CREATE_BUTTON 或 MEMBER_EDIT_BUTTON。");
+        put(map, "GET", "/api/admin/files/{fileId}/view", "功能：在线查看后台已上传文件。\n输入：fileId，管理员 token。\n输出：完整文件流，Content-Disposition=inline。\n规则：PDF 多页翻页、图片/文本预览等由前端基于浏览器或预览组件处理；后端不裁剪、不分页。权限：TENDER_UPLOAD_BUTTON、NEWS_UPLOAD_BUTTON、MEMBER_CREATE_BUTTON 或 MEMBER_EDIT_BUTTON。");
 
         put(map, "GET", "/api/admin/tenders", "功能：分页查询后台招标列表。\n输入：pageNum、pageSize、keyword、region、businessTypeId。\n输出：PageResult<TenderListItemDto>。\n规则：按 publishAt、id 倒序；pageSize 最大 50。权限：SYSTEM_TENDER。");
         put(map, "GET", "/api/admin/tenders/{tenderId}", "功能：查询后台招标详情。\n输入：tenderId。\n输出：TenderDto，含正文 HTML 和附件列表，每个附件含 thumbnailUrl。\n权限：SYSTEM_TENDER。");
@@ -164,6 +173,12 @@ public class OpenApiConfig {
         put(map, "DELETE", "/api/admin/tenders/{tenderId}", "功能：删除招标公告。\n输入：tenderId。\n输出：data=null。\n规则：同时删除附件关系；文件若未被招标和会员资料引用，会清理存储记录和物理对象。权限：TENDER_DELETE_BUTTON。");
         put(map, "POST", "/api/admin/tenders/{tenderId}/attachments", "功能：为已有招标追加附件。\n输入：tenderId，TenderAttachmentBindRequest.fileIds。\n输出：更新后的 TenderDto。\n规则：自动去重并保持既有附件顺序。权限：TENDER_CREATE_BUTTON 或 TENDER_EDIT_BUTTON。");
         put(map, "DELETE", "/api/admin/tenders/{tenderId}/attachments/{attachmentId}", "功能：删除招标上的某个附件关系。\n输入：tenderId、attachmentId。\n输出：更新后的 TenderDto。\n规则：若文件无其他引用，会清理存储记录和物理对象。权限：TENDER_EDIT_BUTTON。");
+
+        put(map, "GET", "/api/admin/news", "功能：分页查询后台资讯列表。\n输入：pageNum、pageSize、keyword、category、status。\n输出：PageResult<NewsListItemDto>，列表不返回正文 content。\n规则：按 publishAt、id 倒序；pageSize 最大 50。权限：SYSTEM_NEWS。");
+        put(map, "GET", "/api/admin/news/{newsId}", "功能：查询后台资讯详情。\n输入：newsId。\n输出：NewsDto，包含正文 HTML、封面 fileId 和 coverUrl。\n权限：SYSTEM_NEWS。");
+        put(map, "POST", "/api/admin/news", "功能：新增资讯。\n输入：NewsUpsertRequest，含 title、可选 coverFileId、content、publishAt、source、summary、category、status。\n输出：NewsDto。\n规则：category 仅支持 PLATFORM_NOTICE、INDUSTRY_NEWS、SERVICE_GUIDE、POLICY_REGULATION；status 不传默认 PUBLISHED；coverFileId 必须来自已上传文件。权限：NEWS_CREATE_BUTTON。");
+        put(map, "PUT", "/api/admin/news/{newsId}", "功能：修改资讯。\n输入：newsId，NewsUpsertRequest。\n输出：NewsDto。\n规则：传 coverFileId=null 表示清空封面。权限：NEWS_EDIT_BUTTON。");
+        put(map, "DELETE", "/api/admin/news/{newsId}", "功能：删除资讯。\n输入：newsId。\n输出：data=null。\n规则：仅删除资讯记录，不删除封面文件存储记录。权限：NEWS_DELETE_BUTTON。");
 
         put(map, "GET", "/api/admin/roles", "功能：查询角色列表。\n输入：无。\n输出：RoleDto 数组，含已授权菜单。\n权限：SYSTEM_ROLE。");
         put(map, "POST", "/api/admin/roles", "功能：新增角色。\n输入：RoleRequest，含 code、name、description、menuIds。\n输出：RoleDto。\n规则：角色编码唯一；至少分配一个菜单。权限：ROLE_EDIT_BUTTON。");
@@ -195,6 +210,9 @@ public class OpenApiConfig {
         put(map, "GET", "/api/portal/tenders", "功能：会员分页查询可见招标列表。\n输入：pageNum、pageSize、keyword、region，会员 token。\n输出：PageResult<TenderListItemDto>。\n规则：只返回 PUBLISHED、已到发布时间、业务类型属于当前会员的招标。权限：MEMBER。");
         put(map, "GET", "/api/portal/tenders/{tenderId}", "功能：查询门户招标详情。\n输入：tenderId；可选会员 token。\n输出：TenderDetailDto，含正文、附件列表和 canDownload。\n规则：公开可读；只要求招标已发布且已到发布时间；未登录或无业务类型/下载权限时 canDownload=false。权限：公开。");
         put(map, "GET", "/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", "功能：下载门户招标附件。\n输入：tenderId、attachmentId、会员 token。\n输出：文件流，Content-Disposition 包含原始文件名。\n规则：会员必须能访问该招标业务类型、账号允许下载、附件属于该招标；失败返回 ApiResponse JSON。权限：MEMBER。");
+        put(map, "GET", "/api/portal/news", "功能：分页查询门户公开资讯。\n输入：pageNum、pageSize、keyword、category。\n输出：PageResult<NewsListItemDto>，列表不返回正文 content。\n规则：只返回 PUBLISHED 且 publishAt 不晚于当前时间的资讯；pageSize 最大 50。权限：公开。");
+        put(map, "GET", "/api/portal/news/latest", "功能：查询门户最新资讯。\n输入：limit，默认 6，最大 20。\n输出：NewsListItemDto 数组。\n规则：只返回 PUBLISHED 且 publishAt 不晚于当前时间的资讯。权限：公开。");
+        put(map, "GET", "/api/portal/news/{newsId}", "功能：查询门户资讯详情。\n输入：newsId。\n输出：NewsDto，包含正文 HTML、来源、摘要、分类和封面地址。\n规则：草稿或未来发布时间资讯返回业务码 404。权限：公开。");
 
         return map;
     }

@@ -349,26 +349,29 @@ class ControllerBoundaryIntegrationTests {
         Long visibleTenderId = createTender(adminToken, "PortalVisible-" + tag, engineeringTypeId,
                 LocalDateTime.now().minusHours(2), LocalDateTime.now().plusDays(10), LocalDateTime.now().plusDays(3),
                 "VISIBLE-" + tag, firstFileId, "PUBLISHED");
+        Long editableTenderId = createTender(adminToken, "PortalEditable-" + tag, engineeringTypeId,
+                LocalDateTime.now().minusHours(2), LocalDateTime.now().plusDays(10), LocalDateTime.now().plusDays(3),
+                "EDITABLE-" + tag, firstFileId, "DRAFT");
         assertBusinessCode(postAdminJson(adminToken, "/api/admin/tenders",
                 tenderBody("重复编号招标-" + tag, engineeringTypeId, LocalDateTime.now().minusHours(1), LocalDateTime.now().plusDays(6), LocalDateTime.now().plusDays(2), "VISIBLE-" + tag, secondFileId, "PUBLISHED")), 400);
 
-        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", visibleTenderId)
+        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", editableTenderId)
                 .header("Authorization", bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fileIds\":[]}")), 400);
-        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", visibleTenderId)
+        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", editableTenderId)
                 .header("Authorization", bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fileIds\":[null]}")), 400);
-        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", visibleTenderId)
+        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", editableTenderId)
                 .header("Authorization", bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fileIds\":[99999999]}")), 400);
-        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", visibleTenderId)
+        assertBusinessCode(mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", editableTenderId)
                 .header("Authorization", bearer(adminToken))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content("{\"fileIds\":[" + secondFileId + "]}")), 0);
-        assertBusinessCode(mockMvc.perform(delete("/api/admin/tenders/{tenderId}/attachments/{attachmentId}", visibleTenderId, 99999999L)
+        assertBusinessCode(mockMvc.perform(delete("/api/admin/tenders/{tenderId}/attachments/{attachmentId}", editableTenderId, 99999999L)
                 .header("Authorization", bearer(adminToken))), 404);
 
         Long attachmentId = findAttachmentIdByFileId(adminToken, visibleTenderId, firstFileId);
@@ -456,6 +459,13 @@ class ControllerBoundaryIntegrationTests {
                 .content(body));
     }
 
+    private ResultActions putAdminJson(String adminToken, String path, String body) throws Exception {
+        return mockMvc.perform(put(path)
+                .header("Authorization", bearer(adminToken))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(body));
+    }
+
     private void assertBusinessCode(ResultActions actions, int expectedCode) throws Exception {
         actions.andExpect(status().isOk()).andExpect(jsonPath("$.code").value(expectedCode));
     }
@@ -511,10 +521,16 @@ class ControllerBoundaryIntegrationTests {
                               String projectCode,
                               Long attachmentFileId,
                               String statusValue) throws Exception {
-        return dataId(postAdminJson(adminToken, "/api/admin/tenders",
+        Long tenderId = dataId(postAdminJson(adminToken, "/api/admin/tenders",
                 tenderBody(title, businessTypeId, publishAt, deadline, signupDeadline, projectCode, attachmentFileId, statusValue))
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn());
+        if ("PUBLISHED".equals(statusValue)) {
+            putAdminJson(adminToken, "/api/admin/tenders/" + tenderId + "/status", "{\"status\":\"PUBLISHED\"}")
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.status").value("PUBLISHED"));
+        }
+        return tenderId;
     }
 
     private Long uploadFile(String adminToken, String fileName, String content) throws Exception {

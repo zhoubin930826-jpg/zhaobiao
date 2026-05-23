@@ -1,8 +1,15 @@
 package com.zhaobiao.admin;
 
-import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.config.DataInitializer;
+import com.zhaobiao.admin.entity.Menu;
+import com.zhaobiao.admin.entity.Role;
+import com.zhaobiao.admin.entity.TenderFileStorage;
+import com.zhaobiao.admin.entity.User;
+import com.zhaobiao.admin.entity.UserStatus;
+import com.zhaobiao.admin.repository.MenuRepository;
+import com.zhaobiao.admin.repository.RoleRepository;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
+import com.zhaobiao.admin.repository.UserRepository;
 import com.zhaobiao.admin.service.CaptchaService;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -13,6 +20,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
 import org.springframework.context.annotation.Import;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
@@ -22,6 +30,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Arrays;
+import java.util.LinkedHashSet;
 import java.util.stream.Collectors;
 
 import static org.hamcrest.Matchers.hasSize;
@@ -53,6 +62,18 @@ class TenderIntegrationTests {
 
     @Autowired
     private TenderFileStorageRepository tenderFileStorageRepository;
+
+    @Autowired
+    private MenuRepository menuRepository;
+
+    @Autowired
+    private RoleRepository roleRepository;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private CaptchaService captchaService;
@@ -213,6 +234,30 @@ class TenderIntegrationTests {
                 .andExpect(jsonPath("$.data.list[0].title").value("项目-" + uniqueTag + "-A"))
                 .andExpect(jsonPath("$.data.list[0].businessType.code").value("ENGINEERING"));
 
+        mockMvc.perform(get("/api/portal/tenders")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .param("keyword", keyword)
+                        .param("businessTypeName", "货物")
+                        .param("pageNum", "1")
+                        .param("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.list[0].id").value(newerTenderId))
+                .andExpect(jsonPath("$.data.list[0].businessType.code").value("GOODS"));
+
+        mockMvc.perform(get("/api/portal/tenders")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .param("keyword", keyword)
+                        .param("businessTypeName", "工程")
+                        .param("pageNum", "1")
+                        .param("pageSize", "10"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.total").value(1))
+                .andExpect(jsonPath("$.data.list[0].id").value(olderTenderId))
+                .andExpect(jsonPath("$.data.list[0].businessType.code").value("ENGINEERING"));
+
         mockMvc.perform(get("/api/portal/tenders/{tenderId}", newerTenderId)
                         .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isOk())
@@ -347,6 +392,92 @@ class TenderIntegrationTests {
     }
 
     @Test
+    void adminCanDownloadAndViewStoredFilesAndPortalDownloadUsesPermissions() throws Exception {
+        String adminToken = loginAdmin("admin", "adminqwert");
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        Long engineeringTypeId = findBusinessTypeIdByCode(adminToken, "ENGINEERING");
+        assertNotNull(engineeringTypeId);
+
+        Long fileId = uploadFile(adminToken, "查看测试-" + uniqueTag + ".txt", "inline view content");
+        Long newsId = createNewsWithCover(adminToken, fileId, uniqueTag);
+
+        mockMvc.perform(get("/api/admin/files/{fileId}/download", fileId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
+                .andExpect(content().string("inline view content"));
+
+        mockMvc.perform(get("/api/admin/files/{fileId}/view", fileId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("inline")))
+                .andExpect(content().string("inline view content"));
+
+        Long tenderId = createTender(adminToken,
+                "查看测试项目-" + uniqueTag,
+                "浙江",
+                engineeringTypeId,
+                LocalDateTime.now().minusHours(2),
+                LocalDateTime.now().plusDays(3),
+                LocalDateTime.now().plusDays(1),
+                "VIEW-" + uniqueTag,
+                fileId);
+        Long attachmentId = findAttachmentId(adminToken, tenderId);
+        assertNotNull(attachmentId);
+
+        String memberUsername = "viewmember" + uniqueTag;
+        String memberToken = createMemberAndLogin(adminToken, memberUsername, uniqueTag, engineeringTypeId);
+
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value(401));
+
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId)
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
+
+        Long memberId = findMemberIdByUsername(adminToken, memberUsername);
+        assertNotNull(memberId);
+        mockMvc.perform(put("/api/admin/members/{memberId}/download-access", memberId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"canDownloadFile\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId)
+                        .header("Authorization", "Bearer " + memberToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
+                .andExpect(content().string("inline view content"));
+
+        mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DRAFT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(delete("/api/admin/tenders/{tenderId}", tenderId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        assertTrue(tenderFileStorageRepository.findById(fileId).isPresent());
+        mockMvc.perform(get("/api/admin/files/{fileId}/view", fileId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("inline")))
+                .andExpect(content().string("inline view content"));
+
+        mockMvc.perform(delete("/api/admin/news/{newsId}", newsId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+    }
+
+    @Test
     void duplicateUploadReusesExistingFileStorageAndKeepsFirstFileName() throws Exception {
         String adminToken = loginAdmin("admin", "adminqwert");
         String uniqueTag = String.valueOf(System.currentTimeMillis());
@@ -384,7 +515,8 @@ class TenderIntegrationTests {
                 LocalDateTime.now().plusDays(3),
                 LocalDateTime.now().plusDays(1),
                 "SHARED-" + uniqueTag,
-                sharedFileId);
+                sharedFileId,
+                "DRAFT");
         Long attachmentId = findAttachmentId(adminToken, tenderId);
         assertNotNull(attachmentId);
 
@@ -396,6 +528,142 @@ class TenderIntegrationTests {
                 .andExpect(jsonPath("$.code").value(0));
 
         assertTrue(tenderFileStorageRepository.findById(sharedFileId).isPresent());
+    }
+
+    @Test
+    void tenderCreateDefaultsToDraftAndPublishStatusRequiresPublishAuthority() throws Exception {
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        Long engineeringTypeId = findBusinessTypeIdByCode(superAdminToken, "ENGINEERING");
+        Long fileId = uploadFile(superAdminToken, "默认未发布-" + uniqueTag + ".txt", "draft tender file");
+
+        MvcResult createResult = mockMvc.perform(post("/api/admin/tenders")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tenderBody(
+                                "默认未发布-" + uniqueTag,
+                                "浙江",
+                                engineeringTypeId,
+                                LocalDateTime.now().minusMinutes(1),
+                                LocalDateTime.now().plusDays(10),
+                                LocalDateTime.now().plusDays(5),
+                                "DRAFT-" + uniqueTag,
+                                fileId,
+                                "PUBLISHED")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"))
+                .andReturn();
+        Long tenderId = objectMapper.readTree(createResult.getResponse().getContentAsString()).path("data").path("id").asLong();
+
+        String editorUsername = "tendereditor" + uniqueTag.substring(Math.max(0, uniqueTag.length() - 8));
+        String editorToken = createAdminWithMenus(
+                editorUsername,
+                "TENDER_EDITOR_" + uniqueTag,
+                "SYSTEM_TENDER",
+                "TENDER_CREATE_BUTTON",
+                "TENDER_EDIT_BUTTON",
+                "TENDER_UPLOAD_BUTTON");
+
+        mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
+                        .header("Authorization", "Bearer " + editorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
+
+        mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"PUBLISHED\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("PUBLISHED"));
+
+        mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
+                        .header("Authorization", "Bearer " + editorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DRAFT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
+    }
+
+    @Test
+    void publishedTenderCannotBeMutatedUntilUnpublishedByPublisher() throws Exception {
+        String adminToken = loginAdmin("admin", "adminqwert");
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        Long engineeringTypeId = findBusinessTypeIdByCode(adminToken, "ENGINEERING");
+        Long fileId = uploadFile(adminToken, "已发布锁定-" + uniqueTag + ".txt", "published tender file");
+        Long extraFileId = uploadFile(adminToken, "已发布追加-" + uniqueTag + ".txt", "extra tender file");
+        Long tenderId = createTender(adminToken,
+                "已发布锁定-" + uniqueTag,
+                "浙江",
+                engineeringTypeId,
+                LocalDateTime.now().minusMinutes(1),
+                LocalDateTime.now().plusDays(10),
+                LocalDateTime.now().plusDays(5),
+                "LOCK-" + uniqueTag,
+                fileId,
+                "PUBLISHED");
+        Long attachmentId = findAttachmentId(adminToken, tenderId);
+
+        mockMvc.perform(put("/api/admin/tenders/{tenderId}", tenderId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tenderBody(
+                                "已发布锁定-修改-" + uniqueTag,
+                                "浙江",
+                                engineeringTypeId,
+                                LocalDateTime.now().minusMinutes(1),
+                                LocalDateTime.now().plusDays(10),
+                                LocalDateTime.now().plusDays(5),
+                                "LOCK-" + uniqueTag,
+                                fileId,
+                                "PUBLISHED")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(post("/api/admin/tenders/{tenderId}/attachments", tenderId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"fileIds\":[" + extraFileId + "]}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(delete("/api/admin/tenders/{tenderId}/attachments/{attachmentId}", tenderId, attachmentId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(delete("/api/admin/tenders/{tenderId}", tenderId)
+                        .header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"status\":\"DRAFT\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DRAFT"));
+
+        mockMvc.perform(put("/api/admin/tenders/{tenderId}", tenderId)
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(tenderBody(
+                                "已发布锁定-修改-" + uniqueTag,
+                                "浙江",
+                                engineeringTypeId,
+                                LocalDateTime.now().minusMinutes(1),
+                                LocalDateTime.now().plusDays(10),
+                                LocalDateTime.now().plusDays(5),
+                                "LOCK-" + uniqueTag,
+                                fileId,
+                                "DRAFT")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.title").value("已发布锁定-修改-" + uniqueTag));
     }
 
     private String loginAdmin(String username, String password) throws Exception {
@@ -446,6 +714,33 @@ class TenderIntegrationTests {
                 .path(0);
     }
 
+    private String tenderBody(String title,
+                              String region,
+                              Long businessTypeId,
+                              LocalDateTime publishAt,
+                              LocalDateTime deadline,
+                              LocalDateTime signupDeadline,
+                              String projectCode,
+                              Long attachmentFileId,
+                              String statusValue) {
+        return "{"
+                + "\"title\":\"" + title + "\","
+                + "\"region\":\"" + region + "\","
+                + "\"businessTypeId\":" + businessTypeId + ","
+                + "\"publishAt\":\"" + publishAt.format(DATE_TIME_FORMATTER) + "\","
+                + "\"content\":\"<p>这是 " + title + " 的正文</p>\","
+                + "\"contactPerson\":\"张三\","
+                + "\"budget\":\"100 万元\","
+                + "\"contactPhone\":\"0571-88886666\","
+                + "\"tenderUnit\":\"测试招标单位\","
+                + "\"deadline\":\"" + deadline.format(DATE_TIME_FORMATTER) + "\","
+                + "\"projectCode\":\"" + projectCode + "\","
+                + "\"signupDeadline\":\"" + signupDeadline.format(DATE_TIME_FORMATTER) + "\","
+                + "\"status\":\"" + statusValue + "\","
+                + "\"attachmentFileIds\":[" + attachmentFileId + "]"
+                + "}";
+    }
+
     private Long createTender(String adminToken,
                               String title,
                               String region,
@@ -468,22 +763,7 @@ class TenderIntegrationTests {
                               String projectCode,
                               Long attachmentFileId,
                               String statusValue) throws Exception {
-        String requestBody = "{"
-                + "\"title\":\"" + title + "\","
-                + "\"region\":\"" + region + "\","
-                + "\"businessTypeId\":" + businessTypeId + ","
-                + "\"publishAt\":\"" + publishAt.format(DATE_TIME_FORMATTER) + "\","
-                + "\"content\":\"<p>这是 " + title + " 的正文</p>\","
-                + "\"contactPerson\":\"张三\","
-                + "\"budget\":\"100 万元\","
-                + "\"contactPhone\":\"0571-88886666\","
-                + "\"tenderUnit\":\"测试招标单位\","
-                + "\"deadline\":\"" + deadline.format(DATE_TIME_FORMATTER) + "\","
-                + "\"projectCode\":\"" + projectCode + "\","
-                + "\"signupDeadline\":\"" + signupDeadline.format(DATE_TIME_FORMATTER) + "\","
-                + "\"status\":\"" + statusValue + "\","
-                + "\"attachmentFileIds\":[" + attachmentFileId + "]"
-                + "}";
+        String requestBody = tenderBody(title, region, businessTypeId, publishAt, deadline, signupDeadline, projectCode, attachmentFileId, statusValue);
         MvcResult result = mockMvc.perform(post("/api/admin/tenders")
                         .header("Authorization", "Bearer " + adminToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -491,7 +771,47 @@ class TenderIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0))
                 .andReturn();
-        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
+        Long tenderId = objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
+        if ("PUBLISHED".equals(statusValue)) {
+            mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
+                            .header("Authorization", "Bearer " + adminToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"status\":\"PUBLISHED\"}"))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.code").value(0))
+                    .andExpect(jsonPath("$.data.status").value("PUBLISHED"));
+        }
+        return tenderId;
+    }
+
+    private String createAdminWithMenus(String username, String roleCode, String... menuCodes) throws Exception {
+        Role role = new Role();
+        role.setCode(roleCode);
+        role.setName(roleCode);
+        role.setDescription("测试招标权限角色");
+        role.setBuiltIn(false);
+        LinkedHashSet<Menu> menus = new LinkedHashSet<>();
+        for (String menuCode : menuCodes) {
+            menus.add(menuRepository.findByCode(menuCode).orElseThrow(AssertionError::new));
+        }
+        role.setMenus(menus);
+        role = roleRepository.saveAndFlush(role);
+
+        User user = new User();
+        user.setUsername(username);
+        user.setPhone("139" + username.substring(Math.max(0, username.length() - 8)));
+        user.setEmail(username + "@zhaobiao.test");
+        user.setPassword(passwordEncoder.encode("12345678"));
+        user.setStatus(UserStatus.APPROVED);
+        user.setRealName("招标权限测试管理员");
+        user.setCompanyName("权限测试单位");
+        user.setContactPerson("权限测试管理员");
+        user.setUnifiedSocialCreditCode("91310000T" + username.substring(Math.max(0, username.length() - 9)));
+        LinkedHashSet<Role> userRoles = new LinkedHashSet<>();
+        userRoles.add(role);
+        user.setRoles(userRoles);
+        userRepository.saveAndFlush(user);
+        return loginAdmin(username, "12345678");
     }
 
     private Long findAttachmentId(String adminToken, Long tenderId) throws Exception {
@@ -505,6 +825,27 @@ class TenderIntegrationTests {
             return attachments.get(0).path("attachmentId").asLong();
         }
         return null;
+    }
+
+    private Long createNewsWithCover(String adminToken, Long coverFileId, String uniqueTag) throws Exception {
+        String requestBody = "{"
+                + "\"title\":\"文件引用资讯-" + uniqueTag + "\","
+                + "\"coverFileId\":" + coverFileId + ","
+                + "\"content\":\"<p>文件引用资讯正文</p>\","
+                + "\"publishAt\":\"" + LocalDateTime.now().minusHours(1).format(DATE_TIME_FORMATTER) + "\","
+                + "\"source\":\"平台综合管理部\","
+                + "\"summary\":\"文件引用资讯摘要\","
+                + "\"category\":\"PLATFORM_NOTICE\","
+                + "\"status\":\"PUBLISHED\""
+                + "}";
+        MvcResult result = mockMvc.perform(post("/api/admin/news")
+                        .header("Authorization", "Bearer " + adminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(requestBody))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andReturn();
+        return objectMapper.readTree(result.getResponse().getContentAsString()).path("data").path("id").asLong();
     }
 
     private String createMemberAndLogin(String adminToken,
