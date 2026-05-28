@@ -65,6 +65,32 @@
             <li v-if="!previewList.length" class="empty-tip">暂无相关数据</li>
           </ul>
         </section>
+
+        <!-- 企业资质（页底展示，证书完整展示） -->
+        <section class="portal-section qualification-section">
+          <div class="section-header">
+            <h3>企业资质</h3>
+          </div>
+          <div class="qualification-grid">
+            <figure
+              v-for="item in qualifications"
+              :key="item.id"
+              class="qualification-card"
+            >
+              <div class="qualification-frame">
+                <img
+                  :src="item.src"
+                  :alt="item.alt"
+                  class="qualification-image"
+                  loading="lazy"
+                />
+              </div>
+              <figcaption v-if="item.caption" class="qualification-caption">
+                {{ item.caption }}
+              </figcaption>
+            </figure>
+          </div>
+        </section>
       </div>
     </div>
   </div>
@@ -76,6 +102,23 @@ import { listLatestPortalNews, listLatestPortalTenders, listPortalTenders } from
 import { authState } from '@/auth'
 import { formatDate } from '@/utils/format'
 import newsBanner from '@/assets/banner-greatwall.png'
+
+const assetBase = import.meta.env.BASE_URL
+
+const qualifications = [
+  {
+    id: 'qual-1',
+    src: `${assetBase}1.png`,
+    alt: '企业资质证书一',
+    caption: '中央政府供货商'
+  },
+  {
+    id: 'qual-2',
+    src: `${assetBase}2.png`,
+    alt: '企业资质证书二',
+    caption: '政府采购优秀供应商'
+  }
+]
 
 const NEWS_PREVIEW_LIMIT = 4
 
@@ -222,6 +265,48 @@ watch(() => authState.token, loadList)
 
 .more:hover {
   color: var(--section-color);
+}
+
+/* 企业资质 */
+.qualification-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  padding: 1rem 1.25rem 1.25rem;
+}
+
+.qualification-card {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.qualification-frame {
+  border: 1px solid var(--section-color-border);
+  border-radius: 6px;
+  background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%);
+  padding: 0.85rem;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qualification-image {
+  width: 100%;
+  max-height: 340px;
+  object-fit: contain;
+  object-position: center;
+  display: block;
+}
+
+.qualification-caption {
+  margin: 0;
+  text-align: center;
+  font-size: 0.85rem;
+  color: #475569;
+  line-height: 1.4;
 }
 
 /* 资讯栏（紧凑布局） */
@@ -473,6 +558,20 @@ watch(() => authState.token, loadList)
 }
 
 @media (max-width: 768px) {
+  .qualification-grid {
+    grid-template-columns: 1fr;
+    gap: 1.25rem;
+    padding: 0.9rem 1rem 1rem;
+  }
+
+  .qualification-frame {
+    min-height: 200px;
+  }
+
+  .qualification-image {
+    max-height: 280px;
+  }
+
   .news-panel {
     flex-direction: column;
   }
