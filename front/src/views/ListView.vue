@@ -50,7 +50,7 @@
         <!-- 采购项目动态 -->
         <section class="portal-section">
           <div class="section-header">
-            <h3>采购项目动态</h3>
+            <h3>项目动态</h3>
             <router-link :to="moreLink" class="more">更多 >></router-link>
           </div>
           <ul class="text-list">
