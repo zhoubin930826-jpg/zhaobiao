@@ -9,7 +9,7 @@ const Setting = {
      * 基础配置
      * */
     // 网页标题的后缀
-    titleSuffix: '军科集团入库管理系统',
+    titleSuffix: '军科集团入库管理平台',
     // 侧边栏菜单上方显示的名称（不配置则与 titleSuffix 相同）
     siderTitle: '',
     // 路由模式，可选值为 history 或 hash

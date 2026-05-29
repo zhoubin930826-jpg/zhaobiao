@@ -84,7 +84,7 @@ async function load() {
     router.replace({ name: 'list' })
     return
   }
-  document.title = `${pageTitle.value} · 分类公告 · 招投标信息公示`
+  // document.title = `${pageTitle.value} · 分类公告 · 招投标信息公示`
   if (!authState.token) {
     list.value = []
     total.value = 0

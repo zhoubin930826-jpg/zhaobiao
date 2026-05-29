@@ -7,7 +7,7 @@
         <img class="page-account-img" src="@/assets/images/login/bg.png" alt="">
 
         <div class="page-account-container">
-            <h1 class="page-account-title">军科集团入库管理系统</h1>
+            <h1 class="page-account-title">军科集团入库管理平台</h1>
 
             <Form
                 ref="loginForm"

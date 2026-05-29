@@ -79,8 +79,8 @@ router.beforeEach(to => {
 })
 
 router.afterEach(to => {
-  const base = '招投标信息公示'
-  document.title = to.meta.title ? `${to.meta.title} · ${base}` : base
+  // const base = '招投标信息公示'
+  // document.title = to.meta.title ? `${to.meta.title} · ${base}` : base
 })
 
 export default router
