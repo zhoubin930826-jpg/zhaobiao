@@ -3,7 +3,7 @@
     <!-- 顶部登录条 -->
     <div class="top-bar">
       <div class="inner top-inner">
-        <div class="welcome">欢迎您来到招投标信息公示平台</div>
+        <div class="welcome">欢迎您来到军科集团入库管理平台</div>
         <div class="actions">
           <div v-if="isLoggedIn" ref="menuRef" class="user-menu">
             <button type="button" class="user-trigger" @click="toggleMenu">

@@ -61,7 +61,7 @@ const categoryTitle = computed(() => {
 const isAllCategory = computed(() => categoryTitle.value === ALL_CATEGORY)
 
 const pageTitle = computed(() =>
-  isAllCategory.value ? '采购项目动态' : categoryTitle.value
+  isAllCategory.value ? '项目动态' : categoryTitle.value
 )
 
 const pageNum = computed(() => {

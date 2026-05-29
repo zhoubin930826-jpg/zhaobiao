@@ -16,7 +16,7 @@
           <img class="brand-mark" :src="logoUrl" width="52" height="52" alt="" />
           <div class="head-lines">
             <h1>会员注册</h1>
-            <p class="tagline">招投标信息公示平台</p>
+            <p class="tagline">军科集团入库管理平台</p>
           </div>
         </header>
 

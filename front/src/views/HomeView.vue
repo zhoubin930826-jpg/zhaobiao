@@ -3,7 +3,7 @@
     <!-- 顶部横幅 -->
     <div class="portal-banner" v-if="!isLoggedIn">
       <div class="banner-content">
-        <h2>欢迎来到招投标信息公示平台</h2>
+        <h2>欢迎来到军科集团入库管理平台</h2>
         <p>集中发布各类招标公告，支持按类型、地区筛选，为供应商与社会公众提供透明、高效的信息服务。</p>
         <div class="banner-actions">
           <router-link :to="{ name: 'login', query: { redirect: '/list' } }" class="btn-primary">
