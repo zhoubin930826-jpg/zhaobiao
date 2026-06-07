@@ -5,6 +5,7 @@ import com.zhaobiao.admin.config.JwtProperties;
 import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
+import com.zhaobiao.admin.dto.member.MemberPasswordChangeRequest;
 import com.zhaobiao.admin.dto.member.MemberProfileUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberRegisterRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
@@ -167,6 +168,18 @@ public class PortalAuthService {
             user.setThreeYearPerformanceFile(loadProfileFile(request.getThreeYearPerformanceFileId()));
         }
         return viewMapper.toMemberUserDto(memberUserRepository.save(user));
+    }
+
+    @Transactional
+    public void changeCurrentMemberPassword(MemberLoginUser loginUser, MemberPasswordChangeRequest request) {
+        MemberUser user = memberUserRepository.findDetailByIdAndDeletedFalse(loginUser.getUserId())
+                .orElseThrow(() -> new BusinessException(404, "会员不存在"));
+        if (!passwordEncoder.matches(request.getOldPassword(), user.getPassword())) {
+            throw new BusinessException(400, "旧密码错误");
+        }
+        validatePassword(request.getPassword(), request.getConfirmPassword());
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
+        memberUserRepository.save(user);
     }
 
     public void ensureMemberUnique(String username,

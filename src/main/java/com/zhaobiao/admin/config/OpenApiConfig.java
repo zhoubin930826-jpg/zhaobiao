@@ -205,6 +205,7 @@ public class OpenApiConfig {
         put(map, "GET", "/api/portal/auth/me", "功能：获取当前门户会员资料。\n输入：会员 token。\n输出：MemberUserDto，含业务类型、有效期、下载权限、营业执照和三年内业绩文件缩略图字段。\n权限：MEMBER。");
         put(map, "POST", "/api/portal/auth/profile/files", "功能：门户会员上传资料文件。\n输入：multipart/form-data，字段名 files。\n输出：FileUploadResponse 数组。\n规则：返回 fileId 后可用于更新 businessLicenseFileId 或 threeYearPerformanceFileId。权限：MEMBER。");
         put(map, "PUT", "/api/portal/auth/profile", "功能：门户会员更新自己的资料。\n输入：MemberProfileUpdateRequest，可更新联系方式、公司信息、实名、营业执照文件 ID、三年内业绩文件 ID。\n输出：更新后的 MemberUserDto。\n规则：资料字段不传表示保持原值；传空字符串的必填文本会被拒绝；唯一字段不能与其他会员重复。权限：MEMBER。");
+        put(map, "PUT", "/api/portal/auth/password", "功能：门户会员修改自己的登录密码。\n输入：MemberPasswordChangeRequest，包含 oldPassword、password、confirmPassword。\n输出：data=null。\n规则：必须登录为 MEMBER；旧密码必须正确；新密码 6-32 位且两次输入一致。权限：MEMBER。");
 
         put(map, "GET", "/api/portal/tenders/latest", "功能：查询门户首页最新公开招标。\n输入：无。\n输出：最新 3 条 TenderListItemDto。\n规则：只返回 PUBLISHED 且 publishAt 不晚于当前时间的招标；不按会员业务类型过滤。权限：公开。");
         put(map, "GET", "/api/portal/tenders", "功能：会员分页查询可见招标列表。\n输入：pageNum、pageSize、keyword、region，会员 token。\n输出：PageResult<TenderListItemDto>。\n规则：只返回 PUBLISHED、已到发布时间、业务类型属于当前会员的招标。权限：MEMBER。");

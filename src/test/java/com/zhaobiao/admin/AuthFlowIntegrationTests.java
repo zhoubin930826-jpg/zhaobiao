@@ -408,6 +408,53 @@ class AuthFlowIntegrationTests {
     }
 
     @Test
+    void portalMemberCanChangeOwnPasswordWithCurrentPassword() throws Exception {
+        String uniqueTag = String.valueOf(System.currentTimeMillis());
+        String username = "pwd" + uniqueTag;
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+        Long engineeringTypeId = findBusinessTypeIdByCode(superAdminToken, "ENGINEERING");
+        assertNotNull(engineeringTypeId);
+        String phoneSeed = uniqueTag.substring(uniqueTag.length() - 8);
+        String creditSeed = uniqueTag.substring(uniqueTag.length() - 6);
+        String futureExpiresAt = formatDateTime(LocalDateTime.now().plusMonths(1));
+
+        mockMvc.perform(post("/api/admin/members")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"" + username + "\",\"phone\":\"134" + phoneSeed + "\",\"email\":\"" + username + "@test.com\",\"companyName\":\"会员改密企业\",\"contactPerson\":\"李四\",\"unifiedSocialCreditCode\":\"91310000MP1K" + creditSeed + "\",\"realName\":\"李四\",\"password\":\"123456\",\"confirmPassword\":\"123456\",\"businessTypeIds\":[" + engineeringTypeId + "],\"canDownloadFile\":false,\"status\":\"ENABLED\",\"expiresAt\":\"" + futureExpiresAt + "\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        String memberToken = loginMember(username, "123456");
+        mockMvc.perform(put("/api/portal/auth/password")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"bad-old\",\"password\":\"654321\",\"confirmPassword\":\"654321\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        mockMvc.perform(put("/api/portal/auth/password")
+                        .header("Authorization", "Bearer " + memberToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"oldPassword\":\"123456\",\"password\":\"654321\",\"confirmPassword\":\"654321\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0));
+
+        mockMvc.perform(post("/api/portal/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(portalLoginBody(username, "123456")))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(400));
+
+        String newToken = loginMember(username, "654321");
+        mockMvc.perform(get("/api/portal/auth/me")
+                        .header("Authorization", "Bearer " + newToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.username").value(username));
+    }
+
+    @Test
     void memberExpirationIsRequiredAndBlocksLoginAndPortalAccess() throws Exception {
         String uniqueTag = String.valueOf(System.currentTimeMillis());
         String username = "expire" + uniqueTag;

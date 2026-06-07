@@ -5,6 +5,7 @@ import com.zhaobiao.admin.service.CaptchaChallenge;
 import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
+import com.zhaobiao.admin.dto.member.MemberPasswordChangeRequest;
 import com.zhaobiao.admin.dto.member.MemberProfileUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberRegisterRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
@@ -98,5 +99,15 @@ public class PortalAuthController {
     public ApiResponse<MemberUserDto> updateProfile(@AuthenticationPrincipal MemberLoginUser loginUser,
                                                     @Valid @RequestBody MemberProfileUpdateRequest request) {
         return ApiResponse.success(portalAuthService.updateCurrentMember(loginUser, request));
+    }
+
+    @Operation(summary = "修改当前会员密码")
+    @OperationLogRecord(module = "门户会员", action = "修改当前会员密码")
+    @PreAuthorize("hasRole('MEMBER')")
+    @PutMapping("/password")
+    public ApiResponse<Void> changePassword(@AuthenticationPrincipal MemberLoginUser loginUser,
+                                            @Valid @RequestBody MemberPasswordChangeRequest request) {
+        portalAuthService.changeCurrentMemberPassword(loginUser, request);
+        return ApiResponse.success("修改密码成功", null);
     }
 }

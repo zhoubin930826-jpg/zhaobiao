@@ -1,0 +1,42 @@
+system: zhaobiao
+system_name: 招标系统
+generated_at: "2026-05-24"
+baseline:
+  git_branch: main
+  git_commit_short: a969850
+  backend_artifact: target/zhaobiao-admin-0.0.7-SNAPSHOT.jar
+  backend_package: com.zhaobiao.admin
+source_policy:
+  ground_truth_order:
+    - 当前代码
+    - 当前配置
+    - 当前 SQL 迁移脚本
+    - 当前测试
+    - 已有仓库文档
+    - Obsidian 历史笔记
+  notes:
+    - Obsidian 历史笔记只作为背景；如与当前代码冲突，以当前代码为准。
+    - 本次只新增 docs/知识文档 下的知识文档，不修改业务代码。
+surfaces:
+  backend:
+    framework: Spring Boot 2.7.18
+    java: "8"
+    database: MySQL 8
+    auth: Spring Security + JWT
+    api_docs: /swagger-ui.html
+  admin_frontend:
+    path: frontend/
+    framework: Vue 2.6 + Vue CLI 3 + View Design
+    production_base: /ztbgl/
+  portal_frontend:
+    path: front/
+    framework: Vue 3.2 + Vite 2
+    production_base: /ztbfb/
+main_business_domains:
+  - 管理员账号与权限菜单
+  - 业务类型
+  - 会员准入与资料
+  - 招标管理与门户展示
+  - 资讯管理与门户展示
+  - 文件上传、缩略图、预览与下载
+  - 操作日志
