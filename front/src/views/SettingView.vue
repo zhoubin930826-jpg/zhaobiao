@@ -93,10 +93,77 @@
         <p v-if="success" class="tips tips-success">账户信息已更新。</p>
 
         <div class="actions">
+          <button type="button" class="btn-outline" @click="openPasswordModal">修改密码</button>
           <button type="submit" class="submit" :disabled="submitting">{{ submitting ? '保存中...' : '保存设置' }}</button>
         </div>
       </form>
     </section>
+
+    <Teleport to="body">
+      <div
+        v-if="passwordModalOpen"
+        class="password-mask"
+        role="presentation"
+        @click.self="closePasswordModal"
+      >
+        <div
+          class="password-dialog"
+          role="dialog"
+          aria-labelledby="password-modal-title"
+          aria-modal="true"
+        >
+          <header class="password-header">
+            <h2 id="password-modal-title" class="password-title">修改密码</h2>
+            <button type="button" class="password-close" aria-label="关闭" @click="closePasswordModal">×</button>
+          </header>
+          <form class="password-body" @submit.prevent="onPasswordSubmit">
+            <p v-if="!passwordSuccess" class="password-desc">需验证旧密码，新密码长度为 6-32 位。</p>
+            <template v-if="!passwordSuccess">
+              <label class="field">
+                <span class="field-label">旧密码</span>
+                <input
+                  v-model="passwordForm.oldPassword"
+                  type="password"
+                  autocomplete="current-password"
+                  placeholder="请输入当前密码"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">新密码</span>
+                <input
+                  v-model="passwordForm.password"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="请输入新密码（6-32位）"
+                />
+              </label>
+              <label class="field">
+                <span class="field-label">确认新密码</span>
+                <input
+                  v-model="passwordForm.confirmPassword"
+                  type="password"
+                  autocomplete="new-password"
+                  placeholder="请再次输入新密码"
+                />
+              </label>
+            </template>
+            <p v-if="passwordError" class="tips tips-error">{{ passwordError }}</p>
+            <p v-if="passwordSuccess" class="tips tips-success password-success-msg">密码已修改成功，下次登录请使用新密码。</p>
+            <footer class="password-footer">
+              <template v-if="passwordSuccess">
+                <button type="button" class="submit" @click="closePasswordModal">完成</button>
+              </template>
+              <template v-else>
+                <button type="button" class="btn-outline" @click="closePasswordModal">取消</button>
+                <button type="submit" class="submit" :disabled="passwordSubmitting">
+                  {{ passwordSubmitting ? '提交中...' : '确认修改' }}
+                </button>
+              </template>
+            </footer>
+          </form>
+        </div>
+      </div>
+    </Teleport>
 
     <div v-if="viewer.open" class="preview-mask" @click.self="closeViewer">
       <div class="preview-dialog">
@@ -113,8 +180,8 @@
 </template>
 
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref } from 'vue'
-import { buildPortalFileThumbnailUrl, getPortalProfile, updatePortalProfile, uploadPortalFiles } from '@/api/portal'
+import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { buildPortalFileThumbnailUrl, changePortalPassword, getPortalProfile, updatePortalProfile, uploadPortalFiles } from '@/api/portal'
 import { authState } from '@/auth'
 
 const loading = ref(false)
@@ -124,6 +191,15 @@ const error = ref('')
 const submitError = ref('')
 const uploadError = ref('')
 const success = ref(false)
+const passwordSubmitting = ref(false)
+const passwordModalOpen = ref(false)
+const passwordError = ref('')
+const passwordSuccess = ref(false)
+const passwordForm = reactive({
+  oldPassword: '',
+  password: '',
+  confirmPassword: ''
+})
 const form = reactive({
   username: '',
   realName: '',
@@ -308,8 +384,85 @@ async function onSubmit() {
   }
 }
 
+function resetPasswordForm() {
+  passwordForm.oldPassword = ''
+  passwordForm.password = ''
+  passwordForm.confirmPassword = ''
+  passwordError.value = ''
+  passwordSuccess.value = false
+}
+
+function openPasswordModal() {
+  resetPasswordForm()
+  passwordModalOpen.value = true
+}
+
+function closePasswordModal() {
+  passwordModalOpen.value = false
+  resetPasswordForm()
+}
+
+function onPasswordModalKeydown(event) {
+  if (event.key === 'Escape' && passwordModalOpen.value) {
+    closePasswordModal()
+  }
+}
+
+watch(passwordModalOpen, open => {
+  if (typeof document === 'undefined') return
+  if (open) {
+    document.body.style.overflow = 'hidden'
+    document.addEventListener('keydown', onPasswordModalKeydown)
+  } else {
+    document.body.style.overflow = ''
+    document.removeEventListener('keydown', onPasswordModalKeydown)
+  }
+})
+
+async function onPasswordSubmit() {
+  passwordError.value = ''
+  passwordSuccess.value = false
+  const oldPassword = (passwordForm.oldPassword || '').trim()
+  const password = (passwordForm.password || '').trim()
+  const confirmPassword = (passwordForm.confirmPassword || '').trim()
+  if (!oldPassword) {
+    passwordError.value = '请输入旧密码'
+    return
+  }
+  if (!password) {
+    passwordError.value = '请输入新密码'
+    return
+  }
+  if (password.length < 6 || password.length > 32) {
+    passwordError.value = '密码长度需在 6-32 位之间'
+    return
+  }
+  if (password !== confirmPassword) {
+    passwordError.value = '两次输入的新密码不一致'
+    return
+  }
+  passwordSubmitting.value = true
+  try {
+    await changePortalPassword(oldPassword, password, confirmPassword)
+    passwordForm.oldPassword = ''
+    passwordForm.password = ''
+    passwordForm.confirmPassword = ''
+    passwordSuccess.value = true
+  } catch (e) {
+    passwordError.value = (e && e.message) || '修改密码失败，请稍后重试'
+  } finally {
+    passwordSubmitting.value = false
+  }
+}
+
 onMounted(loadProfile)
-onBeforeUnmount(closeViewer)
+onBeforeUnmount(() => {
+  closeViewer()
+  if (passwordModalOpen.value) {
+    document.body.style.overflow = ''
+    document.removeEventListener('keydown', onPasswordModalKeydown)
+  }
+})
 </script>
 
 <style scoped>
@@ -539,6 +692,24 @@ onBeforeUnmount(closeViewer)
 .actions {
   display: flex;
   justify-content: flex-end;
+  gap: 0.65rem;
+}
+
+.btn-outline {
+  min-width: 100px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #334155;
+  background: #fff;
+  cursor: pointer;
+}
+
+.btn-outline:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .submit {
@@ -556,6 +727,81 @@ onBeforeUnmount(closeViewer)
 .submit:disabled {
   opacity: 0.7;
   cursor: not-allowed;
+}
+
+.password-mask {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 1.2rem;
+  z-index: 1000;
+}
+
+.password-dialog {
+  width: min(440px, 95vw);
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 16px 48px rgba(15, 23, 42, 0.18);
+  overflow: hidden;
+}
+
+.password-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.85rem 1rem;
+  border-bottom: 1px solid #e2e8f0;
+  background: #f8fafc;
+}
+
+.password-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+.password-close {
+  border: none;
+  background: transparent;
+  color: #64748b;
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0 0.15rem;
+}
+
+.password-close:hover {
+  color: #1f2937;
+}
+
+.password-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.1rem 1.1rem;
+}
+
+.password-desc {
+  margin: 0;
+  font-size: 0.86rem;
+  color: var(--text-muted);
+  line-height: 1.5;
+}
+
+.password-success-msg {
+  margin: 0.5rem 0;
+  text-align: center;
+}
+
+.password-footer {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.65rem;
+  margin-top: 0.25rem;
 }
 
 .preview-mask {

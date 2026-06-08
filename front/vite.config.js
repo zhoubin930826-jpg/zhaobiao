@@ -15,7 +15,7 @@ export default defineConfig({
     open: true,
     proxy: {
       '/api': {
-        target: process.env.VITE_PROXY_TARGET || 'https://xiazhiyong.vip',
+        target: process.env.VITE_PROXY_TARGET || 'https://junkezhizao.com',
         changeOrigin: true,
         secure: false
       }

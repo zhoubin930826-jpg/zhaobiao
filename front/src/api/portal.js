@@ -123,6 +123,14 @@ export async function updatePortalProfile(data) {
   })
 }
 
+/** 修改密码：MemberPasswordChangeRequest */
+export async function changePortalPassword(oldPassword, password, confirmPassword) {
+  return request('/portal/auth/password', {
+    method: 'PUT',
+    data: { oldPassword, password, confirmPassword }
+  })
+}
+
 export async function uploadPortalFiles(files) {
   const list = Array.isArray(files) ? files : []
   if (!list.length) return []

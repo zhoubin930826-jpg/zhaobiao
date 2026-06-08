@@ -5,6 +5,7 @@
                 <Card shadow title="个人设置" icon="md-options" :padding="0">
                     <CellGroup @on-click="handleChangeCell" class="ivu-pt-8 ivu-pb-8">
                         <Cell title="基本设置" name="info" label="个人账户信息设置" :selected="currentType === 'info'" />
+                        <Cell title="修改密码" name="password" label="修改登录密码" :selected="currentType === 'password'" />
                         <!-- <Cell title="账号绑定" name="account" label="绑定第三方社交账户" :selected="currentType === 'account'" />
                         <Cell title="新消息通知" name="notification" label="各种通知的设置" :selected="currentType === 'notification'" /> -->
                     </CellGroup>
@@ -13,6 +14,7 @@
             <Col :xl="18" :lg="18" :md="24" :sm="24" :xs="24">
                 <Card :bordered="false" dis-hover>
                     <info v-if="currentType === 'info'" />
+                    <password-page v-if="currentType === 'password'" />
                     <account v-if="currentType === 'account'" />
                     <!-- <notification v-if="currentType === 'notification'" /> -->
                 </Card>
@@ -22,12 +24,13 @@
 </template>
 <script>
     import info from './info';
+    import passwordPage from './password';
     import account from './account';
     // import notification from './notification';
 
     export default {
         name: 'setting-account',
-        components: { info, account },
+        components: { info, passwordPage, account },
         data () {
             return {
                 currentType: 'info' // info | account | notification
