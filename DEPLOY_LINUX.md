@@ -437,7 +437,10 @@ sudo systemctl status zhaobiao
 
 ```bash
 sudo journalctl -u zhaobiao -f
+tail -f /opt/zhaobiao/app/logs/zhaobiao-admin.log
 ```
+
+业务排查需要更多后端代码日志时，在 `/opt/zhaobiao/app/app.env` 设置 `APP_LOG_LEVEL=DEBUG` 后重启；通常保持 `APP_ROOT_LOG_LEVEL=INFO`，避免 Spring/Tomcat 框架日志过多。
 
 ## 14. 后端常用运维命令
 
@@ -469,7 +472,10 @@ sudo systemctl status zhaobiao
 
 ```bash
 sudo journalctl -u zhaobiao -f
+tail -f /opt/zhaobiao/app/logs/zhaobiao-admin.log
 ```
+
+业务排查建议只临时打开 `APP_LOG_LEVEL=DEBUG`；如果需要看到包含 `TRACE` 在内的所有业务日志，设置 `APP_LOG_LEVEL=TRACE`。框架日志用 `APP_ROOT_LOG_LEVEL` 单独控制，生产默认保持 `INFO`。
 
 ## 15. MySQL Docker 常用命令
 

@@ -88,6 +88,11 @@ mvn spring-boot:run
 - `MYSQL_PASSWORD`，默认 `root`
 - `APP_JWT_SECRET`，必须配置，至少 32 个字符
 - `SPRING_PROFILES_ACTIVE=prod`
+- `APP_ROOT_LOG_LEVEL`，根日志级别，默认 `INFO`
+- `APP_LOG_LEVEL`，后端日志级别，默认 `INFO`
+- `APP_SQL_LOG_LEVEL`，Hibernate SQL 日志级别，默认 `WARN`
+- `APP_LOG_PATH`，后端文件日志目录；线上 systemd 工作目录下默认写到 `/opt/zhaobiao/app/logs`
+- `APP_LOG_MAX_HISTORY`，后端文件日志保留天数，默认 `60`
 - `MYSQL_TEST_DB`，测试默认 `zhaobiao_admin_test`
 - `MYSQL_CONTEXT_TEST_DB`，启动上下文测试默认 `zhaobiao_admin_context_test`
 - `APP_FILE_TYPE=local|oss`

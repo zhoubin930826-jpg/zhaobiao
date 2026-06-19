@@ -9,6 +9,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -29,6 +31,8 @@ import java.util.stream.Collectors;
 @Service
 @ConditionalOnProperty(prefix = "app.file", name = "type", havingValue = "local", matchIfMissing = true)
 public class LocalFileStorageService extends AbstractFileStorageService implements FileStorageService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(LocalFileStorageService.class);
 
     private final FileStorageProperties fileStorageProperties;
     private final FileThumbnailGenerator fileThumbnailGenerator;
@@ -254,8 +258,8 @@ public class LocalFileStorageService extends AbstractFileStorageService implemen
     private void deleteQuietly(Path target) {
         try {
             Files.deleteIfExists(target);
-        } catch (IOException ignored) {
-            // 文件记录保存失败时优先返回主错误，忽略清理失败
+        } catch (IOException ex) {
+            LOGGER.warn("清理本地文件失败: path={}", target, ex);
         }
     }
 }

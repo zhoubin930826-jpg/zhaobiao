@@ -1,6 +1,8 @@
 package com.zhaobiao.admin.security;
 
 import com.zhaobiao.admin.common.BusinessException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -17,6 +19,8 @@ import java.io.IOException;
 
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
 
     private final JwtTokenProvider jwtTokenProvider;
     private final CustomUserDetailsService adminUserDetailsService;
@@ -45,6 +49,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                         ? memberUserDetailsService.loadUserByUsername(username)
                         : adminUserDetailsService.loadUserByUsername(username);
             } catch (BusinessException ex) {
+                LOGGER.debug("JWT 对应用户不可用: userType={}, username={}, uri={}, reason={}",
+                        userType, username, request.getRequestURI(), ex.getMessage());
                 filterChain.doFilter(request, response);
                 return;
             }
@@ -52,6 +58,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                     || !userDetails.isAccountNonLocked()
                     || !userDetails.isAccountNonExpired()
                     || !userDetails.isCredentialsNonExpired()) {
+                LOGGER.debug("JWT 对应账号状态不可用: userType={}, username={}, uri={}",
+                        userType, username, request.getRequestURI());
                 filterChain.doFilter(request, response);
                 return;
             }

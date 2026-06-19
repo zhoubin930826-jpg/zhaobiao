@@ -3,6 +3,8 @@ package com.zhaobiao.admin;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.zhaobiao.admin.config.DataInitializer;
+import com.zhaobiao.admin.entity.OperationLog;
+import com.zhaobiao.admin.repository.OperationLogRepository;
 import com.zhaobiao.admin.service.CaptchaService;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -53,6 +55,9 @@ class ControllerBoundaryIntegrationTests {
     @Autowired
     private CaptchaService captchaService;
 
+    @Autowired
+    private OperationLogRepository operationLogRepository;
+
     @Test
     void authenticationSecurityAndMalformedParametersReturnExpectedErrors() throws Exception {
         String tag = uniqueTag();
@@ -85,6 +90,7 @@ class ControllerBoundaryIntegrationTests {
     @Test
     void disabledPermissionAndLegacyUserControllersAlwaysReturnGoneBusinessCode() throws Exception {
         String adminToken = loginAdmin("admin", "adminqwert");
+        long disabledMutationFailureLogsBefore = countDisabledInterfaceFailureLogs();
 
         assertBusinessCode(mockMvc.perform(get("/api/admin/permissions").header("Authorization", bearer(adminToken))), 410);
         assertBusinessCode(mockMvc.perform(post("/api/admin/permissions")
@@ -107,6 +113,19 @@ class ControllerBoundaryIntegrationTests {
                 .content("{\"roleIds\":[1]}")), 410);
         assertBusinessCode(mockMvc.perform(get("/api/admin/users/{userId}/audit-records", 1L)
                 .header("Authorization", bearer(adminToken))), 410);
+
+        assertEquals(disabledMutationFailureLogsBefore + 5, countDisabledInterfaceFailureLogs());
+    }
+
+    private long countDisabledInterfaceFailureLogs() {
+        return operationLogRepository.findAll().stream()
+                .filter(log -> !log.isSuccess())
+                .filter(this::isDisabledInterfaceLog)
+                .count();
+    }
+
+    private boolean isDisabledInterfaceLog(OperationLog log) {
+        return "权限管理".equals(log.getModule()) || "旧用户管理".equals(log.getModule());
     }
 
     @Test

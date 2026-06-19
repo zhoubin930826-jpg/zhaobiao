@@ -4,6 +4,7 @@ import com.zhaobiao.admin.common.ApiResponse;
 import com.zhaobiao.admin.common.PageResult;
 import com.zhaobiao.admin.dto.tender.TenderDetailDto;
 import com.zhaobiao.admin.dto.tender.TenderListItemDto;
+import com.zhaobiao.admin.logging.OperationLogRecord;
 import com.zhaobiao.admin.security.MemberLoginUser;
 import com.zhaobiao.admin.service.PortalTenderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -58,6 +59,7 @@ public class PortalTenderController {
 
     @Operation(summary = "下载招标附件")
     @PreAuthorize("hasRole('MEMBER')")
+    @OperationLogRecord(module = "门户招标", action = "会员下载招标附件")
     @GetMapping("/{tenderId}/attachments/{attachmentId}/download")
     public ResponseEntity<Resource> download(@PathVariable Long tenderId,
                                              @PathVariable Long attachmentId,

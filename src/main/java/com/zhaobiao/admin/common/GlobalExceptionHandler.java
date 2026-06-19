@@ -3,6 +3,8 @@ package com.zhaobiao.admin.common;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.validation.BindException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MissingServletRequestParameterException;
@@ -19,9 +21,15 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private static final Logger LOGGER = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     @ExceptionHandler(BusinessException.class)
     @ResponseStatus(HttpStatus.OK)
-    public ApiResponse<Void> handleBusiness(BusinessException ex) {
+    public ApiResponse<Void> handleBusiness(BusinessException ex, HttpServletRequest request) {
+        if (ex.getCode() >= 500) {
+            LOGGER.error("业务运行异常: code={}, method={}, uri={}, message={}",
+                    ex.getCode(), request.getMethod(), request.getRequestURI(), ex.getMessage(), ex);
+        }
         return ApiResponse.fail(ex.getCode(), ex.getMessage());
     }
 
@@ -72,6 +80,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
     public ApiResponse<Void> handleOther(Exception ex, HttpServletRequest request) {
+        LOGGER.error("未处理系统异常: method={}, uri={}", request.getMethod(), request.getRequestURI(), ex);
         return ApiResponse.fail(500, "系统异常: " + ex.getMessage());
     }
 }

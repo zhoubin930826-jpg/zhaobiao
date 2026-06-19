@@ -220,6 +220,7 @@ Notes:
 - Backend JAR name: `target/zhaobiao-admin.jar`.
 - Known backend deploy directory from prior operations: `/opt/zhaobiao/app`.
 - Runtime env file on the server is expected at `/opt/zhaobiao/app/app.env`.
+- Backend file logs default to `/opt/zhaobiao/app/logs/zhaobiao-admin.log` under systemd because `APP_LOG_PATH` defaults to `./logs` and the service working directory is `/opt/zhaobiao/app`; archived file logs are retained for 60 days by default, and systemd journal remains available through `journalctl -u zhaobiao-admin`. Use `APP_LOG_LEVEL` for `com.zhaobiao.admin`, keep `APP_ROOT_LOG_LEVEL=INFO` unless diagnosing framework internals.
 - `DEPLOY_LINUX.md` shows a generic `zhaobiao.service` unit. The real host has previously used `zhaobiao-admin.service`; always verify current units before restarting.
 - Prefer a single `systemd`-managed backend process. Avoid leaving manual `nohup java -jar` processes behind.
 - Prefer actual host checks over stale PID files:

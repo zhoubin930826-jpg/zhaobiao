@@ -16,6 +16,8 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.io.InputStreamResource;
 import org.springframework.core.io.Resource;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -37,6 +39,8 @@ import java.util.stream.Collectors;
 @Service
 @ConditionalOnProperty(prefix = "app.file", name = "type", havingValue = "oss")
 public class OssFileStorageService extends AbstractFileStorageService implements FileStorageService {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(OssFileStorageService.class);
 
     private static final String CREDENTIAL_MODE_ACCESS_KEY = "access-key";
 
@@ -332,8 +336,8 @@ public class OssFileStorageService extends AbstractFileStorageService implements
     private void deleteQuietly(String objectKey) {
         try {
             ossClient.deleteObject(bucketName, objectKey);
-        } catch (Exception ignored) {
-            // 文件记录保存失败时优先返回主错误，忽略清理失败
+        } catch (Exception ex) {
+            LOGGER.warn("清理 OSS 对象失败: objectKey={}", objectKey, ex);
         }
     }
 

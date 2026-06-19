@@ -4,6 +4,7 @@ import com.zhaobiao.admin.common.ApiResponse;
 import com.zhaobiao.admin.dto.audit.UserAuditRecordDto;
 import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.dto.user.UserProfileDto;
+import com.zhaobiao.admin.logging.OperationLogRecord;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -30,12 +31,14 @@ public class AdminUserController {
     }
 
     @Operation(summary = "审核旧用户（已停用）")
+    @OperationLogRecord(module = "旧用户管理", action = "停用旧用户审核尝试")
     @PutMapping("/{userId}/audit")
     public ApiResponse<UserProfileDto> auditUser(@PathVariable Long userId) {
         throw legacyInterfaceDisabled();
     }
 
     @Operation(summary = "修改旧用户角色（已停用）")
+    @OperationLogRecord(module = "旧用户管理", action = "停用旧用户角色修改尝试")
     @PutMapping("/{userId}/roles")
     public ApiResponse<UserProfileDto> updateUserRoles(@PathVariable Long userId) {
         throw legacyInterfaceDisabled();

@@ -46,5 +46,15 @@ app:
     oss-key-prefix: ${APP_FILE_OSS_KEY_PREFIX:zb/files}
 
 logging:
+  file:
+    name: ${APP_LOG_PATH:./logs}/zhaobiao-admin.log
   level:
-    org.hibernate.SQL: warn
+    root: ${APP_ROOT_LOG_LEVEL:INFO}
+    com.zhaobiao.admin: ${APP_LOG_LEVEL:INFO}
+    org.hibernate.SQL: ${APP_SQL_LOG_LEVEL:WARN}
+  logback:
+    rollingpolicy:
+      file-name-pattern: ${APP_LOG_PATH:./logs}/zhaobiao-admin.log.%d{yyyy-MM-dd}.%i.gz
+      max-file-size: ${APP_LOG_MAX_FILE_SIZE:50MB}
+      max-history: ${APP_LOG_MAX_HISTORY:60}
+      total-size-cap: ${APP_LOG_TOTAL_SIZE_CAP:2GB}

@@ -52,6 +52,7 @@ public class FileAdminController {
 
     @Operation(summary = "下载管理员已上传文件")
     @PreAuthorize("hasAnyAuthority('TENDER_UPLOAD_BUTTON','NEWS_UPLOAD_BUTTON','MEMBER_CREATE_BUTTON','MEMBER_EDIT_BUTTON')")
+    @OperationLogRecord(module = "文件管理", action = "下载文件")
     @GetMapping("/{fileId}/download")
     public ResponseEntity<Resource> download(@PathVariable Long fileId) {
         return fileResponseBuilder.download(loadFile(fileId));

@@ -7,6 +7,7 @@ import com.zhaobiao.admin.entity.TenderFileStorage;
 import com.zhaobiao.admin.entity.User;
 import com.zhaobiao.admin.entity.UserStatus;
 import com.zhaobiao.admin.repository.MenuRepository;
+import com.zhaobiao.admin.repository.OperationLogRepository;
 import com.zhaobiao.admin.repository.RoleRepository;
 import com.zhaobiao.admin.repository.TenderFileStorageRepository;
 import com.zhaobiao.admin.repository.UserRepository;
@@ -77,6 +78,9 @@ class TenderIntegrationTests {
 
     @Autowired
     private CaptchaService captchaService;
+
+    @Autowired
+    private OperationLogRepository operationLogRepository;
 
     @Test
     void anonymousCanViewLatestThreeAndPublicDetailButCannotDownloadAttachments() throws Exception {
@@ -401,11 +405,13 @@ class TenderIntegrationTests {
         Long fileId = uploadFile(adminToken, "查看测试-" + uniqueTag + ".txt", "inline view content");
         Long newsId = createNewsWithCover(adminToken, fileId, uniqueTag);
 
+        long adminFileDownloadLogsBefore = countOperationLogs("文件管理", "下载文件", true);
         mockMvc.perform(get("/api/admin/files/{fileId}/download", fileId)
                         .header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
                 .andExpect(content().string("inline view content"));
+        assertEquals(adminFileDownloadLogsBefore + 1, countOperationLogs("文件管理", "下载文件", true));
 
         mockMvc.perform(get("/api/admin/files/{fileId}/view", fileId)
                         .header("Authorization", "Bearer " + adminToken))
@@ -446,11 +452,13 @@ class TenderIntegrationTests {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.code").value(0));
 
+        long portalAttachmentDownloadLogsBefore = countOperationLogs("门户招标", "会员下载招标附件", true);
         mockMvc.perform(get("/api/portal/tenders/{tenderId}/attachments/{attachmentId}/download", tenderId, attachmentId)
                         .header("Authorization", "Bearer " + memberToken))
                 .andExpect(status().isOk())
                 .andExpect(header().string("Content-Disposition", org.hamcrest.Matchers.containsString("attachment")))
                 .andExpect(content().string("inline view content"));
+        assertEquals(portalAttachmentDownloadLogsBefore + 1, countOperationLogs("门户招标", "会员下载招标附件", true));
 
         mockMvc.perform(put("/api/admin/tenders/{tenderId}/status", tenderId)
                         .header("Authorization", "Bearer " + adminToken)
@@ -942,5 +950,13 @@ class TenderIntegrationTests {
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException(ex);
         }
+    }
+
+    private long countOperationLogs(String module, String action, boolean success) {
+        return operationLogRepository.findAll().stream()
+                .filter(log -> module.equals(log.getModule()))
+                .filter(log -> action.equals(log.getAction()))
+                .filter(log -> log.isSuccess() == success)
+                .count();
     }
 }

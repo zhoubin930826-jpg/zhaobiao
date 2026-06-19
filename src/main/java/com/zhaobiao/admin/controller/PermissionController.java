@@ -4,6 +4,7 @@ import com.zhaobiao.admin.common.ApiResponse;
 import com.zhaobiao.admin.common.BusinessException;
 import com.zhaobiao.admin.dto.permission.PermissionDto;
 import com.zhaobiao.admin.dto.permission.PermissionRequest;
+import com.zhaobiao.admin.logging.OperationLogRecord;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -34,12 +35,14 @@ public class PermissionController {
     }
 
     @Operation(summary = "新增权限")
+    @OperationLogRecord(module = "权限管理", action = "停用权限接口新增尝试")
     @PostMapping
     public ApiResponse<PermissionDto> createPermission(@Valid @RequestBody PermissionRequest request) {
         throw permissionInterfaceDisabled();
     }
 
     @Operation(summary = "修改权限")
+    @OperationLogRecord(module = "权限管理", action = "停用权限接口修改尝试")
     @PutMapping("/{permissionId}")
     public ApiResponse<PermissionDto> updatePermission(@PathVariable Long permissionId,
                                                        @Valid @RequestBody PermissionRequest request) {
@@ -47,6 +50,7 @@ public class PermissionController {
     }
 
     @Operation(summary = "删除权限")
+    @OperationLogRecord(module = "权限管理", action = "停用权限接口删除尝试")
     @DeleteMapping("/{permissionId}")
     public ApiResponse<Void> deletePermission(@PathVariable Long permissionId) {
         throw permissionInterfaceDisabled();

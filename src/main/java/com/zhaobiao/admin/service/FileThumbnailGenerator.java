@@ -4,6 +4,8 @@ import com.zhaobiao.admin.entity.FileThumbnailStatus;
 import org.apache.pdfbox.pdmodel.PDDocument;
 import org.apache.pdfbox.rendering.ImageType;
 import org.apache.pdfbox.rendering.PDFRenderer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -21,6 +23,8 @@ import java.util.Locale;
 
 @Component
 public class FileThumbnailGenerator {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(FileThumbnailGenerator.class);
 
     public static final String THUMBNAIL_CONTENT_TYPE = "image/jpeg";
 
@@ -41,6 +45,9 @@ public class FileThumbnailGenerator {
             }
             return typeCover(originalName, contentType, FileThumbnailStatus.UNSUPPORTED);
         } catch (Exception ex) {
+            LOGGER.warn("生成附件缩略图失败: originalName={}, contentType={}, contentLength={}, reason={}",
+                    originalName, contentType, content.length, ex.toString());
+            LOGGER.debug("生成附件缩略图失败详情", ex);
             return typeCover(originalName, contentType, FileThumbnailStatus.FAILED);
         }
     }
