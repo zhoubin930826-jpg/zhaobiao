@@ -7,6 +7,7 @@ import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
 import com.zhaobiao.admin.dto.member.MemberPasswordChangeRequest;
 import com.zhaobiao.admin.dto.member.MemberProfileUpdateRequest;
+import com.zhaobiao.admin.dto.member.MemberRegistrationSettingDto;
 import com.zhaobiao.admin.dto.member.MemberRegisterRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.entity.BusinessType;
@@ -39,6 +40,7 @@ public class PortalAuthService {
     private final TenderFileStorageRepository tenderFileStorageRepository;
     private final FileStorageService fileStorageService;
     private final CaptchaService captchaService;
+    private final MemberRegistrationSettingService memberRegistrationSettingService;
 
     public PortalAuthService(MemberUserRepository memberUserRepository,
                              PasswordEncoder passwordEncoder,
@@ -47,7 +49,8 @@ public class PortalAuthService {
                              ViewMapper viewMapper,
                              TenderFileStorageRepository tenderFileStorageRepository,
                              FileStorageService fileStorageService,
-                             CaptchaService captchaService) {
+                             CaptchaService captchaService,
+                             MemberRegistrationSettingService memberRegistrationSettingService) {
         this.memberUserRepository = memberUserRepository;
         this.passwordEncoder = passwordEncoder;
         this.jwtTokenProvider = jwtTokenProvider;
@@ -56,14 +59,23 @@ public class PortalAuthService {
         this.tenderFileStorageRepository = tenderFileStorageRepository;
         this.fileStorageService = fileStorageService;
         this.captchaService = captchaService;
+        this.memberRegistrationSettingService = memberRegistrationSettingService;
     }
 
     public CaptchaChallenge createCaptcha(String scene, String captchaId) {
         return captchaService.create(scene, captchaId);
     }
 
+    @Transactional(readOnly = true)
+    public MemberRegistrationSettingDto getRegistrationSetting() {
+        return memberRegistrationSettingService.getRegistrationSetting();
+    }
+
     @Transactional
     public MemberUserDto register(MemberRegisterRequest request) {
+        if (!memberRegistrationSettingService.isRegistrationEnabled()) {
+            throw new BusinessException(403, "会员注册已关闭，请联系管理员");
+        }
         captchaService.validate("register", request.getCaptchaId(), request.getCaptchaCode());
         validatePassword(request.getPassword(), request.getConfirmPassword());
         validateRegisterFile(request.getBusinessLicenseFile(), "营业执照不能为空");

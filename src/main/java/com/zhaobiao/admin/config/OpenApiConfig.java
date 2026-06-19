@@ -111,6 +111,7 @@ public class OpenApiConfig {
         add(keys, "POST", "/api/auth/register");
         add(keys, "POST", "/api/auth/login");
         add(keys, "GET", "/api/portal/auth/captcha");
+        add(keys, "GET", "/api/portal/auth/registration-status");
         add(keys, "POST", "/api/portal/auth/register");
         add(keys, "POST", "/api/portal/auth/login");
         add(keys, "GET", "/api/portal/news");
@@ -145,6 +146,8 @@ public class OpenApiConfig {
         put(map, "GET", "/api/admin/users/{userId}/audit-records", "功能：旧用户审核记录接口，已停用。\n输入：userId。\n输出：固定失败，code=410。\n权限：ADMIN。");
 
         put(map, "GET", "/api/admin/members", "功能：查询未删除会员列表。\n输入：无分页参数，前端当前本地分页。\n输出：MemberUserDto 数组，含业务类型、下载权限、有效期、资料文件缩略图字段。\n权限：SYSTEM_MEMBER_USER。");
+        put(map, "GET", "/api/admin/members/registration-setting", "功能：查询门户会员自助注册开关。\n输入：管理员 token。\n输出：MemberRegistrationSettingDto，registrationEnabled=true 表示允许门户自助注册。\n权限：SYSTEM_MEMBER_USER。");
+        put(map, "PUT", "/api/admin/members/registration-setting", "功能：修改门户会员自助注册开关。\n输入：MemberRegistrationSettingUpdateRequest.registrationEnabled。\n输出：MemberRegistrationSettingDto。\n规则：关闭后门户注册提交直接返回 code=403；已存在会员、后台创建会员、会员登录不受影响。权限：MEMBER_REGISTRATION_SETTING_BUTTON。");
         put(map, "GET", "/api/admin/members/{memberId}", "功能：查询会员详情。\n输入：memberId。\n输出：MemberUserDto。\n权限：SYSTEM_MEMBER_USER。");
         put(map, "POST", "/api/admin/members", "功能：后台创建门户会员账号。\n输入：MemberCreateRequest，含账号资料、密码、业务类型 ID、有效期、可选资料文件 ID。\n输出：新会员 MemberUserDto。\n规则：业务类型至少一个且必须启用；账号字段唯一；默认不允许下载文件，除非 canDownloadFile=true。权限：MEMBER_CREATE_BUTTON。");
         put(map, "POST", "/api/admin/members/profile-files", "功能：后台上传会员资料文件。\n输入：multipart/form-data，字段名 files，可一次上传多个文件。\n输出：FileUploadResponse 数组，包含 fileId、fileName、contentType、fileSize、thumbnailUrl、thumbnailStatus。\n规则：返回的 fileId 可写入 businessLicenseFileId 或 threeYearPerformanceFileId。权限：MEMBER_CREATE_BUTTON 或 MEMBER_EDIT_BUTTON。");
@@ -200,7 +203,8 @@ public class OpenApiConfig {
         put(map, "GET", "/api/files/{fileId}/thumbnail", "功能：读取文件缩略图或文件类型预览图。\n输入：fileId。\n输出：image/jpeg 等图片流，Content-Type 来自 thumbnailContentType。\n规则：公共可访问；上传接口和附件 DTO 中的 thumbnailUrl 指向此接口，可直接放入 img src。");
 
         put(map, "GET", "/api/portal/auth/captcha", "功能：获取门户验证码图片。\n输入：scene=register 或 login，captchaId=前端生成的唯一标识。\n输出：image/png 图片流。\n规则：验证码 5 分钟过期、一次性使用、校验不区分大小写；前端点击图片应重新生成 captchaId 并刷新图片。权限：公开。");
-        put(map, "POST", "/api/portal/auth/register", "功能：门户会员在线自助注册。\n输入：multipart/form-data，包含 username、password、confirmPassword、phone、email、companyName、contactPerson、unifiedSocialCreditCode、可选 realName、captchaId、captchaCode、businessLicenseFile、threeYearPerformanceFile。\n输出：新会员 MemberUserDto。\n规则：必须先通过 register 验证码；注册成功后状态为 DISABLED，不绑定业务类型、无有效期、canDownloadFile=false，需管理员补会员类型和有效期并启用后才能登录。权限：公开。");
+        put(map, "GET", "/api/portal/auth/registration-status", "功能：查询门户会员自助注册开关。\n输入：无。\n输出：MemberRegistrationSettingDto，registrationEnabled=true 表示前端可以展示注册入口。\n规则：公开接口；前端隐藏入口只是体验，注册提交仍以后端开关为准。权限：公开。");
+        put(map, "POST", "/api/portal/auth/register", "功能：门户会员在线自助注册。\n输入：multipart/form-data，包含 username、password、confirmPassword、phone、email、companyName、contactPerson、unifiedSocialCreditCode、可选 realName、captchaId、captchaCode、businessLicenseFile、threeYearPerformanceFile。\n输出：新会员 MemberUserDto。\n规则：先检查会员注册开关；关闭时返回 code=403 且不创建会员；开启时必须通过 register 验证码；注册成功后状态为 DISABLED，不绑定业务类型、无有效期、canDownloadFile=false，需管理员补会员类型和有效期并启用后才能登录。权限：公开。");
         put(map, "POST", "/api/portal/auth/login", "功能：门户会员登录。\n输入：username、password、captchaId、captchaCode。\n输出：token、tokenType、expireSeconds、profileCompletionRequired、会员 user。\n规则：先校验 login 验证码；会员必须启用、未过期且至少绑定一个启用业务类型；DISABLED 返回“账号未启用，请联系管理员”；首次登录会写 firstLoginAt 并返回 profileCompletionRequired=true。");
         put(map, "GET", "/api/portal/auth/me", "功能：获取当前门户会员资料。\n输入：会员 token。\n输出：MemberUserDto，含业务类型、有效期、下载权限、营业执照和三年内业绩文件缩略图字段。\n权限：MEMBER。");
         put(map, "POST", "/api/portal/auth/profile/files", "功能：门户会员上传资料文件。\n输入：multipart/form-data，字段名 files。\n输出：FileUploadResponse 数组。\n规则：返回 fileId 后可用于更新 businessLicenseFileId 或 threeYearPerformanceFileId。权限：MEMBER。");

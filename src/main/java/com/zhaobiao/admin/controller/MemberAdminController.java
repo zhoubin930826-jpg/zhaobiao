@@ -5,12 +5,15 @@ import com.zhaobiao.admin.dto.file.FileUploadResponse;
 import com.zhaobiao.admin.dto.member.MemberCreateRequest;
 import com.zhaobiao.admin.dto.member.MemberDownloadAccessUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberPasswordResetRequest;
+import com.zhaobiao.admin.dto.member.MemberRegistrationSettingDto;
+import com.zhaobiao.admin.dto.member.MemberRegistrationSettingUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberStatusUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberUpdateRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.logging.OperationLogRecord;
 import com.zhaobiao.admin.service.FileStorageService;
 import com.zhaobiao.admin.service.MemberAdminService;
+import com.zhaobiao.admin.service.MemberRegistrationSettingService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -36,11 +39,14 @@ import java.util.List;
 public class MemberAdminController {
 
     private final MemberAdminService memberAdminService;
+    private final MemberRegistrationSettingService memberRegistrationSettingService;
     private final FileStorageService fileStorageService;
 
     public MemberAdminController(MemberAdminService memberAdminService,
+                                 MemberRegistrationSettingService memberRegistrationSettingService,
                                  FileStorageService fileStorageService) {
         this.memberAdminService = memberAdminService;
+        this.memberRegistrationSettingService = memberRegistrationSettingService;
         this.fileStorageService = fileStorageService;
     }
 
@@ -49,6 +55,22 @@ public class MemberAdminController {
     @GetMapping
     public ApiResponse<List<MemberUserDto>> listMembers() {
         return ApiResponse.success(memberAdminService.listMembers());
+    }
+
+    @Operation(summary = "查询会员注册开关")
+    @PreAuthorize("hasAuthority('SYSTEM_MEMBER_USER')")
+    @GetMapping("/registration-setting")
+    public ApiResponse<MemberRegistrationSettingDto> registrationSetting() {
+        return ApiResponse.success(memberRegistrationSettingService.getRegistrationSetting());
+    }
+
+    @Operation(summary = "修改会员注册开关")
+    @PreAuthorize("hasAuthority('MEMBER_REGISTRATION_SETTING_BUTTON')")
+    @OperationLogRecord(module = "会员管理", action = "修改会员注册开关")
+    @PutMapping("/registration-setting")
+    public ApiResponse<MemberRegistrationSettingDto> updateRegistrationSetting(
+            @Valid @RequestBody MemberRegistrationSettingUpdateRequest request) {
+        return ApiResponse.success(memberRegistrationSettingService.updateRegistrationSetting(request));
     }
 
     @Operation(summary = "查询会员详情")

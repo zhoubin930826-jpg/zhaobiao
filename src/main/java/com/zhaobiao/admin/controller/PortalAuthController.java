@@ -7,6 +7,7 @@ import com.zhaobiao.admin.dto.member.MemberLoginRequest;
 import com.zhaobiao.admin.dto.member.MemberLoginResponse;
 import com.zhaobiao.admin.dto.member.MemberPasswordChangeRequest;
 import com.zhaobiao.admin.dto.member.MemberProfileUpdateRequest;
+import com.zhaobiao.admin.dto.member.MemberRegistrationSettingDto;
 import com.zhaobiao.admin.dto.member.MemberRegisterRequest;
 import com.zhaobiao.admin.dto.member.MemberUserDto;
 import com.zhaobiao.admin.logging.OperationLogRecord;
@@ -61,6 +62,12 @@ public class PortalAuthController {
                 .header("Expires", "0")
                 .contentType(MediaType.IMAGE_PNG)
                 .body(challenge.getImage());
+    }
+
+    @Operation(summary = "查询会员注册开关")
+    @GetMapping("/registration-status")
+    public ApiResponse<MemberRegistrationSettingDto> registrationStatus() {
+        return ApiResponse.success(portalAuthService.getRegistrationSetting());
     }
 
     @Operation(summary = "会员注册")

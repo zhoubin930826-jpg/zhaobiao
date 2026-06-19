@@ -8,7 +8,6 @@ erDiagram
     SYS_ROLE ||--o{ SYS_USER_ROLE : "角色分配给管理员"
     SYS_ROLE ||--o{ SYS_ROLE_MENU : "角色绑定菜单按钮"
     SYS_MENU ||--o{ SYS_ROLE_MENU : "菜单按钮作为授权编码"
-
     BIZ_BUSINESS_TYPE ||--o{ BIZ_TENDER : "招标业务类型"
     BIZ_BUSINESS_TYPE ||--o{ PORTAL_MEMBER_BUSINESS_TYPE_REL : "会员授权类型"
     PORTAL_MEMBER_USER ||--o{ PORTAL_MEMBER_BUSINESS_TYPE_REL : "会员多类型"
@@ -78,6 +77,17 @@ erDiagram
 | `sys_user_role` | 管理员账号与角色多对多 |
 | `sys_role_menu` | 当前实际授权关系，角色绑定菜单/按钮 |
 | `sys_role_permission` | 历史兼容关系，当前角色保存会置空 permissions |
+
+### `sys_application_setting`
+
+后端运行期开关表。当前用于会员自助注册开关。
+
+| 字段 | 含义 |
+| --- | --- |
+| `setting_key` | 设置键，唯一；会员注册开关为 `portal.member.registration.enabled` |
+| `setting_value` | 设置值；`true` 表示允许门户注册，`false` 表示关闭 |
+| `description` | 设置说明 |
+| `created_at`, `updated_at` | 审计时间 |
 
 ### `sys_operation_log`
 

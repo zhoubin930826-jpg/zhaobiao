@@ -4,7 +4,9 @@
 *.iml
 target/
 logs/
-docs/
+docs/*
+!docs/知识文档/
+!docs/知识文档/**
 .run/
 .preview/
 .uploads/

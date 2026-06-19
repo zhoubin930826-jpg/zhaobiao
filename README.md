@@ -25,6 +25,7 @@
 - 管理员公开注册已停用：`/api/auth/register` 返回业务码 `403`。
 - 超级管理员管理后台管理员账号：`/api/admin/admin-users`，仅 `SUPER_ADMIN` 可用。
 - 会员管理：后台创建会员、修改资料、启停账号、重置密码、控制附件下载权限、分配可访问业务类型。
+- 会员注册开关：后台会员管理页可通过 `/api/admin/members/registration-setting` 不定期开启或关闭门户会员自助注册。
 - 业务类型管理：工程、货物、服务是默认种子数据，后续可在后台维护。
 - 招标管理：分页查询、新增、编辑、删除招标，绑定和删除附件；新增招标默认 `DRAFT`，发布和取消发布必须走 `PUT /api/admin/tenders/{tenderId}/status`，并要求 `TENDER_PUBLISH_BUTTON`。
 - 资讯管理：`/api/admin/news`，支持分页、详情、新增、编辑、删除、发布、取消发布和封面上传；新增资讯默认 `DRAFT`，发布和取消发布要求 `NEWS_PUBLISH_BUTTON`。
@@ -34,7 +35,8 @@
 
 ### 门户端
 
-- 会员在线注册：`/api/portal/auth/register` 使用 `multipart/form-data` 提交基础资料、营业执照、近三年业绩证明和注册验证码；成功后账号默认为“禁用”，需管理员补会员类型和有效期后启用。
+- 会员注册状态：`/api/portal/auth/registration-status` 对游客开放，返回 `registrationEnabled`，前端据此展示或隐藏注册入口。
+- 会员在线注册：`/api/portal/auth/register` 使用 `multipart/form-data` 提交基础资料、营业执照、近三年业绩证明和注册验证码；若后台关闭注册则返回业务码 `403`，开启时注册成功后账号默认为“禁用”，需管理员补会员类型和有效期后启用。
 - 会员登录：`/api/portal/auth/login`，需要先获取并提交登录验证码。
 - 门户验证码：`/api/portal/auth/captcha?scene=register|login&captchaId=<uuid>`，5 分钟过期、一次性使用，点击验证码图片应刷新。
 - 会员信息：`/api/portal/auth/me`。
@@ -116,6 +118,7 @@ mysql -h 127.0.0.1 -P 3306 -u root -p zhaobiao_admin < sql/mysql8/data-initializ
 - `sql/mysql8/2026-05-23-complete-release.sql`：完整发布脚本，包含会员文件字段、软删除索引、缩略图字段、资讯表、菜单/按钮权限等。
 - `sql/mysql8/2026-05-23-news-module.sql`：资讯模块和招标发布权限的专项脚本，适用于只补这部分能力的环境。
 - `sql/mysql8/2026-05-23-news-publish-permission.sql`：在已经执行过完整脚本后，用来补齐或修正 `NEWS_PUBLISH_BUTTON` 的增量脚本。
+- `sql/mysql8/2026-06-19-member-registration-setting.sql`：会员注册开关脚本，创建 `sys_application_setting`，默认保持注册开启，并补 `MEMBER_REGISTRATION_SETTING_BUTTON`。
 
 ### 4. 打包
 
@@ -126,7 +129,7 @@ mvn clean package -DskipTests
 生成的后端包为：
 
 ```text
-target/zhaobiao-admin-0.0.7-SNAPSHOT.jar
+target/zhaobiao-admin.jar
 ```
 
 ## 前端运行

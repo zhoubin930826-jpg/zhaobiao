@@ -4,7 +4,7 @@ generated_at: "2026-05-24"
 baseline:
   git_branch: main
   git_commit_short: a969850
-  backend_artifact: target/zhaobiao-admin-0.0.7-SNAPSHOT.jar
+  backend_artifact: target/zhaobiao-admin.jar
   backend_package: com.zhaobiao.admin
 source_policy:
   ground_truth_order:

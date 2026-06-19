@@ -237,6 +237,114 @@ class AuthFlowIntegrationTests {
     }
 
     @Test
+    void adminCanTogglePortalMemberRegistrationAndPortalRegisterRespectsSetting() throws Exception {
+        String superAdminToken = loginAdmin("admin", "adminqwert");
+
+        mockMvc.perform(get("/api/portal/auth/registration-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.registrationEnabled").value(true));
+
+        mockMvc.perform(get("/api/admin/members/registration-setting")
+                        .header("Authorization", "Bearer " + superAdminToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.registrationEnabled").value(true));
+
+        mockMvc.perform(put("/api/admin/members/registration-setting")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"registrationEnabled\":false}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.registrationEnabled").value(false));
+
+        mockMvc.perform(get("/api/portal/auth/registration-status"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.registrationEnabled").value(false));
+
+        String disabledTag = String.valueOf(System.currentTimeMillis());
+        String disabledCaptchaId = "disabled-register-" + disabledTag;
+        String disabledCaptchaCode = captchaService.create("register", disabledCaptchaId).getCode();
+        mockMvc.perform(multipart("/api/portal/auth/register")
+                        .file(profileFile("businessLicenseFile", "营业执照-" + disabledTag + ".pdf", "license-disabled-" + disabledTag))
+                        .file(profileFile("threeYearPerformanceFile", "三年业绩-" + disabledTag + ".pdf", "performance-disabled-" + disabledTag))
+                        .param("username", "closed" + disabledTag)
+                        .param("phone", "133" + disabledTag.substring(disabledTag.length() - 8))
+                        .param("email", "closed" + disabledTag + "@test.com")
+                        .param("companyName", "关闭注册企业")
+                        .param("contactPerson", "李四")
+                        .param("unifiedSocialCreditCode", "91310000RC1K" + disabledTag.substring(disabledTag.length() - 6))
+                        .param("realName", "李四")
+                        .param("password", "123456")
+                        .param("confirmPassword", "123456")
+                        .param("captchaId", disabledCaptchaId)
+                        .param("captchaCode", disabledCaptchaCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403))
+                .andExpect(jsonPath("$.message").value("会员注册已关闭，请联系管理员"));
+
+        Long memberViewMenuId = findMenuIdByCode(superAdminToken, "SYSTEM_MEMBER_USER");
+        Long dashboardMenuId = findMenuIdByCode(superAdminToken, "DASHBOARD");
+        Long profileMenuId = findMenuIdByCode(superAdminToken, "PROFILE");
+        assertNotNull(memberViewMenuId);
+        assertNotNull(dashboardMenuId);
+        assertNotNull(profileMenuId);
+        Long viewOnlyRoleId = createRoleWithMenus(
+                superAdminToken,
+                "REG_VIEW_ONLY_" + System.currentTimeMillis(),
+                Arrays.asList(dashboardMenuId, profileMenuId, memberViewMenuId),
+                Collections.emptyList()
+        );
+        String viewOnlyUsername = "regview" + System.currentTimeMillis();
+        createAdminWithRole(superAdminToken, viewOnlyUsername, viewOnlyRoleId);
+        String viewOnlyToken = loginAdmin(viewOnlyUsername, "12345678");
+
+        mockMvc.perform(get("/api/admin/members/registration-setting")
+                        .header("Authorization", "Bearer " + viewOnlyToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.registrationEnabled").value(false));
+
+        mockMvc.perform(put("/api/admin/members/registration-setting")
+                        .header("Authorization", "Bearer " + viewOnlyToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"registrationEnabled\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(403));
+
+        mockMvc.perform(put("/api/admin/members/registration-setting")
+                        .header("Authorization", "Bearer " + superAdminToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"registrationEnabled\":true}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.registrationEnabled").value(true));
+
+        String enabledTag = String.valueOf(System.currentTimeMillis());
+        String enabledCaptchaId = "enabled-register-" + enabledTag;
+        String enabledCaptchaCode = captchaService.create("register", enabledCaptchaId).getCode();
+        mockMvc.perform(multipart("/api/portal/auth/register")
+                        .file(profileFile("businessLicenseFile", "营业执照-" + enabledTag + ".pdf", "license-enabled-" + enabledTag))
+                        .file(profileFile("threeYearPerformanceFile", "三年业绩-" + enabledTag + ".pdf", "performance-enabled-" + enabledTag))
+                        .param("username", "opened" + enabledTag)
+                        .param("phone", "132" + enabledTag.substring(enabledTag.length() - 8))
+                        .param("email", "opened" + enabledTag + "@test.com")
+                        .param("companyName", "开启注册企业")
+                        .param("contactPerson", "李四")
+                        .param("unifiedSocialCreditCode", "91310000RO1K" + enabledTag.substring(enabledTag.length() - 6))
+                        .param("realName", "李四")
+                        .param("password", "123456")
+                        .param("confirmPassword", "123456")
+                        .param("captchaId", enabledCaptchaId)
+                        .param("captchaCode", enabledCaptchaCode))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.code").value(0))
+                .andExpect(jsonPath("$.data.status").value("DISABLED"));
+    }
+
+    @Test
     void memberAccountIsCreatedByAdminAndCanBeManaged() throws Exception {
         String uniqueTag = String.valueOf(System.currentTimeMillis());
         String username = "member" + uniqueTag;

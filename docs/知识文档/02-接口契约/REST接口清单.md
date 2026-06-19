@@ -67,6 +67,8 @@
 | 方法 | 路径 | 权限 | 说明 |
 | --- | --- | --- | --- |
 | `GET` | `/api/admin/members` | `SYSTEM_MEMBER_USER` | 查询未删除会员列表 |
+| `GET` | `/api/admin/members/registration-setting` | `SYSTEM_MEMBER_USER` | 查询门户会员注册开关 |
+| `PUT` | `/api/admin/members/registration-setting` | `MEMBER_REGISTRATION_SETTING_BUTTON` | 开启或关闭门户会员自助注册 |
 | `GET` | `/api/admin/members/{memberId}` | `SYSTEM_MEMBER_USER` | 查询会员详情 |
 | `POST` | `/api/admin/members` | `MEMBER_CREATE_BUTTON` | 后台创建会员 |
 | `POST` | `/api/admin/members/profile-files` | `MEMBER_CREATE_BUTTON` 或 `MEMBER_EDIT_BUTTON` | 上传会员资料文件 |
@@ -118,6 +120,7 @@
 | 方法 | 路径 | 认证 | 说明 |
 | --- | --- | --- | --- |
 | `GET` | `/api/portal/auth/captcha` | 公开 | 获取验证码图片，参数 `scene=register|login`、`captchaId` |
+| `GET` | `/api/portal/auth/registration-status` | 公开 | 查询会员注册开关，返回 `registrationEnabled` |
 | `POST` | `/api/portal/auth/register` | 公开 | 会员注册，`multipart/form-data` |
 | `POST` | `/api/portal/auth/login` | 公开 | 会员登录 |
 | `GET` | `/api/portal/auth/me` | MEMBER | 当前会员信息 |
